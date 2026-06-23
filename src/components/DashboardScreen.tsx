@@ -47,6 +47,20 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     }
   }
 
+  // Temporary required log to inspect Webhook response structure and locate RAG/References fields
+  console.log("Webhook Response", normPayload);
+  if (normPayload) {
+    console.log("Webhook Response - google_studio:", normPayload.google_studio);
+    console.log("Webhook Response - report_data:", normPayload.report_data);
+    if (normPayload.report_data) {
+      console.log("Webhook Response - report_data.auditoria:", normPayload.report_data.auditoria);
+      console.log("Webhook Response - report_data.fontes_consultadas:", normPayload.report_data.fontes_consultadas);
+      console.log("Webhook Response - report_data.chunks_recuperados:", normPayload.report_data.chunks_recuperados);
+      console.log("Webhook Response - report_data.fontes_consultadas_texto:", normPayload.report_data.fontes_consultadas_texto);
+      console.log("Webhook Response - report_data.chunks_recuperados_texto:", normPayload.report_data.chunks_recuperados_texto);
+    }
+  }
+
   // Merging client-side or server-side generated ai_insights which contains key narrative objects
   if (activeResult?.ai_insights) {
     let aiInsightsObj: any = {};
@@ -575,17 +589,30 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       estilo_a_desenvolver: safeDinamicaVal(report_data.dinamica_dos_estilos?.estilo_a_desenvolver || report_data.dinamica_dos_estilos?.estiloADesenvolver || backupDinamica.estilo_a_desenvolver)
     },
     referenciais_teoricos: (() => {
-      const raw = report_data.referenciais_teoricos || normPayload?.referenciais_teoricos || gsData?.referenciais_teoricos || [];
+      const google_studio = normPayload?.google_studio || gsData;
+      const report_data_obj = report_data;
+      const raw = google_studio?.referenciais_teoricos_json
+        || report_data_obj?.referenciais_teoricos_json
+        || normPayload?.referenciais_teoricos_json
+        || google_studio?.referenciais_teoricos
+        || report_data_obj?.referenciais_teoricos
+        || normPayload?.referenciais_teoricos
+        || [];
+      
       if (Array.isArray(raw)) {
         return raw.map((item: any) => {
           if (!item) return null;
-          if (typeof item === 'string') return { autor: '', obra: item, conceito: '' };
+          if (typeof item === 'string') {
+            return {
+              autor: item.trim(),
+              contribuicao: ''
+            };
+          }
           return {
             autor: item.autor || item.author || '',
-            obra: item.obra || item.obra_artigo || item.work || item.title || '',
-            conceito: item.conceito || item.conceito_aplicado || item.concept || ''
+            contribuicao: item.contribuicao || item.contribution || item.conceito || item.conceito_aplicado || item.concept || item.obra || ''
           };
-        }).filter((item: any) => item && (item.autor || item.obra || item.conceito));
+        }).filter((item: any) => item && (item.autor || item.contribuicao));
       }
       return [];
     })(),
@@ -603,8 +630,98 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       }
       return [];
     })(),
-    fontes_consultadas_texto: gsData?.fontes_consultadas_texto || report_data.fontes_consultadas_texto || '',
-    referenciais_teoricos_texto: gsData?.referenciais_teoricos_texto || report_data.referenciais_teoricos_texto || '',
+    chunks_recuperados: (() => {
+      const raw = report_data.chunks_recuperados || normPayload?.chunks_recuperados || gsData?.chunks_recuperados || [];
+      if (Array.isArray(raw)) {
+        return raw.map((item: any) => {
+          if (!item) return null;
+          if (typeof item === 'string') return { documento: '', chunk: item };
+          return {
+            documento: item.documento || item.documento_recuperado || item.document || '',
+            chunk: item.chunk !== undefined ? item.chunk : (item.chunk_idx || null)
+          };
+        }).filter((item: any) => item);
+      }
+      return [];
+    })(),
+    rag_fontes_consultadas: (() => {
+      const raw = report_data.fontes_consultadas || normPayload?.fontes_consultadas || gsData?.fontes_consultadas || [];
+      if (Array.isArray(raw)) {
+        return raw.map((item: any) => {
+          if (!item) return null;
+          if (typeof item === 'string') return item.trim();
+          return (item.documento_recuperado || item.documento || item.document || '').trim();
+        }).filter(Boolean);
+      }
+      return [];
+    })(),
+    rag_chunks_recuperados: (() => {
+      const rawChunks = report_data.chunks_recuperados || normPayload?.chunks_recuperados || gsData?.chunks_recuperados || report_data.referencias_metodologicas?.chunks_recuperados;
+      if (Array.isArray(rawChunks) && rawChunks.length > 0) {
+        return rawChunks.map((item: any) => {
+          if (!item) return null;
+          if (typeof item === 'string') return { documento: '', chunk: item };
+          return {
+            documento: (item.documento || item.document_recuperado || item.document || '').trim(),
+            chunk: item.chunk !== undefined ? item.chunk : (item.chunk_idx || null)
+          };
+        }).filter((item: any) => item && (item.documento || item.chunk));
+      }
+      const rawFontes = report_data.fontes_consultadas || normPayload?.fontes_consultadas || gsData?.fontes_consultadas || [];
+      if (Array.isArray(rawFontes)) {
+        const extracted: any[] = [];
+        rawFontes.forEach((item: any) => {
+          if (item && typeof item === 'object') {
+            const doc = (item.documento_recuperado || item.documento || item.document || '').trim();
+            const chunkVal = item.chunk !== undefined ? item.chunk : (item.chunk_idx !== undefined ? item.chunk_idx : null);
+            if (doc && chunkVal !== null) {
+              extracted.push({ documento: doc, chunk: chunkVal });
+            }
+          }
+        });
+        if (extracted.length > 0) return extracted;
+      }
+      return [];
+    })(),
+    fontes_consultadas_texto: (() => {
+      const google_studio = normPayload?.google_studio || gsData;
+      const report_data_obj = report_data;
+      const val = google_studio?.fontes_consultadas_texto
+        || report_data_obj?.fontes_consultadas_texto
+        || (Array.isArray(report_data_obj?.fontes_consultadas) && report_data_obj.fontes_consultadas.length > 0
+            ? report_data_obj.fontes_consultadas.map((f: any) => typeof f === 'object' ? (f.documento || f.documento_recuperado || f.source || String(f)) : String(f)).join('\n')
+            : '')
+        || (Array.isArray(google_studio?.fontes_consultadas) && google_studio.fontes_consultadas.length > 0
+            ? google_studio.fontes_consultadas.map((f: any) => typeof f === 'object' ? (f.documento || f.documento_recuperado || f.source || String(f)) : String(f)).join('\n')
+            : '')
+        || '';
+      return typeof val === 'string' ? val : '';
+    })(),
+    chunks_recuperados_texto: (() => {
+      const google_studio = normPayload?.google_studio || gsData;
+      const report_data_obj = report_data;
+      const val = google_studio?.chunks_recuperados_texto
+        || report_data_obj?.chunks_recuperados_texto
+        || (Array.isArray(report_data_obj?.chunks_recuperados) && report_data_obj.chunks_recuperados.length > 0
+            ? report_data_obj.chunks_recuperados.map((c: any) => typeof c === 'object' ? `${c.documento || c.documento_recuperado || c.document || ''} - Chunk ${c.chunk !== undefined ? c.chunk : (c.chunk_idx !== undefined ? c.chunk_idx : '')}` : String(c)).join('\n')
+            : '')
+        || (Array.isArray(google_studio?.chunks_recuperados) && google_studio.chunks_recuperados.length > 0
+            ? google_studio.chunks_recuperados.map((c: any) => typeof c === 'object' ? `${c.documento || c.documento_recuperado || c.document || ''} - Chunk ${c.chunk !== undefined ? c.chunk : (c.chunk_idx !== undefined ? c.chunk_idx : '')}` : String(c)).join('\n')
+            : '')
+        || '';
+      return typeof val === 'string' ? val : '';
+    })(),
+    referenciais_teoricos_texto: (() => {
+      const google_studio = normPayload?.google_studio || gsData;
+      const report_data_obj = report_data;
+      const val = google_studio?.referenciais_teoricos_texto
+        || report_data_obj?.referenciais_teoricos_texto
+        || google_studio?.referenciais_teoricos_texto
+        || (report_data_obj?.auditoria && typeof report_data_obj?.auditoria === 'object' ? report_data_obj?.auditoria?.referenciais_teoricos_texto : '')
+        || normPayload?.referenciais_teoricos_texto
+        || '';
+      return typeof val === 'string' ? val : '';
+    })(),
     evidencias_observadas: cleanArrayItems(
       report_data.evidencias_observadas || 
       report_data.evidencias
@@ -1123,7 +1240,7 @@ export default function DashboardScreen({
 
     try {
       const pagePrefix = 'p-page-';
-      const pageCount = 10;
+      const pageCount = 9;
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 210;
@@ -1495,8 +1612,71 @@ export default function DashboardScreen({
                         ID: {(reportData.identificacao?.relatorio_uuid || "UUID-9").substring(0, 8).toUpperCase()}
                       </span>
                       <span className="text-slate-300">|</span>
-                      <span className="text-[#112363] font-black">Pág. {String(pageNumber).padStart(2, "0")} / 10</span>
+                      <span className="text-[#112363] font-black">Pág. {String(pageNumber).padStart(2, "0")} / 08</span>
                     </div>
+                  </div>
+                );
+              };
+
+              const renderEvidenceItem = (ev: string, idx: number) => {
+                try {
+                  const cleanedEv = ev.trim();
+                  if (cleanedEv.startsWith('{') && cleanedEv.endsWith('}')) {
+                    const parsed = JSON.parse(cleanedEv);
+                    const hasShadowKeywords = parsed.interpretacao?.toLowerCase().includes('sombra') || 
+                                              parsed.interpretacao?.toLowerCase().includes('sobrecarregado') ||
+                                              parsed.interpretacao?.toLowerCase().includes('evitar') ||
+                                              parsed.interpretacao?.toLowerCase().includes('compensar') ||
+                                              parsed.interpretacao?.toLowerCase().includes('desvio') ||
+                                              parsed.interpretacao?.toLowerCase().includes('dispersão');
+                    const isShadow = hasShadowKeywords || parsed.bloco?.toLowerCase().includes('foco') || parsed.bloco?.toLowerCase().includes('sombra') || parsed.bloco?.toLowerCase().includes('pressão');
+                    
+                    return (
+                      <div key={idx} className={`p-4 rounded-xl border ${isShadow ? 'bg-red-50/20 border-red-100/50' : 'bg-slate-50/50 border-slate-200/60'} space-y-3 shadow-3xs hover:shadow-2xs transition-all`} id={`ev-json-card-${idx}`}>
+                        <div className="flex items-center justify-between border-b pb-1.5 border-slate-100">
+                          <span className={`text-[9px] uppercase tracking-widest font-black px-2 py-0.5 rounded ${isShadow ? 'bg-red-100 text-[#D80E2A]' : 'bg-blue-100 text-blue-800'}`}>
+                            🔍 Evidência - {parsed.bloco || "Histórico"}
+                          </span>
+                          {parsed.perguntas && (
+                            <span className="text-[9px] font-bold text-slate-400 font-mono">
+                              Questões: {Array.isArray(parsed.perguntas) ? parsed.perguntas.join(', ') : parsed.perguntas}
+                            </span>
+                          )}
+                        </div>
+                        
+                        {parsed.respostas_utilizadas && Array.isArray(parsed.respostas_utilizadas) && (
+                          <div className="space-y-1.5 animate-fade-in">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Respostas Registradas:</span>
+                            <div className="space-y-1.5 pl-1.5">
+                              {parsed.respostas_utilizadas.map((resp: string, rIdx: number) => (
+                                <div key={rIdx} className="flex items-start gap-1">
+                                  <span className="text-[#D80E2A]/70 font-bold text-xs shrink-0 mt-0.5">“</span>
+                                  <span className="text-slate-750 italic font-medium leading-relaxed text-[11px]">{resp}”</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {parsed.interpretacao && (
+                          <div className={`p-3 rounded-lg border ${isShadow ? 'bg-red-50/45 border-red-150 text-slate-800' : 'bg-emerald-50/30 border-emerald-100 text-slate-800'} text-xs font-semibold leading-relaxed whitespace-pre-line`}>
+                            <strong className={`block text-[9px] font-black uppercase tracking-widest mb-1 ${isShadow ? 'text-[#D80E2A]' : 'text-emerald-700'}`}>
+                              {isShadow ? "⚠️ Diagnóstico do Lado Sombra" : "💡 Diagnóstico do Lado Luz"}
+                            </strong>
+                            {parsed.interpretacao}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  }
+                } catch (err) {
+                  console.warn("Could not parse evidence item as JSON", err);
+                }
+
+                return (
+                  <div key={idx} className="p-3 bg-slate-50/50 rounded-xl border border-slate-200/60 flex items-start space-x-2.5 shadow-3xs" id={`ev-text-card-${idx}`}>
+                    <span className="text-blue-600 font-extrabold shrink-0 mt-0.5">✓</span>
+                    <span className="text-slate-755 font-semibold text-xs leading-relaxed">{ev}</span>
                   </div>
                 );
               };
@@ -1619,7 +1799,7 @@ export default function DashboardScreen({
                         <div className="space-y-4 w-full font-sans">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> 02. Distribuição Métrica de Energia & Lente Situacional
+                              <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> 02. Distribuição Métrica de Energia & 03. Lente Situacional
                             </h3>
                             <span className="text-[10px] font-bold text-gray-400 italic">Pág. 03 do Participante</span>
                           </div>
@@ -1862,7 +2042,7 @@ export default function DashboardScreen({
                           {/* Dinâmica dos Estilos Seção */}
                           <div className="space-y-3 mt-4">
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-100">
-                              <Zap className="w-4 h-4 text-amber-500 fill-amber-300" /> 2.3 Lente Situacional & Dinâmica dos Estilos
+                              <Zap className="w-4 h-4 text-amber-500 fill-amber-300" /> 03. Lente Situacional & Dinâmica dos Estilos
                             </h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full text-xs animate-fade-in">
                               <div className="bg-amber-50/20 p-3.5 rounded-xl border border-amber-200/60 shadow-3xs">
@@ -1907,44 +2087,82 @@ export default function DashboardScreen({
                         {renderFooter(3)}
                       </div>
 
-                      {/* Page 4: DIAGNÓSTICO COMPORTAMENTAL: LADO LUZ & EVIDÊNCIAS (Blocos 4 & 5) */}
+                      {/* Page 4: DIAGNÓSTICO COMPORTAMENTAL: LADO LUZ & SOMBREAMENTO (Seções 4.1 & 4.2) */}
                       <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-4">
                         <div className="space-y-4 w-full font-sans">
+                          {/* Page Title */}
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <Sun className="w-4 h-4 text-amber-500 fill-amber-500" /> 03. Diagnóstico Comportamental: Lado Luz e Evidências
+                              <Sun className="w-4 h-4 text-amber-500 fill-amber-500" /> 04. Dinâmica Comportamental: Luz & Sombra
                             </h3>
                             <span className="text-[10px] font-bold text-gray-400 italic">Pág. 04 do Participante</span>
                           </div>
 
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full text-xs animate-fade-in">
-                            <div className="space-y-4">
-                              <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5 text-emerald-600">
-                                <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 3.1 Forças Naturais do Lado Luz (Talentos)
-                              </h4>
+                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full text-xs animate-fade-in items-start">
+                            {/* Left Column: Lado Luz (4.1 Lado Luz: Forças e Evidências) */}
+                            <div className="space-y-5">
+                              <div className="border-b border-emerald-100 pb-2">
+                                <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5 text-emerald-600">
+                                  <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 4.1 Lado Luz: Forças e Evidências
+                                </h4>
+                              </div>
+
+                              {/* Talentos */}
                               <div className="space-y-3">
-                                {reportData.analise_comportamental.pontos_fortes_talentos.map((talent: string, idx: number) => (
-                                  <div key={idx} className="p-4 bg-emerald-50/30 rounded-xl border border-emerald-100 flex space-x-3 shadow-xxs">
-                                    <span className="w-5 h-5 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">
-                                      {idx + 1}
-                                    </span>
-                                    <p className="text-slate-850 leading-relaxed font-semibold text-xs">{talent}</p>
-                                  </div>
-                                ))}
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Talentos & Forças Naturais</span>
+                                <div className="space-y-2.5">
+                                  {reportData.analise_comportamental.pontos_fortes_talentos.map((talent: string, idx: number) => (
+                                    <div key={idx} className="p-3 bg-emerald-50/20 rounded-xl border border-emerald-100/50 flex space-x-2.5 shadow-xxs">
+                                      <span className="w-5 h-5 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">
+                                        {idx + 1}
+                                      </span>
+                                      <p className="text-slate-800 leading-relaxed font-semibold text-xs">{talent}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Evidências */}
+                              <div className="space-y-3">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Evidências Observadas de Atuação</span>
+                                <div className="space-y-2.5">
+                                  {reportData.evidencias_observadas.map((ev: string, idx: number) => renderEvidenceItem(ev, idx))}
+                                </div>
                               </div>
                             </div>
 
-                            <div className="space-y-4">
-                              <h4 className="text-xs font-black text-blue-900 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-blue-100">
-                                <Award className="w-4 h-4 text-blue-800" /> 3.2 Evidências Observadas de Atuação
-                              </h4>
+                            {/* Right Column: Lado Sombra (4.2 Lado Sombra: Riscos e Análises) */}
+                            <div className="space-y-5">
+                              <div className="border-b border-rose-100 pb-2">
+                                <h4 className="text-xs font-black text-[#D80E2A] uppercase tracking-wider flex items-center gap-1.5 font-sans">
+                                  <AlertTriangle className="w-4.5 h-4.5 text-[#D80E2A] shrink-0" /> 4.2 Lado Sombra: Riscos e Análises
+                                </h4>
+                              </div>
+
+                              {/* Riscos */}
                               <div className="space-y-3">
-                                {reportData.evidencias_observadas.map((ev: string, idx: number) => (
-                                  <div key={idx} className="p-3 bg-slate-50/50 rounded-xl border border-slate-200/60 flex items-start space-x-2.5 shadow-3xs">
-                                    <span className="text-blue-600 font-extrabold shrink-0 mt-0.5">✓</span>
-                                    <span className="text-slate-755 font-semibold text-xs leading-relaxed">{ev}</span>
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Riscos Comportamentais Sob Pressão</span>
+                                <div className="space-y-2.5">
+                                  {reportData.analise_comportamental.pontos_desenvolvimento.map((growth: string, idx: number) => (
+                                    <div key={idx} className="p-3 bg-red-50/20 rounded-xl border border-red-100/40 flex space-x-2.5 shadow-xxs">
+                                      <span className="w-5 h-5 bg-red-100 text-[#D80E2A] rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">
+                                        {idx + 1}
+                                      </span>
+                                      <p className="text-slate-800 leading-relaxed font-semibold text-xs">{growth}</p>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+
+                              {/* Expressão do Estilo */}
+                              <div className="space-y-3">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Expressão do Estilo Dominante</span>
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-150 shadow-2xs leading-relaxed text-xs text-slate-800 font-semibold relative overflow-hidden">
+                                  <div className="absolute top-0 right-0 py-0.5 px-2 bg-indigo-50 border-l border-b border-indigo-100/60 rounded-bl text-[8px] font-black text-indigo-700 tracking-wider uppercase">
+                                    Perfil {reportData.analise_comportamental.estilo_identificado}
                                   </div>
-                                ))}
+                                  <p className="pt-2 leading-relaxed whitespace-pre-line">{reportData.analise_comportamental.descricao}</p>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -1953,55 +2171,14 @@ export default function DashboardScreen({
                         {renderFooter(4)}
                       </div>
 
-                      {/* Page 5: DIAGNÓSTICO COMPORTAMENTAL: LADO SOMBRA & EXPRESSÃO DO PERFIL */}
+                      {/* Page 5: POTENCIAL DE DESENVOLVIMENTO & RECOMENDAÇÕES PRÁTICAS (Blocos 7 & 8) */}
                       <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-5">
-                        <div className="space-y-4 w-full font-sans">
-                          <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
-                            <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <Moon className="w-4 h-4 text-[#112363]" /> 04. Diagnóstico Comportamental: Lado Sombra e Expressão
-                            </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 05 do Participante</span>
-                          </div>
-
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full text-xs animate-fade-in">
-                            <div className="space-y-4">
-                              <h4 className="text-xs font-black text-[#D80E2A] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-rose-100">
-                                <AlertTriangle className="w-4.5 h-4.5 text-[#D80E2A] shrink-0" /> 4.1 Riscos Comportamentais do Lado Sombra
-                              </h4>
-                              <div className="space-y-3">
-                                {reportData.analise_comportamental.pontos_desenvolvimento.map((growth: string, idx: number) => (
-                                  <div key={idx} className="p-4 bg-red-50/20 rounded-xl border border-red-100/50 flex space-x-3 shadow-xxs">
-                                    <span className="w-5 h-5 bg-red-100 text-[#D80E2A] rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">
-                                      {idx + 1}
-                                    </span>
-                                    <p className="text-slate-850 leading-relaxed font-semibold text-xs">{growth}</p>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-
-                            <div className="space-y-4">
-                              <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider pb-1 border-b border-slate-200 flex items-center gap-1.5">
-                                <Zap className="w-4 h-4 text-[#112363] fill-indigo-100" /> 4.2 Expressão do Estilo Dominante: {reportData.analise_comportamental.estilo_identificado}
-                              </h4>
-                              <div className="p-4 bg-slate-50 rounded-xl border border-slate-150/90 shadow-2xs leading-relaxed text-xs text-slate-800 font-semibold whitespace-pre-line">
-                                {reportData.analise_comportamental.descricao}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {renderFooter(5)}
-                      </div>
-
-                      {/* Page 6: POTENCIAL DE DESENVOLVIMENTO & RECOMENDAÇÕES PRÁTICAS (Blocos 7 & 8) */}
-                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-6">
                         <div className="space-y-4 w-full font-sans">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
                               <BookOpen className="w-4 h-4 text-emerald-500" /> 05. Plano de Desenvolvimento Individual (PDI) & Diretrizes Práticas
                             </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 06 do Participante</span>
+                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 05 do Participante</span>
                           </div>
 
                           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full text-xs animate-fade-in">
@@ -2043,17 +2220,17 @@ export default function DashboardScreen({
                           </div>
                         </div>
 
-                        {renderFooter(6)}
+                        {renderFooter(5)}
                       </div>
 
-                      {/* Page 7: METODOLOGIA POTENCIAR & MATRIZ (Seção 12 & Seção 13) */}
-                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-7">
+                      {/* Page 6: METODOLOGIA POTENCIAR & MATRIZ (Seção 12 & Seção 13) */}
+                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-6">
                         <div className="space-y-4 w-full">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
                               <Briefcase className="w-4 h-4 text-[#112363]" /> 06. Referencial Metodológico de Competências Potenciar
                             </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 07 do Participante</span>
+                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 06 do Participante</span>
                           </div>
 
                           <div className="space-y-2">
@@ -2100,17 +2277,17 @@ export default function DashboardScreen({
                           </div>
                         </div>
 
-                        {renderFooter(7)}
+                        {renderFooter(6)}
                       </div>
 
-                      {/* Page 8: MEMÓRIA DO QUESTIONÁRIO & MEMÓRIA DE CÁLCULO (Seção 15 & Seção 16) */}
-                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-8">
+                      {/* Page 7: MEMÓRIA DO QUESTIONÁRIO & MEMÓRIA DE CÁLCULO (Seção 15 & Seção 16) */}
+                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-7">
                         <div className="space-y-4 w-full">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
                               <FileText className="w-4 h-4 text-[#112363]" /> 07. Memória de Cálculo e Respostas do Questionário
                             </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 08 do Participante</span>
+                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 07 do Participante</span>
                           </div>
 
                           <div className="space-y-4">
@@ -2147,17 +2324,17 @@ export default function DashboardScreen({
                           </div>
                         </div>
 
-                        {renderFooter(8)}
+                        {renderFooter(7)}
                       </div>
 
-                      {/* Page 9: AUDITORIA DO WORKFLOW n8n (Seção 17 / Admin View / Confidencial Lock) */}
-                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-9">
+                      {/* Page 8: AUDITORIA DO WORKFLOW n8n (Seção 17 / Admin View / Confidencial Lock) */}
+                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-8">
                         <div className="space-y-4 w-full">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
                               <Bot className="w-4 h-4 text-[#112363]" /> 08. Registro de Auditoria e Conformidade Técnica
                             </h3>
-                            <span className="text-[10px] font-bold text-gray-400">Pág. 09 / Auditoria</span>
+                            <span className="text-[10px] font-bold text-gray-400">Pág. 08 / Auditoria</span>
                           </div>
 
                           {/* 4. Processing Timeline Progress Flow */}
@@ -2218,8 +2395,8 @@ export default function DashboardScreen({
                                     <div className="mt-2 text-[10px]">
                                       <strong className="text-slate-800 block text-[10px]">Cognição Comportamental</strong>
                                       <p className="text-slate-500 font-medium leading-tight text-[9px]">Narrativa executada sob conformidade.</p>
-                                      <span className="text-[8px] font-mono text-rose-600 font-black block mt-1 truncate" title={reportData.auditoria.modelo_llm}>
-                                        {reportData.auditoria.modelo_llm}
+                                      <span className="text-[8px] font-mono text-rose-600 font-black block mt-1 truncate" title={reportData.auditoria?.modelo_llm || "Gemini 1.5 Pro"}>
+                                        {reportData.auditoria?.modelo_llm || "Gemini 1.5 Pro"}
                                       </span>
                                     </div>
                                   </div>
@@ -2250,243 +2427,171 @@ export default function DashboardScreen({
                               <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5 shadow-3xs">
                                 <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block font-sans">Metadados Corporativos</span>
                                 <strong className="text-[#112363] block font-black text-xs leading-none font-sans">n8n Integration Channel</strong>
-                                <p className="text-[10px] text-slate-500 font-medium font-sans">Flow: v{reportData.auditoria.workflow_version} | Engine: {reportData.auditoria.prompt_version}</p>
+                                <p className="text-[10px] text-slate-500 font-medium font-sans">Flow: v{reportData.auditoria?.workflow_version || "9.0"} | Engine: {reportData.auditoria?.prompt_version || "System_v9"}</p>
                               </div>
 
                               <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5 shadow-3xs">
                                 <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block font-sans">Divergências Estritadas</span>
                                 <strong className="text-[#112363] block font-black text-xs leading-none font-sans">
-                                  {reportData.auditoria.divergencias_scores ? "Sim (Detectado)" : "Não (Perfeitamente Consistente)"}
+                                  {reportData.auditoria?.divergencias_scores ? "Sim (Detectado)" : "Não (Perfeitamente Consistente)"}
                                 </strong>
                                 <p className="text-[10px] text-slate-500 font-medium font-sans">Scores do Gabarito vs Parser de Linguagem Natural</p>
                               </div>
                             </div>
 
-                            {/* NOVA SEÇÃO OBRIGATÓRIA: BASES DE CONHECIMENTO UTILIZADAS */}
+                            {/* BASE DE CONHECIMENTO CONSULTADA & FUNDAMENTAÇÃO TEÓRICA */}
                             {(() => {
-                              const fontes = reportData.referencias_metodologicas?.fontes_consultadas || reportData.auditoria?.fontes_consultadas || [];
-                              if (!fontes || fontes.length === 0) {
-                                return (
-                                  <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl text-center text-slate-500 font-semibold text-xs font-sans">
-                                    Bases de Conhecimento Utilizadas: Informação não disponível.
-                                  </div>
-                                );
-                              }
+                              const fontes = (
+                                reportData.fontes_consultadas_texto
+                                || (Array.isArray(reportData.fontes_consultadas) && reportData.fontes_consultadas.length > 0
+                                    ? reportData.fontes_consultadas.map((f: any) => typeof f === 'object' ? (f.documento || f.documento_recuperado || f.source || String(f)) : String(f)).join('\n')
+                                    : '')
+                              ).trim();
 
-                              const groupedDocs: Record<string, {
-                                documento: string;
-                                bucket: string;
-                                tipo: string;
-                                source: string;
-                                path: string;
-                                chunks: number[];
-                                chunk_total?: number;
-                                indexed_at?: string;
-                                uso_no_relatorio?: string;
-                                occurrences: number;
-                              }> = {};
-
-                              fontes.forEach((f: any) => {
-                                if (!f) return;
-                                const isObj = typeof f === 'object';
-                                const docName = isObj ? (f.documento || f.source || 'Documento Consultivo') : String(f);
-                                const bucket = isObj ? (f.bucket || 'knowledge-base') : 'knowledge-base';
-                                const tipo = isObj ? (f.tipo || 'txt') : 'txt';
-                                const source = isObj ? (f.source || docName) : docName;
-                                const path = isObj ? (f.path || '') : '';
-                                const chunk = isObj && f.chunk !== undefined ? Number(f.chunk) : null;
-                                const chunk_total = isObj && f.chunk_total !== undefined ? Number(f.chunk_total) : undefined;
-                                const indexed_at = isObj ? f.indexed_at : undefined;
-                                const uso_no_relatorio = isObj ? f.uso_no_relatorio : undefined;
-
-                                if (!groupedDocs[docName]) {
-                                  groupedDocs[docName] = {
-                                    documento: docName,
-                                    bucket,
-                                    tipo,
-                                    source,
-                                    path,
-                                    chunks: [],
-                                    chunk_total,
-                                    indexed_at,
-                                    uso_no_relatorio,
-                                    occurrences: 0
-                                  };
-                                }
-                                
-                                groupedDocs[docName].occurrences += 1;
-                                if (chunk !== null && !isNaN(chunk)) {
-                                  groupedDocs[docName].chunks.push(chunk);
-                                }
-                              });
+                              const chunks = (
+                                reportData.chunks_recuperados_texto
+                                || (Array.isArray(reportData.chunks_recuperados) && reportData.chunks_recuperados.length > 0
+                                    ? reportData.chunks_recuperados.map((c: any) => typeof c === 'object' ? `${c.documento || c.documento_recuperado || c.document || ''} - Chunk ${c.chunk !== undefined ? c.chunk : (c.chunk_idx !== undefined ? c.chunk_idx : '')}` : String(c)).join('\n')
+                                    : '')
+                              ).trim();
 
                               return (
                                 <div className="space-y-4 font-sans w-full">
-                                  <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
-                                    <BookOpen className="w-4 h-4 text-emerald-500" /> 8.2 Bases de Conhecimento Utilizadas na Concepção do Relatório
-                                  </strong>
-                                  <div className="overflow-x-auto border border-slate-150 rounded-2xl bg-white shadow-3xs w-full">
-                                    <table className="min-w-full divide-y divide-slate-150 text-[10px]">
-                                      <thead className="bg-[#112363] font-black text-white uppercase text-[9px] tracking-wider">
-                                        <tr>
-                                          <th className="px-4 py-2 text-left">Documento</th>
-                                          <th className="px-4 py-2 text-left">Bucket</th>
-                                          <th className="px-4 py-2 text-center">Chunks</th>
-                                          <th className="px-4 py-2 text-center">Ocorrências</th>
-                                          <th className="px-4 py-2 text-center">Tipo</th>
-                                        </tr>
-                                      </thead>
-                                      <tbody className="divide-y divide-slate-150 text-slate-700 font-semibold bg-white">
-                                        {Object.values(groupedDocs).map((doc, idx) => {
-                                          const sortedChunks = [...doc.chunks].sort((a, b) => a - b);
-                                          const chunksStr = sortedChunks.length > 0 ? sortedChunks.join(", ") : "N/D";
-                                          return (
-                                            <tr key={idx} className="hover:bg-slate-50/50">
-                                              <td className="px-4 py-3">
-                                                <div className="font-extrabold text-[#112363] leading-sm">{doc.documento}</div>
-                                                {doc.path && <div className="text-[8px] text-slate-400 font-mono mt-0.5 truncate max-w-[280px]" title={doc.path}>Path: {doc.path}</div>}
-                                                {doc.indexed_at && <div className="text-[8px] text-slate-400 font-mono">Indexado: {new Date(doc.indexed_at).toLocaleDateString('pt-BR')}</div>}
-                                                {doc.uso_no_relatorio && <div className="text-[8.5px] italic text-emerald-600 mt-1 font-semibold">Uso: {doc.uso_no_relatorio}</div>}
-                                              </td>
-                                              <td className="px-4 py-3 font-mono text-[9px] text-slate-500">{doc.bucket}</td>
-                                              <td className="px-4 py-3 text-center font-mono text-[10px] text-amber-600 font-bold">{chunksStr}</td>
-                                              <td className="px-4 py-3 text-center text-slate-500 font-bold">{doc.occurrences}</td>
-                                              <td className="px-4 py-3 text-center">
-                                                <span className="px-1.5 py-0.5 text-[8px] bg-[#112363]/5 text-[#112363] border border-[#112363]/10 rounded font-mono uppercase font-black">{doc.tipo}</span>
-                                              </td>
-                                            </tr>
-                                          );
-                                        })}
-                                      </tbody>
-                                    </table>
+                                  
+                                  {/* Section 8.2: Base de Conhecimento Consultada */}
+                                  <div className="space-y-3 font-sans w-full border-t border-slate-100 pt-3">
+                                    <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
+                                      <BookOpen className="w-4 h-4 text-[#112363]" /> 8.2 Base de Conhecimento Consultada
+                                    </strong>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full text-xs">
+                                      {/* Documentos Utilizados */}
+                                      <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-2 shadow-3xs">
+                                        <div className="flex items-center space-x-1.5 border-b border-slate-200 pb-1.5">
+                                          <span className="w-2 h-2 rounded-full bg-[#112363] shrink-0" />
+                                          <strong className="text-slate-800 font-black uppercase text-[9px] tracking-wider">Documentos Utilizados</strong>
+                                        </div>
+                                        {!fontes ? (
+                                          <p className="text-[10.5px] text-slate-500 font-semibold pl-1 py-1 italic">
+                                            Não foram recuperadas referências da Base de Conhecimento para esta análise.
+                                          </p>
+                                        ) : (
+                                          <ul className="space-y-1 text-slate-700 pl-1 font-semibold text-[10.5px]">
+                                            {fontes.split('\n').map((doc: string, idx: number) => {
+                                              const d = doc.trim();
+                                              if (!d) return null;
+                                              return (
+                                                <li key={idx} className="flex items-start gap-1.5">
+                                                  <span className="text-[#112363] mt-0.5">•</span>
+                                                  <span>{d}</span>
+                                                </li>
+                                              );
+                                            })}
+                                          </ul>
+                                        )}
+                                      </div>
+
+                                      {/* Chunks Recuperados */}
+                                      <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-2 shadow-3xs">
+                                        <div className="flex items-center space-x-1.5 border-b border-slate-200 pb-1.5">
+                                          <span className="w-2 h-2 rounded-full bg-[#D80E2A] shrink-0" />
+                                          <strong className="text-slate-800 font-black uppercase text-[9px] tracking-wider">Chunks Recuperados</strong>
+                                        </div>
+                                        {!chunks ? (
+                                          <p className="text-[10.5px] text-slate-500 font-semibold pl-1 py-1 italic">
+                                            Nenhum chunk recuperado para esta análise.
+                                          </p>
+                                        ) : (
+                                          <ul className="space-y-1 text-slate-700 pl-1 max-h-[140px] overflow-y-auto font-semibold text-[10.5px]">
+                                            {chunks.split('\n').map((c: string, idx: number) => {
+                                              const chunkLine = c.trim();
+                                              if (!chunkLine) return null;
+                                              
+                                              // Try to split on " - " to render nicely if possible
+                                              const parts = chunkLine.split(/\s*-\s*/);
+                                              if (parts.length > 1) {
+                                                const docPart = parts[0];
+                                                const chunkNumPart = parts.slice(1).join(" - ");
+                                                return (
+                                                  <li key={idx} className="flex items-start gap-1.5">
+                                                    <span className="text-[#D80E2A] mt-0.5">•</span>
+                                                    <span>{docPart} — <strong className="text-amber-700 font-mono text-[9.5px] bg-amber-50 border border-amber-200 px-1 py-0.5 rounded font-black">{chunkNumPart}</strong></span>
+                                                  </li>
+                                                );
+                                              }
+                                              
+                                              return (
+                                                <li key={idx} className="flex items-start gap-1.5">
+                                                  <span className="text-[#D80E2A] mt-0.5">•</span>
+                                                  <span>{chunkLine}</span>
+                                                </li>
+                                              );
+                                            })}
+                                          </ul>
+                                        )}
+                                      </div>
+                                    </div>
                                   </div>
 
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-1 w-full">
-                                    {Object.values(groupedDocs).filter(d => d.chunks.length > 1).map((doc, idx2) => (
-                                      <div key={idx2} className="p-3 bg-slate-50/50 border border-slate-150 rounded-xl shadow-3xs text-[10px]">
-                                        <div className="flex items-center space-x-1.5 border-b border-slate-150 pb-1.5 mb-1.5">
-                                          <span className="w-2 h-2 rounded-full bg-red-600 shrink-0" />
-                                          <strong className="text-slate-800 font-black truncate">{doc.documento}</strong>
-                                        </div>
-                                        <div className="space-y-1">
-                                          <div className="text-[8px] text-slate-400 uppercase font-black">Chunks Utilizados:</div>
-                                          <div className="flex flex-wrap gap-1">
-                                            {doc.chunks.sort((a,b) => a-b).map((num, nidx) => (
-                                              <span key={nidx} className="px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-mono font-bold">
-                                                {num}
-                                              </span>
+                                  {/* Section 8.3: Fundamentação Teórica */}
+                                  <div className="space-y-3 font-sans w-full border-t border-slate-100 pt-3 mt-1">
+                                    <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
+                                      <BookOpen className="w-4 h-4 text-[#112363]" /> 8.3 Fundamentação Teórica de Socioestilos Utilizada
+                                    </strong>
+                                    
+                                    {(() => {
+                                      const textVal = (reportData.referenciais_teoricos_texto || '').trim();
+                                      const jsonList = Array.isArray(reportData.referenciais_teoricos) ? reportData.referenciais_teoricos : [];
+
+                                      // Prioridade 1: Exibir texto pronto para exibição
+                                      if (textVal) {
+                                        return (
+                                          <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl font-bold text-[11px] leading-relaxed text-slate-700 whitespace-pre-line shadow-3xs">
+                                            {textVal}
+                                          </div>
+                                        );
+                                      }
+
+                                      // Prioridade 2: Montar a partir da estrutura detalhada (JSON)
+                                      if (jsonList.length > 0) {
+                                        return (
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {jsonList.map((ref: any, idx: number) => (
+                                              <div key={idx} className="p-3 bg-slate-50 border border-slate-150 rounded-2xl space-y-1 shadow-3xs hover:bg-slate-100/50 transition-colors text-xs">
+                                                {ref.autor && (
+                                                  <div>
+                                                    <strong className="text-slate-800 font-extrabold text-[11px] leading-snug">{ref.autor}</strong>
+                                                  </div>
+                                                )}
+                                                {ref.contribuicao && (
+                                                  <div>
+                                                    <p className="text-slate-650 leading-relaxed font-semibold text-[10.5px] mt-0.5">
+                                                      Contribuição: {ref.contribuicao}
+                                                    </p>
+                                                  </div>
+                                                )}
+                                              </div>
                                             ))}
                                           </div>
-                                          {doc.chunk_total && (
-                                            <div className="text-[8.5px] text-slate-550 mt-1 font-semibold">
-                                              Total de Chunks do Documento: <span className="font-extrabold text-[#112363]">{doc.chunk_total}</span>
-                                            </div>
-                                          )}
+                                        );
+                                      }
+
+                                      // Mensagem de Fallback
+                                      return (
+                                        <div className="p-4 bg-slate-50 border border-slate-150 rounded-2xl text-center text-slate-500 font-semibold text-xs py-4">
+                                          Nenhum referencial teórico específico foi identificado nos documentos utilizados nesta análise.
                                         </div>
-                                      </div>
-                                    ))}
+                                      );
+                                    })()}
                                   </div>
+
                                 </div>
                               );
                             })()}
                           </div>
                         </div>
 
-                        {renderFooter(9)}
-                      </div>
-
-                      {/* Page 10: REFERENCIAIS TEÓRICOS E FONTES CONSULTADAS */}
-                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-10">
-                        <div className="space-y-4 w-full">
-                          <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
-                            <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <BookOpen className="w-4 h-4 text-emerald-500" /> 09. Referenciais Teóricos e Fontes de Inteligência
-                            </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 10 / Referências</span>
-                          </div>
-
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full text-xs animate-fade-in">
-                            {/* Referenciais Teóricos Utilizados */}
-                            <div className="space-y-4">
-                              <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5 text-blue-800 pb-1 border-b border-blue-100">
-                                📚 9.1 Fundamentação Teórica de Socioestilos Utilizada
-                              </h4>
-                              
-                              {reportData.referenciais_teoricos && reportData.referenciais_teoricos.length > 0 ? (
-                                <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
-                                  {reportData.referenciais_teoricos.map((ref: any, idx: number) => (
-                                    <div key={idx} className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5 shadow-3xs hover:bg-slate-100/50 transition-colors">
-                                      {ref.autor && (
-                                        <div>
-                                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Autor</span>
-                                          <strong className="text-slate-800 font-extrabold text-[11px] leading-snug">{ref.autor}</strong>
-                                        </div>
-                                      )}
-                                      {ref.obra && (
-                                        <div>
-                                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Obra / Artigo</span>
-                                          <p className="text-blue-900 font-semibold italic text-[11.5px] leading-snug">{ref.obra}</p>
-                                        </div>
-                                      )}
-                                      {ref.conceito && (
-                                        <div>
-                                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Conceito Aplicado</span>
-                                          <p className="text-slate-650 leading-relaxed font-medium text-[11px] bg-white border border-slate-100 p-2 rounded-lg mt-0.5">{ref.conceito}</p>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : reportData.referenciais_teoricos_texto ? (
-                                <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl font-semibold text-xs leading-relaxed text-slate-700 whitespace-pre-line">
-                                  {reportData.referenciais_teoricos_texto}
-                                </div>
-                              ) : (
-                                <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl text-center text-slate-500 font-semibold text-xs py-8">
-                                  Nenhum referencial teórico específico retornado para esta análise.
-                                </div>
-                              )}
-                            </div>
-
-                            {/* Fontes Consultadas pelo Sistema */}
-                            <div className="space-y-4">
-                              <h4 className="text-xs font-black text-indigo-800 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-indigo-100">
-                                🔍 9.2 Fontes de Conhecimento Consultadas de Suporte
-                              </h4>
-                              
-                              {reportData.fontes_consultadas && reportData.fontes_consultadas.length > 0 ? (
-                                <div className="space-y-3 max-h-[360px] overflow-y-auto pr-1">
-                                  {reportData.fontes_consultadas.map((src: any, idx: number) => (
-                                    <div key={idx} className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5 shadow-3xs hover:bg-slate-100/50 transition-colors">
-                                      {src.documento && (
-                                        <div>
-                                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Documento Recuperado</span>
-                                          <strong className="text-[#112363] font-extrabold text-[11px] leading-snug">{src.documento}</strong>
-                                        </div>
-                                      )}
-                                      {src.trecho && (
-                                        <div>
-                                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest block">Trecho Resumido Utilizado</span>
-                                          <p className="text-slate-650 leading-relaxed font-semibold text-[10.5px] bg-white border border-slate-100 p-2 rounded-lg mt-0.5 whitespace-pre-line">{src.trecho}</p>
-                                        </div>
-                                      )}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : reportData.fontes_consultadas_texto ? (
-                                <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl font-semibold text-xs leading-relaxed text-slate-700 whitespace-pre-line">
-                                  {reportData.fontes_consultadas_texto}
-                                </div>
-                              ) : (
-                                <div className="p-4 bg-slate-50 border border-slate-150 rounded-xl text-center text-slate-500 font-semibold text-xs py-8">
-                                  Nenhuma fonte consultiva específica reportada para esta análise.
-                                </div>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        {renderFooter(10)}
+                        {renderFooter(8)}
                       </div>
 
                   </div>
