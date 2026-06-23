@@ -209,9 +209,10 @@ if (IS_PROD) {
 }
 
 // Configuração segura do cliente Supabase para o Backend
-const activeSupabaseUrl = IS_PROD
-  ? (process.env.SUPABASE_URL as string)
-  : (process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "https://czxxuznpcbluiqgppegzj.supabase.co");
+const activeSupabaseUrl = process.env.SUPABASE_URL as string;
+if (!activeSupabaseUrl) {
+  throw new Error("SUPABASE_URL is required for backend Supabase client initialization.");
+}
 
 const activeSupabaseKey = IS_PROD
   ? (process.env.SUPABASE_SERVICE_ROLE_KEY as string)

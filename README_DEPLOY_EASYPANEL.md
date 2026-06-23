@@ -35,7 +35,7 @@ Ao cadastrar a aplicação no **Easypanel**, insira as variáveis abaixo no pain
 
 | Nome da Variável | Finalidade | Exemplo de Produção | Obrigatório? |
 | :--- | :--- | :--- | :--- |
-| `VITE_SUPABASE_URL` | Endpoint público de conexão com o banco do Supabase da empresa. | `https://czxxuznpcbluiqgppegzj.supabase.co` | **Sim** |
+| `VITE_SUPABASE_URL` | Endpoint público de conexão com o banco do Supabase da empresa. | `https://czxxuznpclbuiqgpegzj.supabase.co` | **Sim** |
 | `VITE_SUPABASE_ANON_KEY` | Chave pública anônima para interações básicas do usuário no Supabase. | `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...` | **Sim** |
 | `VITE_FIREBASE_API_KEY` | Chave para gerenciar o login via Firebase Auth do Socioestilo. | `AIzaSyBoQvK-EALDG...` | **Sim** |
 | `VITE_FIREBASE_AUTH_DOMAIN` | Domínio de delegação de autenticação do Firebase. | `gen-lang-client-0279925838.firebaseapp.com` | **Sim** |
@@ -84,7 +84,7 @@ Após o deploy no Easypanel, observe a inicialização na aba **Logs** do contai
 Ambiente de Deploy: PRODUCTION
 Porta Ingress     : 3000
 Link do Portal    : https://socioestilo.suaempresa.com.br
-Supabase Target   : https://czxxuznpcbluiqgppegzj.supabase.co
+Supabase Target   : https://czxxuznpclbuiqgpegzj.supabase.co
 Chave Supabase    : eyJh...6YzQ
 Chave Gemini      : AIza...r7MA
 Chave OpenAI      : sk-p...zK1A
