@@ -1240,7 +1240,7 @@ export default function DashboardScreen({
 
     try {
       const pagePrefix = 'p-page-';
-      const pageCount = 9;
+      const pageCount = 8;
 
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgWidth = 210;
@@ -1344,12 +1344,13 @@ export default function DashboardScreen({
       const dateStr = new Date().toLocaleDateString('pt-BR').replace(/\//g, '-');
       const fileName = `Relatorio_Socioestilo_${cleanName}_${dateStr}.pdf`;
 
-      // 1. Generate Blob URL
-      const pdfBlob = pdf.output('blob');
-      const blobUrl = URL.createObjectURL(pdfBlob);
-
-      // 2. Direct download trigger with anchor element
+      // Direct download of the compiled PDF composed of generated images, WITHOUT opening new tabs
       try {
+        pdf.save(fileName);
+      } catch (pdfErr) {
+        console.warn("jsPDF save error, trying custom link click fallback:", pdfErr);
+        const pdfBlob = pdf.output('blob');
+        const blobUrl = URL.createObjectURL(pdfBlob);
         const link = document.createElement('a');
         link.href = blobUrl;
         link.download = fileName;
@@ -1357,21 +1358,8 @@ export default function DashboardScreen({
         link.click();
         setTimeout(() => {
           document.body.removeChild(link);
+          URL.revokeObjectURL(blobUrl);
         }, 100);
-      } catch (dlErr) {
-        console.warn("Direct link download fell back:", dlErr);
-      }
-
-      // 3. Fallback to native jsPDF save method
-      try {
-        pdf.save(fileName);
-      } catch (pdfErr) {
-        console.warn("jsPDF save error:", pdfErr);
-      }
-
-      // 4. If in iframe, open direct preview in new tab so browser sandbox doesn't block the download
-      if (window.self !== window.top) {
-        window.open(blobUrl, '_blank');
       }
     } catch (error) {
       console.error('Erro ao gerar PDF:', error);
@@ -1477,21 +1465,11 @@ export default function DashboardScreen({
         {/* Navigation / Action controls displayed ONLY for Individual Report */}
         {activeTab === 'individual' && (
           <div className="flex flex-col sm:flex-row gap-3 self-start md:self-center items-stretch sm:items-center">
-            {isIframe && (
-              <button
-                onClick={() => window.open(window.location.href, '_blank')}
-                className="flex items-center justify-center space-x-1.5 bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-800 font-bold text-xs py-2.5 px-4 rounded-xl shadow-xs transition-all active:scale-[0.98] cursor-pointer"
-                title="Para evitar restrições do iframe, abra em nova aba"
-              >
-                <span>Abrir em Nova Aba</span>
-                <span>🚀</span>
-              </button>
-            )}
             <button
               onClick={handleDownloadPdf}
               disabled={generatingPdf}
               className="flex items-center justify-center space-x-2 bg-[#112363] hover:bg-[#112363]/90 disabled:bg-[#112363]/50 text-white font-extrabold text-xs py-2.5 px-5 rounded-xl shadow-md transition-all active:scale-[0.98] cursor-pointer w-full sm:w-auto"
-              title="Gerar e abrir o Relatório em PDF"
+              title="Gerar e Baixar o Relatório em PDF"
               id="btn-print-pdf-report"
             >
               <Printer className={`w-4.5 h-4.5 ${generatingPdf ? 'animate-spin' : ''}`} />
