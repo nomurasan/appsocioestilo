@@ -13,7 +13,7 @@ import { z } from "zod";
 dotenv.config();
 
 const app = express();
-const PORT = Number(process.env.PORT || 3000);
+const PORT = 3000;
 
 // Configurar o Express para confiar nos cabeçalhos de proxy reverso (como Nginx no Easypanel ou o proxy do Cloud Run)
 app.set("trust proxy", 1);
@@ -73,16 +73,42 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
-        styleSrc: ["'self'", "'unsafe-inline'"],
-        imgSrc: ["'self'", "data:", "https:"],
-        fontSrc: ["'self'", "data:"],
+        scriptSrc: [
+          "'self'",
+          "'unsafe-inline'", // Permitir carregamento de inline do build do Vite
+          "'unsafe-eval'", // Permitir eval do Vite e dependências
+          "https://apis.google.com",
+          "https://*.googleapis.com"
+        ],
+        styleSrc: [
+          "'self'",
+          "'unsafe-inline'", // Tailwind inline styles
+          "https://fonts.googleapis.com"
+        ],
+        fontSrc: [
+          "'self'",
+          "https://fonts.gstatic.com",
+          "data:"
+        ],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "https://images.unsplash.com",
+          "https://*.supabase.co",
+          "https://*.firebasestorage.app",
+          "https://*.youtube.com",
+          "https://*.ytimg.com"
+        ],
         connectSrc: [
           "'self'",
+          "ws://localhost:3000",
+          "wss://*.run.app", // Sandbox HMR preview no AI Studio
           "https://*.supabase.co",
-          "wss://*.supabase.co",
           "https://*.googleapis.com",
-          "https://identitytoolkit.googleapis.com"
+          "https://*.firebaseapp.com",
+          "https://api.openai.com",
+          "https://n8n-n8n.5wxq0l.easypanel.host",
+          "https://*.easypanel.host"
         ],
         frameSrc: [
           "'self'",
@@ -111,39 +137,25 @@ app.use(
   })
 );
 
-// 2. CORS restritivo aplicável apenas às rotas /api/* em produção
-const APP_URL = process.env.APP_URL?.trim();
+// 2. CORS restritivo por domínio configurável em produção
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
-  "http://85.209.93.111:3000",
-  "https://socioestilo.seudominio.com.br",
-  APP_URL
+  process.env.APP_URL
 ].filter(Boolean) as string[];
 
-function isSameOrigin(req: Request, origin?: string): boolean {
-  if (!origin) return true;
-  const host = req.headers.host;
-  if (!host) return false;
-
-  try {
-    return new URL(origin).host === host;
-  } catch {
-    return false;
-  }
-}
-
-const apiCorsMiddleware = (req: Request, res: Response, next: NextFunction) => {
-  return cors({
+app.use(
+  cors({
     origin: (origin, callback) => {
-      if (!origin || !IS_PROD || isSameOrigin(req, origin)) {
+      // Em dev ou sem header de origem (ex: curl/mobile/servidor), permitir tráfego livremente
+      if (!origin || !IS_PROD) {
         return callback(null, true);
       }
-
+      
       const isAllowed = allowedOrigins.some((allowed) => {
-        return origin === allowed;
+        return origin === allowed || origin.endsWith(allowed.replace("https://", "."));
       });
-
+      
       if (isAllowed) {
         callback(null, true);
       } else {
@@ -153,11 +165,8 @@ const apiCorsMiddleware = (req: Request, res: Response, next: NextFunction) => {
     credentials: true,
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"]
-  })(req, res, next);
-};
-
-app.use("/api", apiCorsMiddleware);
-app.options("/api", apiCorsMiddleware);
+  })
+);
 
 // 3. Compression middleware (Gzip)
 app.use(compression());
@@ -171,15 +180,6 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   req.headers["x-request-id"] = rid;
   res.setHeader("X-Request-Id", rid);
   next();
-});
-
-// Health check endpoints - lightweight and should be available before SPA fallback
-app.get("/api/health", (_req: Request, res: Response) => {
-  res.status(200).json({ status: "ok" });
-});
-
-app.get("/health", (_req: Request, res: Response) => {
-  res.status(200).send("ok");
 });
 
 // Fail Fast: Auditoria de Produção rigorosa para impossibilitar fallbacks inseguros
@@ -523,40 +523,16 @@ async function bootstrap() {
     console.log("[SERVER-INIT] Middleware completo do Vite acoplado em modo desenvolvimento.");
   } else {
     const distPath = path.join(process.cwd(), "dist");
-    // Serve estático primeiro (assets)
     app.use(express.static(distPath));
-
-    // SPA fallback: apenas para rotas que não começam com /api e que não sejam assets com extensão
-    app.get("*", (req, res, next) => {
-      if (req.path.startsWith("/api") || path.extname(req.path)) return next();
+    app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });
     console.log("[SERVER-INIT] Servidor de produção servindo dist/ estático.");
   }
 
-  // Start server and keep reference for graceful shutdown
-  const server = app.listen(PORT, "0.0.0.0", () => {
+  app.listen(PORT, "0.0.0.0", () => {
     console.log(`[SERVER-BOOT] Aplicação executada com segurança de nível prod em http://0.0.0.0:${PORT}`);
   });
-
-  // Graceful shutdown handlers (log, close server, let process exit naturally)
-  const shutdown = (signal: string) => {
-    console.log(`[SYSTEM] Recebido ${signal}. Iniciando shutdown gracioso...`);
-    try {
-      server.close(() => {
-        console.log("[SYSTEM] Conexões encerradas. Processo pode terminar quando o event loop estiver vazio.");
-      });
-      // If after 30s the process hasn't exited, force exit
-      setTimeout(() => {
-        console.warn("[SYSTEM] Timeout de shutdown atingido. Verifique conexões pendentes e finalize manualmente se necessário.");
-      }, 30000).unref();
-    } catch (err) {
-      console.error('[SYSTEM] Erro durante shutdown:', err);
-    }
-  };
-
-  process.on("SIGTERM", () => shutdown("SIGTERM"));
-  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
 bootstrap();
