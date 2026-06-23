@@ -103,8 +103,12 @@ app.use(
           "'self'",
           "ws://localhost:3000",
           "wss://*.run.app", // Sandbox HMR preview no AI Studio
+          "wss://*.supabase.co",
           "https://*.supabase.co",
           "https://*.googleapis.com",
+          "https://identitytoolkit.googleapis.com",
+          "https://securetoken.googleapis.com",
+          "https://www.googleapis.com",
           "https://*.firebaseapp.com",
           "https://api.openai.com",
           "https://n8n-n8n.5wxq0l.easypanel.host",
@@ -137,36 +141,37 @@ app.use(
   })
 );
 
-// 2. CORS restritivo por domínio configurável em produção
+// 2. CORS restritivo somente nas rotas /api/* do backend
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
   process.env.APP_URL
 ].filter(Boolean) as string[];
 
-app.use(
-  cors({
-    origin: (origin, callback) => {
-      // Em dev ou sem header de origem (ex: curl/mobile/servidor), permitir tráfego livremente
-      if (!origin || !IS_PROD) {
-        return callback(null, true);
-      }
-      
-      const isAllowed = allowedOrigins.some((allowed) => {
-        return origin === allowed || origin.endsWith(allowed.replace("https://", "."));
-      });
-      
-      if (isAllowed) {
-        callback(null, true);
-      } else {
-        callback(new Error("Acesso CORS bloqueado por diretivas corporativas de segurança."));
-      }
-    },
-    credentials: true,
-    methods: ["GET", "POST", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"]
-  })
-);
+const apiCorsOptions = {
+  origin: (origin: string | undefined, callback: any) => {
+    if (!origin || !IS_PROD) {
+      return callback(null, true);
+    }
+
+    const isAllowed = allowedOrigins.some((allowed) => {
+      return origin === allowed || origin.endsWith(allowed.replace("https://", "."));
+    });
+
+    if (isAllowed) {
+      callback(null, true);
+    } else {
+      callback(new Error("Acesso CORS bloqueado por diretivas corporativas de segurança."));
+    }
+  },
+  credentials: true,
+  methods: ["GET", "POST", "OPTIONS"],
+  allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"]
+};
+
+app.use("/api", cors(apiCorsOptions));
+app.options("/api", cors(apiCorsOptions));
+app.options("/api/*", cors(apiCorsOptions));
 
 // 3. Compression middleware (Gzip)
 app.use(compression());

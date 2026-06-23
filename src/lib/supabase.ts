@@ -7,6 +7,22 @@ const env = (import.meta as any).env || {};
 const SUPABASE_URL = env.VITE_SUPABASE_URL || 'https://czxxuznpcbluiqgppegzj.supabase.co';
 const SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_nMDXUT9SGCS1qdlebnz3Wg_yuQOUDYz';
 
+const supabaseUrlExists = Boolean(env.VITE_SUPABASE_URL);
+const supabaseUrlStartsHttps = /^https:\/\//.test(SUPABASE_URL);
+const supabaseUrlEndsSupabase = /\.supabase\.co\/?$/.test(SUPABASE_URL);
+const supabaseAnonKeyLength = env.VITE_SUPABASE_ANON_KEY ? env.VITE_SUPABASE_ANON_KEY.length : String(SUPABASE_ANON_KEY).length;
+
+console.log(`[SUPABASE-CONFIG] VITE_SUPABASE_URL existe? ${supabaseUrlExists}`);
+console.log(`[SUPABASE-CONFIG] VITE_SUPABASE_URL começa com https://? ${supabaseUrlStartsHttps}`);
+console.log(`[SUPABASE-CONFIG] VITE_SUPABASE_URL termina com .supabase.co? ${supabaseUrlEndsSupabase}`);
+console.log(`[SUPABASE-CONFIG] VITE_SUPABASE_ANON_KEY tamanho: ${supabaseAnonKeyLength}`);
+
+if (!supabaseUrlStartsHttps || !supabaseUrlEndsSupabase) {
+  console.error(
+    "[SUPABASE-CONFIG] ERRO: VITE_SUPABASE_URL inválida. Ajuste a variável de ambiente no Easypanel para usar uma URL Supabase válida."
+  );
+}
+
 if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
   console.warn(
     "[SUPABASE-CONFIG] AVISO: VITE_SUPABASE_URL ou VITE_SUPABASE_ANON_KEY não foram fornecidos nas variáveis de ambiente. Usando fallbacks locais padrão."
