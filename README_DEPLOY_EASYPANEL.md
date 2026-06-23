@@ -64,12 +64,18 @@ Para rotear seu subdomínio próprio (ex: `socioestilo.suaempresa.com.br`) até 
 
 ## 🛠️ 4. Como Validar o Build do Projeto
 
-Execute localmente ou verifique os logs do console do Easypanel para asseverar a integridade estrutural do build TypeScript. Os scripts de produção unificados geram o bundle estático do frontend na pasta `/dist` e compilam o backend seguro em `/dist/server.cjs` usando `esbuild` para bypass de incompatibilidades de ESM:
+Execute localmente ou verifique os logs do console do Easypanel para asseverar a integridade estrutural do build TypeScript. Os scripts de produção unificados geram o bundle estático do frontend na pasta `/dist` e compilam o backend seguro em `/dist/server.cjs` usando `esbuild` para bypass de incompatibilidades de ESM.
+
+> Importante: o Vite injeta variáveis `VITE_` no bundle estático no momento do build. Se o Easypanel estiver configurado para fornecer essas variáveis apenas em tempo de execução, a imagem Docker deve reconstruir o frontend na inicialização do container ou receber os valores como argumentos de build.
 
 ```bash
 # Compilar frontend e backend localmente
 npm run build
 ```
+
+No Dockerfile, há suporte para ambos os cenários:
+* Se `VITE_*` for fornecido como argumento de build, o frontend será compilado durante a etapa de build da imagem.
+* Caso contrário, o container executará `npm run build` na inicialização se `/dist` estiver ausente ou vazio.
 
 ---
 
