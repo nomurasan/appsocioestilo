@@ -73,42 +73,16 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: [
-          "'self'",
-          "'unsafe-inline'", // Permitir carregamento de inline do build do Vite
-          "'unsafe-eval'", // Permitir eval do Vite e dependências
-          "https://apis.google.com",
-          "https://*.googleapis.com"
-        ],
-        styleSrc: [
-          "'self'",
-          "'unsafe-inline'", // Tailwind inline styles
-          "https://fonts.googleapis.com"
-        ],
-        fontSrc: [
-          "'self'",
-          "https://fonts.gstatic.com",
-          "data:"
-        ],
-        imgSrc: [
-          "'self'",
-          "data:",
-          "https://images.unsplash.com",
-          "https://*.supabase.co",
-          "https://*.firebasestorage.app",
-          "https://*.youtube.com",
-          "https://*.ytimg.com"
-        ],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        fontSrc: ["'self'", "data:"],
         connectSrc: [
           "'self'",
-          "ws://localhost:3000",
-          "wss://*.run.app", // Sandbox HMR preview no AI Studio
           "https://*.supabase.co",
+          "wss://*.supabase.co",
           "https://*.googleapis.com",
-          "https://*.firebaseapp.com",
-          "https://api.openai.com",
-          "https://n8n-n8n.5wxq0l.easypanel.host",
-          "https://*.easypanel.host"
+          "https://identitytoolkit.googleapis.com"
         ],
         frameSrc: [
           "'self'",
@@ -137,25 +111,39 @@ app.use(
   })
 );
 
-// 2. CORS restritivo por domínio configurável em produção
+// 2. CORS restritivo aplicável apenas às rotas /api/* em produção
+const APP_URL = process.env.APP_URL?.trim();
 const allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
-  process.env.APP_URL
+  "http://85.209.93.111:3000",
+  "https://socioestilo.seudominio.com.br",
+  APP_URL
 ].filter(Boolean) as string[];
 
-app.use(
-  cors({
+function isSameOrigin(req: Request, origin?: string): boolean {
+  if (!origin) return true;
+  const host = req.headers.host;
+  if (!host) return false;
+
+  try {
+    return new URL(origin).host === host;
+  } catch {
+    return false;
+  }
+}
+
+const apiCorsMiddleware = (req: Request, res: Response, next: NextFunction) => {
+  return cors({
     origin: (origin, callback) => {
-      // Em dev ou sem header de origem (ex: curl/mobile/servidor), permitir tráfego livremente
-      if (!origin || !IS_PROD) {
+      if (!origin || !IS_PROD || isSameOrigin(req, origin)) {
         return callback(null, true);
       }
-      
+
       const isAllowed = allowedOrigins.some((allowed) => {
-        return origin === allowed || origin.endsWith(allowed.replace("https://", "."));
+        return origin === allowed;
       });
-      
+
       if (isAllowed) {
         callback(null, true);
       } else {
@@ -165,8 +153,11 @@ app.use(
     credentials: true,
     methods: ["GET", "POST", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization", "X-Request-Id"]
-  })
-);
+  })(req, res, next);
+};
+
+app.use("/api", apiCorsMiddleware);
+app.options("/api", apiCorsMiddleware);
 
 // 3. Compression middleware (Gzip)
 app.use(compression());
