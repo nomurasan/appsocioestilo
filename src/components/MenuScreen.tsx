@@ -242,65 +242,57 @@ export default function MenuScreen({ usuario, myResult, isAdmin, onSelectStep, o
       {/* Modal de Vídeo */}
       {showVideoModal && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-md animate-fade-in cursor-pointer" 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in cursor-pointer overflow-y-auto" 
           id="video-modal-overlay"
           onClick={() => setShowVideoModal(false)}
         >
           <div 
-            className="bg-white rounded-3xl p-5 shadow-2xl max-w-sm w-full relative border border-slate-100 animate-slide-up flex flex-col items-center text-center cursor-default" 
+            className="bg-slate-900 rounded-3xl shadow-2xl border border-slate-800 animate-slide-up flex flex-col w-full max-w-[320px] md:max-w-[680px] overflow-hidden" 
             id="video-modal"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Close button with circular layout */}
-            <button
-              onClick={() => setShowVideoModal(false)}
-              className="absolute top-4 right-4 p-2 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-              aria-label="Voltar para o portal"
-              id="btn-close-video-modal"
-            >
-              <X className="w-5 h-5" />
-            </button>
+            {/* Header bar inspired by reference */}
+            <div className="bg-slate-950/90 px-5 py-4 flex items-center justify-between border-b border-slate-800 shrink-0">
+              <div className="flex items-center space-x-3">
+                {/* Play button indicator circle */}
+                <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-rose-600 flex items-center justify-center shadow-md shrink-0">
+                  <Play className="w-3.5 h-3.5 text-white fill-current translate-x-0.5" />
+                </div>
+                <div className="text-left">
+                  <h4 className="text-xs md:text-sm font-black text-white uppercase tracking-wider italic">
+                    Como funciona a Pesquisa?
+                  </h4>
+                  <p className="text-[9px] md:text-xxs text-slate-400 font-bold uppercase tracking-widest">
+                    Tutorial em Vídeo
+                  </p>
+                </div>
+              </div>
 
-            <div className="flex items-center space-x-1.5 mb-2 mt-2">
-              <Sparkles className="w-5 h-5 text-amber-500 animate-pulse" />
-              <h4 className="text-sm font-black text-[#112363]">Pesquisa de Socioestilo</h4>
-            </div>
-            
-            <p className="text-xxs text-gray-400 max-w-xs mb-4">
-              Introdução rápida à metodologia Potenciar e os conceitos da pesquisa comportamental.
-            </p>
-
-            {/* Video Container (Strictly 9:16 vertical orientation for TikTok/YouTube Shorts) */}
-            <div className="w-full max-w-[280px] aspect-[9/16] bg-black rounded-2xl overflow-hidden shadow-inner border border-slate-150 relative mb-4">
-              <iframe
-                src="https://www.youtube.com/embed/zOWMdp39_h4"
-                title="Apresentação da Pesquisa de Socioestilo"
-                frameBorder="0"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                allowFullScreen
-                className="w-full h-full"
-              />
-            </div>
-
-            {/* Buttons / Actions inside modal */}
-            <div className="flex flex-col gap-2.5 w-full mt-1">
-              <a
-                href="https://youtube.com/shorts/zOWMdp39_h4"
-                target="_blank"
-                rel="noreferrer"
-                className="w-full bg-[#D80E2A] hover:bg-[#D80E2A]/90 text-white font-bold text-xs py-3 px-4 rounded-xl text-center shadow-xs transition-colors cursor-pointer flex items-center justify-center space-x-1.5"
-              >
-                <span>Assistir no YouTube</span>
-                <span className="text-xxs">↗</span>
-              </a>
-
+              {/* Prominent circular close button */}
               <button
                 onClick={() => setShowVideoModal(false)}
-                className="w-full bg-[#112363] hover:bg-[#112363]/90 text-white font-bold text-xs py-3 px-4 rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center space-x-1.5"
+                className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all duration-200 cursor-pointer shadow-md focus:outline-none ring-2 ring-slate-800"
+                aria-label="Fechar janela"
+                id="btn-close-video-modal"
               >
-                <ChevronLeft className="w-4 h-4 text-amber-400" />
-                <span>Voltar para o Portal de Socioestilo</span>
+                <X className="w-4 h-4 stroke-[2.5]" />
               </button>
+            </div>
+
+            {/* Modal Body - Video Area */}
+            <div className="p-4 md:p-6 bg-slate-900/50 flex flex-col items-center justify-center">
+              {/* Responsive video container */}
+              {/* Mobile: 9:16 vertical. Tablet/Desktop: Widescreen 16:9 player */}
+              <div className="w-full max-w-[260px] aspect-[9/16] md:max-w-full md:aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800 relative shrink-0 transition-all duration-300">
+                <iframe
+                  src="https://www.youtube.com/embed/zOWMdp39_h4?autoplay=1"
+                  title="Apresentação da Pesquisa de Socioestilo"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="w-full h-full"
+                />
+              </div>
             </div>
           </div>
         </div>

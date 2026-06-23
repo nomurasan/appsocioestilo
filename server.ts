@@ -95,7 +95,9 @@ app.use(
           "data:",
           "https://images.unsplash.com",
           "https://*.supabase.co",
-          "https://*.firebasestorage.app"
+          "https://*.firebasestorage.app",
+          "https://*.youtube.com",
+          "https://*.ytimg.com"
         ],
         connectSrc: [
           "'self'",
@@ -111,7 +113,10 @@ app.use(
         frameSrc: [
           "'self'",
           "https://*.firebaseapp.com",
-          "https://*.google.com"
+          "https://*.google.com",
+          "https://*.youtube.com",
+          "https://*.youtube-nocookie.com",
+          "https://youtube.com"
         ],
         frameAncestors: [
           "'self'",
