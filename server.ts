@@ -13,7 +13,7 @@ import { z } from "zod";
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = Number(process.env.PORT || 3000);
 
 // Configurar o Express para confiar nos cabeçalhos de proxy reverso (como Nginx no Easypanel ou o proxy do Cloud Run)
 app.set("trust proxy", 1);
@@ -171,6 +171,15 @@ app.use((req: Request, res: Response, next: NextFunction) => {
   req.headers["x-request-id"] = rid;
   res.setHeader("X-Request-Id", rid);
   next();
+});
+
+// Health check endpoints - lightweight and should be available before SPA fallback
+app.get("/api/health", (_req: Request, res: Response) => {
+  res.status(200).json({ status: "ok" });
+});
+
+app.get("/health", (_req: Request, res: Response) => {
+  res.status(200).send("ok");
 });
 
 // Fail Fast: Auditoria de Produção rigorosa para impossibilitar fallbacks inseguros
@@ -514,16 +523,40 @@ async function bootstrap() {
     console.log("[SERVER-INIT] Middleware completo do Vite acoplado em modo desenvolvimento.");
   } else {
     const distPath = path.join(process.cwd(), "dist");
+    // Serve estático primeiro (assets)
     app.use(express.static(distPath));
-    app.get("*", (req, res) => {
+
+    // SPA fallback: apenas para rotas que não começam com /api e que não sejam assets com extensão
+    app.get("*", (req, res, next) => {
+      if (req.path.startsWith("/api") || path.extname(req.path)) return next();
       res.sendFile(path.join(distPath, "index.html"));
     });
     console.log("[SERVER-INIT] Servidor de produção servindo dist/ estático.");
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  // Start server and keep reference for graceful shutdown
+  const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`[SERVER-BOOT] Aplicação executada com segurança de nível prod em http://0.0.0.0:${PORT}`);
   });
+
+  // Graceful shutdown handlers (log, close server, let process exit naturally)
+  const shutdown = (signal: string) => {
+    console.log(`[SYSTEM] Recebido ${signal}. Iniciando shutdown gracioso...`);
+    try {
+      server.close(() => {
+        console.log("[SYSTEM] Conexões encerradas. Processo pode terminar quando o event loop estiver vazio.");
+      });
+      // If after 30s the process hasn't exited, force exit
+      setTimeout(() => {
+        console.warn("[SYSTEM] Timeout de shutdown atingido. Verifique conexões pendentes e finalize manualmente se necessário.");
+      }, 30000).unref();
+    } catch (err) {
+      console.error('[SYSTEM] Erro durante shutdown:', err);
+    }
+  };
+
+  process.on("SIGTERM", () => shutdown("SIGTERM"));
+  process.on("SIGINT", () => shutdown("SIGINT"));
 }
 
 bootstrap();
