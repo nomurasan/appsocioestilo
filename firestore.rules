@@ -1,0 +1,143 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Safety Net - catch-all deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'nomura.eduardo@gmail.com' ||
+        (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.role == 'admin')
+      );
+    }
+
+    // Validation for Empresa
+    function isValidEmpresa(data) {
+      return data.keys().hasAll(['id', 'nome', 'data_criacao'])
+        && data.keys().size() == 3
+        && data.id is string
+        && data.id.size() <= 100
+        && data.nome is string
+        && data.nome.size() >= 2
+        && data.nome.size() <= 150;
+    }
+
+    // Validation for Usuario
+    function isValidUsuario(data) {
+      return data.keys().hasAll(['uid', 'email', 'nome', 'empresa_id', 'empresa_nome'])
+        && data.keys().size() >= 5
+        && data.keys().size() <= 7
+        && data.uid is string
+        && data.uid.size() <= 128
+        && data.email is string
+        && data.email.size() <= 150
+        && data.nome is string
+        && data.nome.size() >= 2
+        && data.nome.size() <= 150
+        && data.empresa_id is string
+        && data.empresa_id.size() <= 100
+        && data.empresa_nome is string
+        && data.empresa_nome.size() >= 2
+        && data.empresa_nome.size() <= 150
+        && (!data.keys().hasAll(['role']) || data.role is string)
+        && (!data.keys().hasAll(['perfil_dominante']) || data.perfil_dominante is string);
+    }
+
+    // Validation for AI Insights
+    function isValidAiInsights(ai) {
+      return ai is map 
+        && ai.keys().hasAll(['resumo', 'oportunidades', 'desafios', 'insights'])
+        && ai.keys().size() == 4
+        && ai.resumo is string
+        && ai.resumo.size() <= 3000
+        && ai.insights is string
+        && ai.insights.size() <= 3000
+        && ai.oportunidades is list
+        && ai.oportunidades.size() <= 10
+        && ai.desafios is list
+        && ai.desafios.size() <= 10;
+    }
+
+    // Validation for Resultado
+    function isValidResultado(data) {
+      return data.keys().hasAll(['id_usuario', 'nome_usuario', 'empresa_id', 'empresa_nome', 'scores', 'data_conclusao'])
+        && data.keys().size() >= 6
+        && data.keys().size() <= 8
+        && data.id_usuario is string
+        && data.id_usuario == request.auth.uid
+        && data.nome_usuario is string
+        && data.nome_usuario.size() >= 2
+        && data.nome_usuario.size() <= 150
+        && data.empresa_id is string
+        && data.empresa_id.size() <= 100
+        && data.empresa_nome is string
+        && data.empresa_nome.size() >= 2
+        && data.empresa_nome.size() <= 150
+        && data.scores is map
+        && data.scores.Direto is number
+        && data.scores.Expressivo is number
+        && data.scores.Amavel is number
+        && data.scores.Analitico is number
+        && (!data.keys().hasAll(['perfil_dominante']) || data.perfil_dominante is string)
+        && (!data.keys().hasAll(['ai_insights']) || isValidAiInsights(data.ai_insights));
+    }
+
+    // Rule matches
+    match /empresas/{empresaId} {
+      allow read: if isSignedIn();
+      allow create, update: if isSignedIn() && isValidId(empresaId) && isValidEmpresa(request.resource.data);
+      allow delete: if false;
+    }
+
+    match /usuarios/{userId} {
+      allow read: if isSignedIn();  // Needed for reading other team members or profile checks
+      allow create: if isSignedIn() && (
+        (isOwner(userId) && isValidUsuario(request.resource.data) && (
+          !request.resource.data.keys().hasAll(['role']) || 
+          request.resource.data.role != 'admin' || 
+          request.auth.token.email == 'nomura.eduardo@gmail.com'
+        )) ||
+        isAdmin()
+      );
+      allow update: if isSignedIn() && (
+        isAdmin() ||
+        (isOwner(userId) && isValidUsuario(request.resource.data) && (
+          (!request.resource.data.keys().hasAll(['role']) && !resource.data.keys().hasAll(['role'])) ||
+          (request.resource.data.keys().hasAll(['role']) && resource.data.keys().hasAll(['role']) && request.resource.data.role == resource.data.role) ||
+          (request.auth.token.email == 'nomura.eduardo@gmail.com')
+        ))
+      );
+      allow delete: if false;
+    }
+
+    match /resultados/{resultadoId} {
+      // Allow reading results only if the user is the owner OR is in the same company OR is admin
+      allow read: if isSignedIn() && (
+        resource.data.id_usuario == request.auth.uid ||
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/usuarios/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/usuarios/$(request.auth.uid)).data.empresa_nome == resource.data.empresa_nome)
+      );
+      allow create: if isSignedIn() && isValidId(resultadoId) && isValidResultado(request.resource.data);
+      allow update: if false; // Results are immutable once written to prevent editing responses
+      allow delete: if false;
+    }
+  }
+}

@@ -1,0 +1,66 @@
+{
+  "entities": {
+    "empresa": {
+      "title": "Empresa",
+      "description": "Uma empresa registrada no sistema",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "ID exclusivo da empresa" },
+        "nome": { "type": "string", "description": "Nome da empresa" },
+        "data_criacao": { "type": "string", "format": "date-time", "description": "Timestamp de criacao" }
+      },
+      "required": ["id", "nome", "data_criacao"]
+    },
+    "usuario": {
+      "title": "Usuario",
+      "description": "Perfil do usuario autenticado",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "description": "UID do usuario" },
+        "email": { "type": "string", "format": "email", "description": "Email do usuario" },
+        "nome": { "type": "string", "description": "Nome completo do usuario" },
+        "empresa_id": { "type": "string", "description": "ID da empresa vinculada" },
+        "empresa_nome": { "type": "string", "description": "Nome da empresa vinculada" },
+        "role": { "type": "string", "description": "Papel do usuario: admin ou user" },
+        "perfil_dominante": { "type": "string", "description": "Perfil dominante obtido no teste" }
+      },
+      "required": ["uid", "email", "nome", "empresa_id", "empresa_nome"]
+    },
+    "resultado": {
+      "title": "Resultado",
+      "description": "Resultados do teste socioestilo de cada usuario",
+      "type": "object",
+      "properties": {
+        "id_usuario": { "type": "string", "description": "UID do usuario" },
+        "nome_usuario": { "type": "string", "description": "Nome do usuario de forma desnormalizada" },
+        "empresa_id": { "type": "string", "description": "ID da empresa do usuario" },
+        "empresa_nome": { "type": "string", "description": "Nome da empresa do usuario" },
+        "scores": {
+          "type": "object",
+          "description": "Pontuacao em cada estilo: Direto, Expressivo, Amavel, Analitico"
+        },
+        "perfil_dominante": { "type": "string", "description": "Estilo de maior pontuação do usuario" },
+        "data_conclusao": { "type": "string", "format": "date-time", "description": "Timestamp de conclusao" },
+        "ai_insights": {
+          "type": "object",
+          "description": "Insights, resumo, oportunidades e desafios gerados por IA"
+        }
+      },
+      "required": ["id_usuario", "nome_usuario", "empresa_id", "empresa_nome", "scores", "data_conclusao"]
+    }
+  },
+  "firestore": {
+    "/empresas/{empresaId}": {
+      "schema": "empresa",
+      "description": "Coleção de empresas"
+    },
+    "/usuarios/{userId}": {
+      "schema": "usuario",
+      "description": "Usuarios com dados de empresa"
+    },
+    "/resultados/{resultadoId}": {
+      "schema": "resultado",
+      "description": "Coleção contendo as pontuacoes do socioestilo"
+    }
+  }
+}

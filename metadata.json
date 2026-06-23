@@ -1,0 +1,8 @@
+{
+  "name": "Remix: Potenciar - Teste Socioestilo - Gemini",
+  "description": "Aplicativo corporativo para autenticação de clientes, coleta de dados socioestilo via chatbot e dashboards de equipe.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
