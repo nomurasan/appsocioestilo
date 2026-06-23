@@ -1465,16 +1465,7 @@ export default function DashboardScreen({
         {/* Navigation / Action controls displayed ONLY for Individual Report */}
         {activeTab === 'individual' && (
           <div className="flex flex-col sm:flex-row gap-3 self-start md:self-center items-stretch sm:items-center">
-            <button
-              onClick={handleDownloadPdf}
-              disabled={generatingPdf}
-              className="flex items-center justify-center space-x-2 bg-[#112363] hover:bg-[#112363]/90 disabled:bg-[#112363]/50 text-white font-extrabold text-xs py-2.5 px-5 rounded-xl shadow-md transition-all active:scale-[0.98] cursor-pointer w-full sm:w-auto"
-              title="Gerar e Baixar o Relatório em PDF"
-              id="btn-print-pdf-report"
-            >
-              <Printer className={`w-4.5 h-4.5 ${generatingPdf ? 'animate-spin' : ''}`} />
-              <span>{generatingPdf ? 'Gerando PDF...' : 'Gerar PDF'}</span>
-            </button>
+            {/* O botão de Gerar PDF foi removido sob demanda do usuário para um portal mais limpo */}
           </div>
         )}
       </div>

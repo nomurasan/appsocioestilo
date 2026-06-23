@@ -2,8 +2,16 @@ import { createClient } from '@supabase/supabase-js';
 import { Usuario, Resultado, Empresa, Scores, AnswerDetail } from '../types';
 import { QUESTIONS } from '../data/questions';
 
-const SUPABASE_URL = (import.meta as any).env?.VITE_SUPABASE_URL || 'https://czxxuznpcbluiqgppegzj.supabase.co';
-const SUPABASE_ANON_KEY = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_nMDXUT9SGCS1qdlebnz3Wg_yuQOUDYz';
+const env = (import.meta as any).env || {};
+
+const SUPABASE_URL = env.VITE_SUPABASE_URL || 'https://czxxuznpcbluiqgppegzj.supabase.co';
+const SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY || 'sb_publishable_nMDXUT9SGCS1qdlebnz3Wg_yuQOUDYz';
+
+if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
+  console.warn(
+    "[SUPABASE-CONFIG] AVISO: VITE_SUPABASE_URL ou VITE_SUPABASE_ANON_KEY não foram fornecidos nas variáveis de ambiente. Usando fallbacks locais padrão."
+  );
+}
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
