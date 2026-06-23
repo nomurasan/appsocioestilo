@@ -311,7 +311,7 @@ export default function App() {
             <div className="w-full flex flex-col space-y-6">
               
               {/* Quick action bar to re-take questionnaire or go back */}
-              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex justify-between items-center gap-4 animate-fade-in print:hidden">
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 animate-fade-in print:hidden">
                 <button
                   onClick={() => {
                     if (adminSelectedCompany) {
@@ -324,7 +324,7 @@ export default function App() {
                       setStep('menu');
                     }
                   }}
-                  className="flex items-center space-x-1.5 bg-white border border-gray-200 text-xxs font-bold text-[#112363] px-3.5 py-2 rounded-xl shadow-2xs hover:border-[#112363] active:scale-98 transition-all cursor-pointer"
+                  className="flex items-center justify-center space-x-1.5 bg-white border border-gray-200 text-xxs font-bold text-[#112363] px-3.5 py-2.5 sm:py-2 rounded-xl shadow-2xs hover:border-[#112363] active:scale-98 transition-all cursor-pointer"
                   id="btn-dashboard-back-menu"
                 >
                   <span>&larr; {(adminViewUser || adminSelectedCompany) ? 'Voltar ao Portal de Gestão' : 'Painel Principal'}</span>
@@ -333,7 +333,7 @@ export default function App() {
                 {!adminViewUser && !adminSelectedCompany && activeDashboardTab === 'individual' && (
                   <button
                     onClick={handleRetakeTest}
-                    className="flex items-center space-x-2 bg-[#112363] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-2xs hover:bg-[#112363]/90 active:scale-98 transition-all cursor-pointer"
+                    className="flex items-center justify-center space-x-2 bg-[#112363] text-white text-xs font-bold px-4 py-2.5 rounded-xl shadow-2xs hover:bg-[#112363]/90 active:scale-98 transition-all cursor-pointer"
                     id="btn-retake-test"
                   >
                     <LayoutDashboard className="w-3.5 h-3.5" />

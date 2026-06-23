@@ -242,36 +242,36 @@ export default function MenuScreen({ usuario, myResult, isAdmin, onSelectStep, o
       {/* Modal de Vídeo */}
       {showVideoModal && (
         <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-md animate-fade-in cursor-pointer overflow-y-auto" 
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md animate-fade-in cursor-pointer overflow-y-auto" 
           id="video-modal-overlay"
           onClick={() => setShowVideoModal(false)}
         >
           <div 
-            className="bg-slate-900 rounded-3xl shadow-2xl border border-slate-800 animate-slide-up flex flex-col w-full max-w-[320px] md:max-w-[680px] overflow-hidden" 
+            className="bg-white rounded-3xl shadow-2xl border border-slate-200/80 animate-slide-up flex flex-col w-full max-w-[340px] sm:max-w-[400px] md:max-w-[680px] overflow-hidden" 
             id="video-modal"
             onClick={(e) => e.stopPropagation()}
           >
-            {/* Header bar inspired by reference */}
-            <div className="bg-slate-950/90 px-5 py-4 flex items-center justify-between border-b border-slate-800 shrink-0">
+            {/* Header bar - Light Theme matching main portal */}
+            <div className="bg-white px-5 py-4 flex items-center justify-between border-b border-slate-100 shrink-0">
               <div className="flex items-center space-x-3">
                 {/* Play button indicator circle */}
                 <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-amber-500 to-rose-600 flex items-center justify-center shadow-md shrink-0">
                   <Play className="w-3.5 h-3.5 text-white fill-current translate-x-0.5" />
                 </div>
                 <div className="text-left">
-                  <h4 className="text-xs md:text-sm font-black text-white uppercase tracking-wider italic">
+                  <h4 className="text-xs md:text-sm font-black text-[#112363] uppercase tracking-wider italic">
                     Como funciona a Pesquisa?
                   </h4>
-                  <p className="text-[9px] md:text-xxs text-slate-400 font-bold uppercase tracking-widest">
+                  <p className="text-[9px] md:text-xxs text-slate-500 font-bold uppercase tracking-widest">
                     Tutorial em Vídeo
                   </p>
                 </div>
               </div>
 
-              {/* Prominent circular close button */}
+              {/* Clean light close button */}
               <button
                 onClick={() => setShowVideoModal(false)}
-                className="p-1.5 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition-all duration-200 cursor-pointer shadow-md focus:outline-none ring-2 ring-slate-800"
+                className="p-1.5 rounded-full bg-slate-100 hover:bg-slate-200 text-slate-500 hover:text-slate-800 transition-all duration-200 cursor-pointer shadow-sm focus:outline-none ring-2 ring-slate-100"
                 aria-label="Fechar janela"
                 id="btn-close-video-modal"
               >
@@ -280,10 +280,9 @@ export default function MenuScreen({ usuario, myResult, isAdmin, onSelectStep, o
             </div>
 
             {/* Modal Body - Video Area */}
-            <div className="p-4 md:p-6 bg-slate-900/50 flex flex-col items-center justify-center">
-              {/* Responsive video container */}
-              {/* Mobile: 9:16 vertical. Tablet/Desktop: Widescreen 16:9 player */}
-              <div className="w-full max-w-[260px] aspect-[9/16] md:max-w-full md:aspect-video bg-black rounded-2xl overflow-hidden shadow-2xl border border-slate-800 relative shrink-0 transition-all duration-300">
+            <div className="p-4 md:p-6 bg-slate-50/50 flex flex-col items-center justify-center">
+              {/* Responsive video container - Tall 9:16 on mobile (increased height), standard widescreen on tablet/desktop */}
+              <div className="w-full max-w-[280px] aspect-[9/16] md:max-w-full md:aspect-video bg-black rounded-2xl overflow-hidden shadow-xl border border-slate-200 relative shrink-0 transition-all duration-300">
                 <iframe
                   src="https://www.youtube.com/embed/zOWMdp39_h4?autoplay=1"
                   title="Apresentação da Pesquisa de Socioestilo"
@@ -291,6 +290,7 @@ export default function MenuScreen({ usuario, myResult, isAdmin, onSelectStep, o
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
                   className="w-full h-full"
+                  referrerPolicy="no-referrer-when-downgrade"
                 />
               </div>
             </div>

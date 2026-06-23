@@ -131,7 +131,9 @@ app.use(
     },
     frameguard: false, // Permitir carregamento em iframe no sandbox de desenvolvimento do AI Studio
     crossOriginEmbedderPolicy: false,
-    crossOriginOpenerPolicy: { policy: "unsafe-none" }
+    crossOriginOpenerPolicy: { policy: "unsafe-none" },
+    crossOriginResourcePolicy: false,
+    referrerPolicy: { policy: "strict-origin-when-cross-origin" }
   })
 );
 

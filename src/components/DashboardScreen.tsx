@@ -1470,6 +1470,40 @@ export default function DashboardScreen({
         )}
       </div>
 
+      {/* Tab Switcher - Only display if we have individual result to toggle */}
+      {hasIndividualResult && (
+        <div className="flex bg-slate-100 p-1 rounded-xl self-start w-full sm:w-auto items-center space-x-1 print:hidden" id="dashboard-tab-switcher">
+          <button
+            onClick={() => {
+              setSelectedMemberResult(null);
+              setActiveTab('individual');
+            }}
+            className={`flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'individual' && !selectedMemberResult
+                ? 'bg-white text-[#112363] shadow-xs'
+                : 'text-slate-500 hover:text-[#112363] hover:bg-slate-50/50'
+            }`}
+            id="tab-btn-individual"
+          >
+            <UserCheck className="w-3.5 h-3.5" />
+            <span>Meu Relatório</span>
+          </button>
+          
+          <button
+            onClick={() => setActiveTab('team')}
+            className={`flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              activeTab === 'team'
+                ? 'bg-white text-[#112363] shadow-xs'
+                : 'text-slate-500 hover:text-[#112363] hover:bg-slate-50/50'
+            }`}
+            id="tab-btn-team"
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>Dashboard da Empresa</span>
+          </button>
+        </div>
+      )}
+
       {/* RENDER ACTIVE TAB */}
       {activeTab === 'individual' ? (
         !hasIndividualResult ? (
@@ -1699,7 +1733,7 @@ export default function DashboardScreen({
                           </div>
                         </div>
 
-                        <div className="border-t border-gray-150 pt-8 grid grid-cols-2 lg:grid-cols-4 gap-6 relative z-10 text-xs w-full">
+                        <div className="border-t border-gray-150 pt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 relative z-10 text-xs w-full">
                           <div>
                             <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wide block">Colaborador</span>
                             <strong className="text-[#112363] font-black text-sm mt-1 block">{reportData.identificacao.nome}</strong>
@@ -1779,7 +1813,7 @@ export default function DashboardScreen({
                             </h4>
                           </div>
 
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 w-full">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
                             {(() => {
                               const scoresObj = reportData.resultado?.scores || {};
                               const assertivoVal = getScoreVal(scoresObj, 'Assertivo');
@@ -1915,7 +1949,7 @@ export default function DashboardScreen({
                                   <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider flex items-center gap-1">
                                     <Star className="w-4 h-4 text-amber-500 pb-0.5" /> 2.2 Histórico de Ranking de Prevalência
                                   </h4>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full">
                                     {reportData.resultado.ranking.map((item: any, idx: number) => {
                                       const posicao = item.posicao !== undefined ? item.posicao : (item.posição !== undefined ? item.posição : (idx + 1));
                                       const rawEstilo = item.estilo || "Informação não disponível.";
@@ -1977,7 +2011,7 @@ export default function DashboardScreen({
                                 <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider flex items-center gap-1">
                                   <Star className="w-4 h-4 text-amber-500 pb-0.5" /> 2.2 Histórico de Ranking de Prevalência
                                 </h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full">
                                   {rankingList.map((st, idx) => {
                                     const pct = Math.round((st.val / totalVal) * 100);
                                     const isDominant = idx === 0;
@@ -2067,7 +2101,7 @@ export default function DashboardScreen({
                             <span className="text-[10px] font-bold text-gray-400 italic">Pág. 04 do Participante</span>
                           </div>
 
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full text-xs animate-fade-in items-start">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 w-full text-xs animate-fade-in items-start">
                             {/* Left Column: Lado Luz (4.1 Lado Luz: Forças e Evidências) */}
                             <div className="space-y-5">
                               <div className="border-b border-emerald-100 pb-2">
@@ -2150,7 +2184,7 @@ export default function DashboardScreen({
                             <span className="text-[10px] font-bold text-gray-400 italic">Pág. 05 do Participante</span>
                           </div>
 
-                          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full text-xs animate-fade-in">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 w-full text-xs animate-fade-in">
                             <div className="space-y-4">
                               <h4 className="text-xs font-black text-emerald-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-emerald-100">
                                 <TrendingUp className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 5.1 Potenciais de Expansão e Competências a Desenvolver
@@ -2211,30 +2245,30 @@ export default function DashboardScreen({
 
                           <div className="space-y-4">
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">6.2 Tabela Comparativa de Atuação e Foco Operacional</h4>
-                            <div className="overflow-hidden border border-slate-150 rounded-2xl bg-white shadow-3xs">
+                            <div className="overflow-x-auto border border-slate-150 rounded-2xl bg-white shadow-3xs">
                               <table className="min-w-full divide-y divide-slate-150 text-xs text-slate-700">
-                                <thead className="bg-[#112363] font-black text-white uppercase text-[10px] tracking-wider">
+                                <thead className="bg-[#112363] font-black text-white uppercase text-[9px] md:text-[10px] tracking-wider">
                                   <tr>
-                                    <th className="px-5 py-3 text-left w-1/4">Socioestilo</th>
-                                    <th className="px-5 py-3 text-left">Foco de Atuação e Fundamento Comunicativo</th>
+                                    <th className="px-3 md:px-5 py-2.5 md:py-3 text-left w-1/3 md:w-1/4">Socioestilo</th>
+                                    <th className="px-3 md:px-5 py-2.5 md:py-3 text-left">Foco de Atuação e Fundamento Comunicativo</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-150">
                                   <tr className="hover:bg-slate-50/50">
-                                    <td className="px-5 py-3.5 font-black text-amber-700 uppercase tracking-wider bg-amber-50/10">Assertivo</td>
-                                    <td className="px-5 py-3.5 font-medium leading-relaxed text-[11px]">{reportData.sobre_metodologia?.assertivo}</td>
+                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-amber-700 uppercase tracking-wider bg-amber-50/10 text-[10px] md:text-xs">Assertivo</td>
+                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px]">{reportData.sobre_metodologia?.assertivo}</td>
                                   </tr>
                                   <tr className="hover:bg-slate-50/50">
-                                    <td className="px-5 py-3.5 font-black text-[#D80E2A] uppercase tracking-wider bg-red-50/10">Participativo</td>
-                                    <td className="px-5 py-3.5 font-medium leading-relaxed text-[11px]">{reportData.sobre_metodologia?.participativo}</td>
+                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#D80E2A] uppercase tracking-wider bg-red-50/10 text-[10px] md:text-xs">Participativo</td>
+                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px]">{reportData.sobre_metodologia?.participativo}</td>
                                   </tr>
                                   <tr className="hover:bg-slate-50/50">
-                                    <td className="px-5 py-3.5 font-black text-emerald-800 uppercase tracking-wider bg-emerald-50/10">Integrador</td>
-                                    <td className="px-5 py-3.5 font-medium leading-relaxed text-[11px]">{reportData.sobre_metodologia?.integrador || reportData.sobre_metodologia?.conservador_agregador}</td>
+                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-emerald-800 uppercase tracking-wider bg-emerald-50/10 text-[10px] md:text-xs">Integrador</td>
+                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px]">{reportData.sobre_metodologia?.integrador || reportData.sobre_metodologia?.conservador_agregador}</td>
                                   </tr>
                                   <tr className="hover:bg-slate-50/50">
-                                    <td className="px-5 py-3.5 font-black text-[#112363] uppercase tracking-wider bg-slate-50/20">Analítico</td>
-                                    <td className="px-5 py-3.5 font-medium leading-relaxed text-[11px]">{reportData.sobre_metodologia?.analitico}</td>
+                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#112363] uppercase tracking-wider bg-slate-50/20 text-[10px] md:text-xs">Analítico</td>
+                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px]">{reportData.sobre_metodologia?.analitico}</td>
                                   </tr>
                                 </tbody>
                               </table>
@@ -2262,24 +2296,24 @@ export default function DashboardScreen({
                           <div className="space-y-4">
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">7.1 Rastreabilidade das Respostas Individuais</h4>
                             <div className="overflow-x-auto border border-slate-150 rounded-2xl bg-white shadow-3xs max-h-[280px] overflow-y-auto w-full">
-                              <table className="min-w-full divide-y divide-slate-150 text-[10px]">
-                                <thead className="bg-slate-100 font-extrabold text-[#112363] uppercase tracking-wider sticky top-0 z-10">
+                              <table className="min-w-full divide-y divide-slate-150 text-[9px] md:text-[10px]">
+                                <thead className="bg-slate-100 font-extrabold text-[#112363] uppercase tracking-wider sticky top-0 z-10 text-[8px] md:text-[10px]">
                                   <tr>
-                                    <th className="px-4 py-2.5 text-left">Questão</th>
-                                    <th className="px-4 py-2.5 text-left">Resposta Selecionada</th>
-                                    <th className="px-4 py-2.5 text-left">Estilo Orientado</th>
-                                    <th className="px-4 py-2.5 text-right">Peso</th>
+                                    <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Questão</th>
+                                    <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Resposta Selecionada</th>
+                                    <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Estilo Orientado</th>
+                                    <th className="px-2 md:px-4 py-2 md:py-2.5 text-right">Peso</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-150 text-slate-700 font-semibold bg-white">
                                   {reportData.questionario.respostas.map((rLine: any, idx: number) => (
                                     <tr key={idx} className="hover:bg-slate-50/50">
-                                      <td className="px-4 py-2 truncate max-w-[170px]" title={rLine.pergunta}>{rLine.pergunta}</td>
-                                      <td className="px-4 py-2 italic font-medium">{rLine.resposta_escolhida}</td>
-                                      <td className="px-4 py-3 font-extrabold text-[#D80E2A]">
+                                      <td className="px-2 md:px-4 py-1.5 md:py-2 truncate max-w-[120px] md:max-w-[170px] text-[9px] md:text-[10px]" title={rLine.pergunta}>{rLine.pergunta}</td>
+                                      <td className="px-2 md:px-4 py-1.5 md:py-2 italic font-medium text-[9px] md:text-[10px]">{rLine.resposta_escolhida}</td>
+                                      <td className="px-2 md:px-4 py-1.5 md:py-3 font-extrabold text-[#D80E2A] text-[9px] md:text-[10px]">
                                         {rLine.estilo_associado}
                                       </td>
-                                      <td className="px-4 py-2 text-right font-black text-slate-550">+{rLine.pontuacao_atribuida} pt</td>
+                                      <td className="px-2 md:px-4 py-1.5 md:py-2 text-right font-black text-slate-550 text-[9px] md:text-[10px]">+{rLine.pontuacao_atribuida} pt</td>
                                     </tr>
                                   ))}
                                 </tbody>
@@ -2318,7 +2352,7 @@ export default function DashboardScreen({
                             return (
                               <div className="space-y-3">
                                 <h4 className="text-[10.5px] font-black text-[#112363] uppercase tracking-wider">8.1 Linha do Tempo de Processamento Autônomo</h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 relative w-full">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 relative w-full">
                                   {/* Step 1 */}
                                   <div className="p-3 bg-white border border-slate-150 rounded-xl relative shadow-3xs flex flex-col justify-between">
                                     <div className="flex items-center space-x-2">
@@ -2594,8 +2628,8 @@ export default function DashboardScreen({
               <div className="lg:col-span-2 space-y-6">
                 
                 {/* Stats cards overview */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-2xs flex items-center space-x-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5 shadow-2xs flex items-center space-x-4">
                     <div className="p-3 bg-red-50 text-[#D80E2A] rounded-xl">
                       <Users className="w-6 h-6" />
                     </div>
@@ -2606,7 +2640,7 @@ export default function DashboardScreen({
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-xl border border-gray-100 p-5 shadow-2xs flex items-center space-x-4">
+                  <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5 shadow-2xs flex items-center space-x-4">
                     <div className="p-3 bg-blue-50 text-[#112363] rounded-xl">
                       <Briefcase className="w-6 h-6" />
                     </div>
@@ -2621,7 +2655,7 @@ export default function DashboardScreen({
                 </div>
 
                 {/* Team socioestilo averages */}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-6 md:p-8 space-y-6">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-4 sm:p-6 md:p-8 space-y-6">
                   <div>
                     <h3 className="text-base font-bold text-[#112363]">Média Comportamental da Equipe</h3>
                     <p className="text-xs text-gray-500 mt-1">
@@ -2655,7 +2689,7 @@ export default function DashboardScreen({
                 </div>
 
                 {/* Primary behavioral profiles distribution */}
-                <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-6 md:p-8 space-y-4">
+                <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-4 sm:p-6 md:p-8 space-y-4">
                   <div>
                     <h3 className="text-base font-bold text-[#112363]">Distribuição de Perfis Dominantes</h3>
                     <p className="text-xs text-gray-500 mt-1">
@@ -2670,7 +2704,7 @@ export default function DashboardScreen({
                       const colorText = getStyleTextColorClass(style);
 
                       return (
-                        <div key={style} className="p-4 rounded-xl border border-gray-100 text-center space-y-2 bg-gray-50/20">
+                        <div key={style} className="p-3 sm:p-4 rounded-xl border border-gray-100 text-center space-y-2 bg-gray-50/20">
                           <span className={`text-[10px] font-bold py-1 px-2.5 rounded-full inline-block ${colorText}`}>
                             {STYLE_NAMES[style] || style}
                           </span>
@@ -2685,7 +2719,7 @@ export default function DashboardScreen({
               </div>
 
               {/* Teammates List and profile indicators */}
-              <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-6 md:p-8 space-y-5 h-fit print:hidden">
+              <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-4 sm:p-6 md:p-8 space-y-5 h-fit print:hidden">
                 <div>
                   <h3 className="text-sm font-bold text-[#112363] uppercase tracking-wider">
                     Colaboradores Concluídos
