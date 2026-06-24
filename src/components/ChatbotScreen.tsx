@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, ChevronRight, Check, Bot, Home } from 'lucide-react';
+import { User, ChevronRight, Check, Bot, Home, X, CheckCircle2 } from 'lucide-react';
 import { QUESTIONS } from '../data/questions';
 import { Usuario, Scores, Resultado, AnswerDetail, STYLE_NAMES } from '../types';
 import { generateSocioestiloInsights } from '../lib/openai';
 import { criarResultado, atualizarUsuario } from '../lib/supabase';
+import { normalizeReportResponse } from '../lib/report-normalization';
 
 interface ChatbotScreenProps {
   usuario: Usuario;
@@ -108,6 +109,9 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
   const [isTyping, setIsTyping] = useState(false);
   const [testCompleted, setTestCompleted] = useState(false);
   const [savedResultPayload, setSavedResultPayload] = useState<Resultado | null>(null);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [reportSummary, setReportSummary] = useState("");
+  const [normalizedResponse, setNormalizedResponse] = useState<any>(null);
 
   const messageFeedRef = useRef<HTMLDivElement>(null);
 
@@ -383,6 +387,11 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
       return;
     }
 
+    // Normalize the response to extract summary and metadata
+    const normalized = normalizeReportResponse(aiInsights);
+    setNormalizedResponse(normalized);
+    setReportSummary(normalized.summary);
+
     // Now, save to database
     try {
       // Create Result in Supabase, passing our new n8n payload containing report_data
@@ -438,17 +447,16 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
 
       setIsTyping(false);
 
+      // Show success modal instead of redirecting immediately
+      setSavedResultPayload(resultPayload);
+      setShowSuccessModal(true);
+
       const finishMsg: ChatMessage = {
         id: 'finish-announcement',
         sender: 'bot',
-        text: 'Relatório estruturado com sucesso! Redirecionando para o seu dashboard comportamental...'
+        text: 'Relatório estruturado com sucesso! Seus insights estão prontos para visualização.'
       };
       setMessages(prev => [...prev, finishMsg]);
-
-      await delay(1200);
-
-      // Notify parent app of test finished
-      onFinish(resultPayload);
     } catch (err) {
       console.error("Erro limpando e redirecionando", err);
     }
@@ -694,10 +702,81 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
           </div>
         )}
 
-
       </div>
 
+      {/* Success Modal - Relatório de Socioestilo Gerado */}
+      {showSuccessModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full p-8 space-y-6 animate-fade-in max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-start justify-between">
+              <div className="flex items-start space-x-4">
+                <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="w-6 h-6 text-green-600" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-black text-[#112363]">Relatório de Socioestilo Gerado com Sucesso</h2>
+                  <p className="text-sm text-gray-500 mt-1">Sua análise comportamental está completa</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
 
+            {/* Summary Content */}
+            <div className="space-y-4 bg-blue-50 border border-blue-200 rounded-2xl p-6">
+              <h3 className="font-bold text-[#112363] text-sm uppercase tracking-wider">Parecer Executivo</h3>
+              <p className="text-gray-700 text-sm leading-relaxed line-clamp-6">
+                {reportSummary}
+              </p>
+            </div>
+
+            {/* Metadata Info */}
+            {normalizedResponse && (
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="text-gray-500 font-semibold uppercase tracking-wider mb-1">Perfil Dominante</p>
+                  <p className="text-[#D80E2A] font-black text-base">
+                    {normalizedResponse.assessment?.dominantProfile || 'Não identificado'}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg">
+                  <p className="text-gray-500 font-semibold uppercase tracking-wider mb-1">Total de Pontos</p>
+                  <p className="text-[#112363] font-black text-base">
+                    {normalizedResponse.assessment?.totalPoints || 0} pts
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="flex gap-3 pt-4">
+              <button
+                onClick={() => {
+                  setShowSuccessModal(false);
+                  if (savedResultPayload) {
+                    onFinish(savedResultPayload);
+                  }
+                }}
+                className="flex-1 bg-[#D80E2A] hover:bg-[#D80E2A]/90 text-white font-bold py-4 px-6 rounded-xl text-sm transition-all active:scale-[0.98] cursor-pointer flex items-center justify-center gap-2"
+              >
+                <span>Acessar Relatório Completo</span>
+                <ChevronRight className="w-4 h-4" />
+              </button>
+              <button
+                onClick={() => setShowSuccessModal(false)}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-4 px-6 rounded-xl text-sm transition-all active:scale-[0.98] cursor-pointer"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

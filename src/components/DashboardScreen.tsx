@@ -74,29 +74,51 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     normPayload = { ...aiInsightsObj, ...normPayload };
   }
 
-  // 2. Locate report_data using nested/fallback properties from the payload
+  // 2. Locate report_data using strict priority from the new canonical n8n structure
+  // Priority 1: rawPayload.report_data (primary source from current webhook response)
+  // Priority 2: activeResult.report_data (previously saved report_data)
+  // Priority 3: activeResult.raw_payload.report_data (fallback to raw payload
+  // Priority 4: Only then use legacy fallbacks (google_studio, relatorio, etc.)
+  
   let report_data: any = null;
-  if (normPayload?.report_data) {
+  
+  // Primary source: report_data from normPayload (current webhook response)
+  if (normPayload?.report_data && typeof normPayload.report_data === 'object') {
     report_data = normPayload.report_data;
-  } else if (normPayload?.raw_response?.report_data) {
-    report_data = normPayload.raw_response.report_data;
-  } else if (normPayload?.relatorio_pronto_para_app) {
-    report_data = normPayload.relatorio_pronto_para_app;
-  } else if (activeResult?.report_data) {
+  }
+  // Secondary source: stored report_data from activeResult
+  else if (activeResult?.report_data && typeof activeResult.report_data === 'object') {
     report_data = activeResult.report_data;
-  } else if (activeResult?.raw_payload?.report_data) {
+  }
+  // Tertiary source: report_data from raw_payload
+  else if (activeResult?.raw_payload?.report_data && typeof activeResult.raw_payload.report_data === 'object') {
     report_data = activeResult.raw_payload.report_data;
-  } else if (activeResult?.ai_insights?.report_data) {
+  }
+  // Fallback: check if ai_insights contains report_data
+  else if (activeResult?.ai_insights?.report_data && typeof activeResult.ai_insights.report_data === 'object') {
     report_data = activeResult.ai_insights.report_data;
-  } else if (activeResult?.relatorio_pronto_para_app) {
+  }
+  // Legacy fallback: relatorio_pronto_para_app
+  else if (normPayload?.relatorio_pronto_para_app && typeof normPayload.relatorio_pronto_para_app === 'object') {
+    report_data = normPayload.relatorio_pronto_para_app;
+  }
+  else if (activeResult?.relatorio_pronto_para_app && typeof activeResult.relatorio_pronto_para_app === 'object') {
     report_data = activeResult.relatorio_pronto_para_app;
-  } else if (normPayload?.narrativa || normPayload?.analise_comportamental) {
+  }
+  // Legacy fallback: structured data at root level of normPayload
+  else if ((normPayload?.narrativa || normPayload?.analise_comportamental) && typeof normPayload === 'object') {
     report_data = normPayload;
-  } else if (activeResult?.raw_payload?.narrativa || activeResult?.raw_payload?.analise_comportamental) {
+  }
+  // Legacy fallback: structured data in activeResult.raw_payload
+  else if ((activeResult?.raw_payload?.narrativa || activeResult?.raw_payload?.analise_comportamental) && typeof activeResult?.raw_payload === 'object') {
     report_data = activeResult.raw_payload;
-  } else if (activeResult?.ai_insights?.narrativa || activeResult?.ai_insights?.analise_comportamental) {
+  }
+  // Legacy fallback: structured data in activeResult.ai_insights
+  else if ((activeResult?.ai_insights?.narrativa || activeResult?.ai_insights?.analise_comportamental) && typeof activeResult?.ai_insights === 'object') {
     report_data = activeResult.ai_insights;
-  } else if (activeResult?.relatorio) {
+  }
+  // Final legacy fallback: relatorio field
+  else if (activeResult?.relatorio && typeof activeResult.relatorio === 'object') {
     report_data = activeResult.relatorio;
   }
 
@@ -213,11 +235,21 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
   const sortedStyles = Object.entries(styleValues).sort((a, b) => b[1] - a[1]);
 
   // Determine profiles based on n8n reported result or fallbacks
+  // DO NOT use "Assertivo" as default when there's no data or totalPoints is 0
   const getProfileByChoice = (rawName: string, fallbackIdx: number): string => {
+    // If we have a total of 0 points, don't assign any profile as dominant
+    if (totalPoints === 0) {
+      return rawName ? normalizeName(rawName) : "Não identificado";
+    }
+    
     if (!rawName) {
       const entry = sortedStyles[fallbackIdx];
-      return entry ? entry[0] : "Assertivo";
+      return entry ? entry[0] : "Não identificado";
     }
+    return normalizeName(rawName);
+  };
+
+  const normalizeName = (rawName: string): string => {
     const norm = rawName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
     if (norm.includes("assert") || norm.includes("diret")) return "Assertivo";
     if (norm.includes("particip") || norm.includes("express")) return "Participativo";
@@ -753,37 +785,64 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     ) : backupRecomendacoes,
     questionario: {
       respostas: (() => {
-        const rawResList = report_data.questionario?.respostas || processedRespostas || [];
-        return Array.isArray(rawResList) ? rawResList.map((item: any) => {
+        // Priority 1: Use memoria_calculo.respostas from report_data (new canonical structure)
+        let memoryList = report_data.memoria_calculo?.respostas;
+        
+        // Priority 2: Fallback to memoria_calculo.por_questao
+        if (!Array.isArray(memoryList)) {
+          memoryList = report_data.memoria_calculo?.por_questao;
+        }
+        
+        // Priority 3: Fallback to report_data.questionario.respostas (legacy structure)
+        if (!Array.isArray(memoryList)) {
+          memoryList = report_data.questionario?.respostas;
+        }
+        
+        // Priority 4: Use processedRespostas only if nothing above works
+        if (!Array.isArray(memoryList)) {
+          memoryList = processedRespostas;
+        }
+        
+        // Normalize the list to ensure consistent field names
+        return Array.isArray(memoryList) ? memoryList.map((item: any) => {
           if (!item) return null;
-          let pergunta = item.pergunta || '';
-          if (!pergunta && item.question) {
-            pergunta = item.questionId ? `${item.questionId}. ${item.question}` : item.question;
+          
+          // Extract questionId
+          const questionId = item.questionId || item.question_id || item.pergunta_id || 0;
+          
+          // Extract questão/pergunta
+          let pergunta = item.pergunta || item.questao || item.question || '';
+          if (!pergunta && questionId) {
+            pergunta = `Questão ${questionId}`;
           }
-          let resposta_escolhida = item.resposta_escolhida || '';
+          
+          // Extract resposta/answer
+          let resposta_escolhida = item.resposta || item.resposta_escolhida || '';
           if (!resposta_escolhida && item.selectedAnswers) {
             resposta_escolhida = Array.isArray(item.selectedAnswers) ? item.selectedAnswers.join(", ") : String(item.selectedAnswers);
           }
-          let estilo_associado = item.estilo_associado || '';
+          
+          // Extract estilo/socioEstilo
+          let estilo_associado = item.socioEstilo || item.estilo || item.estilo_associado || '';
           if (!estilo_associado && item.selectedStyles) {
             estilo_associado = Array.isArray(item.selectedStyles) ? item.selectedStyles.join(", ") : String(item.selectedStyles);
           }
+          // Use "Não identificado" instead of "Geral" for missing style
           if (!estilo_associado) {
-            estilo_associado = "Geral";
+            estilo_associado = "Não identificado";
           }
-          let pontuacao_atribuida = item.pontuacao_atribuida;
-          if (pontuacao_atribuida === undefined) {
-            if (item.selectedAnswers) {
-              pontuacao_atribuida = Array.isArray(item.selectedAnswers) ? item.selectedAnswers.length : 1;
-            } else {
-              pontuacao_atribuida = 1;
-            }
+          
+          // Extract pontos/points
+          let pontuacao_atribuida = item.pontos || item.pontuacao_atribuida || item.points || 0;
+          if (pontuacao_atribuida === undefined || pontuacao_atribuida === null) {
+            pontuacao_atribuida = 0;
           }
+          
           return {
             pergunta,
             resposta_escolhida,
             estilo_associado,
-            pontuacao_atribuida: Number(pontuacao_atribuida)
+            pontuacao_atribuida: Number(pontuacao_atribuida) || 0
           };
         }).filter(Boolean) : [];
       })()
