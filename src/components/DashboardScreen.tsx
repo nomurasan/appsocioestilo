@@ -888,8 +888,8 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     evidencias_observadas_texto: finalReportData.evidencias_observadas.join("\n"),
     potencial_desenvolvimento_texto: finalReportData.potencial_desenvolvimento.join("\n"),
     recomendacoes_praticas_texto: finalReportData.recomendacoes_praticas.join("\n"),
-    memoria_calculo_por_questao_json: report_data?.campos?.memoria_calculo_por_questao_json || "",
-    memoria_calculo_respostas_json: report_data?.campos?.memoria_calculo_respostas_json || ""
+    memoria_calculo_por_questao_json: report_data?.campos?.memoria_calculo_por_questao_json || report_data?.memoria_calculo_por_questao_json || "",
+    memoria_calculo_respostas_json: report_data?.campos?.memoria_calculo_respostas_json || report_data?.memoria_calculo_respostas_json || ""
   };
 
   return {
@@ -956,13 +956,20 @@ function getMemoriaCalculoRespostas(reportData: any): any[] {
   const direto = reportData?.memoria_calculo?.respostas;
   if (Array.isArray(direto) && direto.length) return direto;
 
-  const raw = reportData?.campos?.memoria_calculo_respostas_json;
-  if (typeof raw === "string" && raw.trim()) {
-    try {
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) return parsed;
-    } catch (error) {
-      console.warn("[MEMORIA_CALCULO] erro ao parsear memoria_calculo_respostas_json", error);
+  const candidates = [
+    reportData?.campos?.memoria_calculo_respostas_json,
+    reportData?.memoria_calculo_respostas_json,
+  ];
+
+  for (const raw of candidates) {
+    if (Array.isArray(raw) && raw.length) return raw;
+    if (typeof raw === "string" && raw.trim()) {
+      try {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed) && parsed.length) return parsed;
+      } catch (error) {
+        console.warn("[MEMORIA_CALCULO] erro ao parsear memoria_calculo_respostas_json", error);
+      }
     }
   }
 
