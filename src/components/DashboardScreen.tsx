@@ -952,6 +952,23 @@ function getMemoriaCalculoPorQuestao(reportData: any): any[] {
   return [];
 }
 
+function getMemoriaCalculoRespostas(reportData: any): any[] {
+  const direto = reportData?.memoria_calculo?.respostas;
+  if (Array.isArray(direto) && direto.length) return direto;
+
+  const raw = reportData?.campos?.memoria_calculo_respostas_json;
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (error) {
+      console.warn("[MEMORIA_CALCULO] erro ao parsear memoria_calculo_respostas_json", error);
+    }
+  }
+
+  return [];
+}
+
 interface DashboardScreenProps {
   usuario: Usuario;
   myResult: Resultado | null;
@@ -2351,29 +2368,13 @@ export default function DashboardScreen({
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">7.1 Rastreabilidade das Respostas Individuais</h4>
                             <div className="overflow-x-auto border border-slate-150 rounded-2xl bg-white shadow-3xs max-h-[280px] overflow-y-auto w-full">
                               {(() => {
-                                const memoriaPorQuestao = getMemoriaCalculoPorQuestao(reportData);
-                                let linhas: any[] = memoriaPorQuestao.flatMap((q: any) =>
-                                  (q.estilosDasRespostas || []).map((r: any) => ({
-                                    questionId: q.questionId,
-                                    questao: q.questao,
-                                    resposta: r.resposta,
-                                    socioEstilo: r.socioEstilo,
-                                    pontos: r.pontos
-                                  }))
-                                );
-
-                                if (!linhas.length) {
-                                  const rawFallback = reportData?.campos?.memoria_calculo_respostas_json;
-                                  if (typeof rawFallback === "string" && rawFallback.trim()) {
-                                    try {
-                                      const parsed = JSON.parse(rawFallback);
-                                      if (Array.isArray(parsed)) linhas = parsed;
-                                    } catch (e) {
-                                      console.warn("[MEMORIA_CALCULO] erro ao parsear memoria_calculo_respostas_json", e);
-                                    }
-                                  }
-                                }
-
+                                const memoriaRespostas = getMemoriaCalculoRespostas(reportData);
+                                console.log("[PAGINA_07_MEMORIA]", {
+                                  direto: reportData?.memoria_calculo?.respostas?.length,
+                                  json: reportData?.campos?.memoria_calculo_respostas_json?.length,
+                                  linhas: memoriaRespostas.length,
+                                  primeira: memoriaRespostas[0]
+                                });
                                 return (
                                   <table className="min-w-full divide-y divide-slate-150 text-[9px] md:text-[10px]">
                                     <thead className="bg-slate-100 font-extrabold text-[#112363] uppercase tracking-wider sticky top-0 z-10 text-[8px] md:text-[10px]">
@@ -2385,12 +2386,12 @@ export default function DashboardScreen({
                                       </tr>
                                     </thead>
                                     <tbody className="divide-y divide-slate-150 text-slate-700 font-semibold bg-white">
-                                      {linhas.map((rLine: any, idx: number) => (
+                                      {memoriaRespostas.map((item: any, idx: number) => (
                                         <tr key={idx} className="hover:bg-slate-50/50">
-                                          <td className="px-2 md:px-4 py-1.5 md:py-2 truncate max-w-[120px] md:max-w-[170px] text-[9px] md:text-[10px]" title={rLine.questao}>{rLine.questao || `Q${rLine.questionId}`}</td>
-                                          <td className="px-2 md:px-4 py-1.5 md:py-2 italic font-medium text-[9px] md:text-[10px]">{rLine.resposta}</td>
-                                          <td className="px-2 md:px-4 py-1.5 md:py-3 font-extrabold text-[#D80E2A] text-[9px] md:text-[10px]">{rLine.socioEstilo}</td>
-                                          <td className="px-2 md:px-4 py-1.5 md:py-2 text-right font-black text-slate-550 text-[9px] md:text-[10px]">+{rLine.pontos} pt</td>
+                                          <td className="px-2 md:px-4 py-1.5 md:py-2 truncate max-w-[120px] md:max-w-[170px] text-[9px] md:text-[10px]" title={item.questao}>{item.questao || `Q${item.questionId}`}</td>
+                                          <td className="px-2 md:px-4 py-1.5 md:py-2 italic font-medium text-[9px] md:text-[10px]">{item.resposta}</td>
+                                          <td className="px-2 md:px-4 py-1.5 md:py-3 font-extrabold text-[#D80E2A] text-[9px] md:text-[10px]">{item.socioEstilo}</td>
+                                          <td className="px-2 md:px-4 py-1.5 md:py-2 text-right font-black text-slate-550 text-[9px] md:text-[10px]">+{item.pontos} pt</td>
                                         </tr>
                                       ))}
                                     </tbody>
