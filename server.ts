@@ -433,10 +433,10 @@ app.post("/api/insights", apiRateLimiter, async (req: Request, res: Response, ne
   try {
     const parseResult = insightsSchema.safeParse(req.body);
     
-    console.log("[INSIGHTS] Validation result - success:", parseResult.success);
+    console.log('[INSIGHTS] parseResult.success', parseResult.success);
     
     if (!parseResult.success) {
-      // Zod v3+ uses .issues, fallback to .errors for compatibility
+      // Compatibilidade com Zod v3+: tenta .issues primeiro, fallback para .errors
       const zodIssues =
         Array.isArray(parseResult.error?.issues)
           ? parseResult.error.issues
@@ -444,17 +444,23 @@ app.post("/api/insights", apiRateLimiter, async (req: Request, res: Response, ne
             ? (parseResult.error as any).errors
             : [];
 
-      console.log("[INSIGHTS] Zod issues count:", zodIssues.length);
-      console.log("[INSIGHTS] Issues summary:", zodIssues.map(issue => ({ 
-        path: issue.path?.join(".") || "root",
-        message: issue.message 
-      })));
+      console.log('[INSIGHTS] zodIssues.length', zodIssues.length);
+      console.log(
+        '[INSIGHTS] zodIssues',
+        zodIssues.map(issue => ({
+          path: issue.path,
+          message: issue.message,
+        }))
+      );
 
       const missingFields = zodIssues
-        .map((issue: any) => issue.path?.length ? issue.path.join(".") : "body")
-        .filter((value: any, index: number, self: any) => value && self.indexOf(value) === index);
+        .map(issue => issue.path?.[0])
+        .filter(Boolean);
 
-      const details = parseResult.error.flatten?.().fieldErrors || {};
+      const details = zodIssues.map(issue => ({
+        field: issue.path?.join('.'),
+        message: issue.message,
+      }));
 
       return res.status(400).json({ 
         error: "Payload inválido para geração de insights",
