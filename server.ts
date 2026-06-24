@@ -381,22 +381,15 @@ const knowledgeSearchSchema = z.object({
   limit: z.number().int().positive().max(10).optional()
 });
 
+// Schema flexível para compatibilidade com n8n V21
+// Aceita payload do frontend e normaliza antes de enviar ao n8n
 const insightsSchema = z.object({
-  metadata: z.object({
-    name: z.string().trim().min(1, "O nome do candidato é obrigatório nos metadados."),
-    email: z.string().email("Formato de e-mail do candidato é inválido.").optional(),
-    empresa_id: z.string().optional()
-  }).passthrough(),
-  questionnaire: z.array(
-    z.object({
-      id: z.number().int(),
-      category: z.string().trim().min(1, "A categoria da questão é obrigatória."),
-      sub: z.string().trim().min(1, "A subcategoria da questão é obrigatória."),
-      factor: z.string().trim().min(1, "O fator psicológico da questão é obrigatório."),
-      val: z.number().int().min(1, "O valor mínimo de pontuação é 1.").max(10, "O valor máximo de pontuação é 10.")
-    })
-  ).min(1, "O questionário precisa conter ao menos uma resposta de questão válida.")
-});
+  metadata: z.any().optional(),
+  questionnaire: z.any().optional(),
+  questionario: z.any().optional(),
+  answers: z.any().optional(),
+  respostas: z.any().optional()
+}).passthrough();
 
 // ENPOINTS PROTEGIDOS POR RATE LIMITER E PAYLOAD SANITIZER
 
@@ -428,49 +421,55 @@ app.post("/api/knowledge-search", apiRateLimiter, async (req: Request, res: Resp
   }
 });
 
-// Rota proxy para envio dos questionários ao webhook do n8n com Rate Limit, Validação Zod e Omissão de Erros de Stack em Prod
+// Rota proxy para envio dos questionários ao webhook do n8n com normalização flexível (V21 compatible)
 app.post("/api/insights", apiRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
-    const parseResult = insightsSchema.safeParse(req.body);
-    
-    console.log('[INSIGHTS] parseResult.success', parseResult.success);
-    
-    if (!parseResult.success) {
-      // Compatibilidade com Zod v3+: tenta .issues primeiro, fallback para .errors
-      const zodIssues =
-        Array.isArray(parseResult.error?.issues)
-          ? parseResult.error.issues
-          : Array.isArray((parseResult.error as any)?.errors)
-            ? (parseResult.error as any).errors
-            : [];
-
-      console.log('[INSIGHTS] zodIssues.length', zodIssues.length);
-      console.log(
-        '[INSIGHTS] zodIssues',
-        zodIssues.map(issue => ({
-          path: issue.path,
-          message: issue.message,
-        }))
-      );
-
-      const missingFields = zodIssues
-        .map(issue => issue.path?.[0])
-        .filter(Boolean);
-
-      const details = zodIssues.map(issue => ({
-        field: issue.path?.join('.'),
-        message: issue.message,
-      }));
-
+    // Validação básica: não vazio
+    if (!req.body || typeof req.body !== 'object') {
       return res.status(400).json({ 
-        error: "Payload inválido para geração de insights",
-        missingFields,
-        details,
+        error: "Payload inválido: esperado objeto JSON",
         requestId: req.headers["x-request-id"]
       });
     }
 
-    const payload = parseResult.data;
+    console.log('[INSIGHTS] Payload keys:', Object.keys(req.body));
+
+    // Normalizar payload para formato esperado pelo n8n
+    const body = req.body;
+    const metadata = body.metadata || {};
+    
+    // Aceita questionnaire, questionario, answers ou respostas
+    const questionnaire = 
+      body.questionnaire || 
+      body.questionario || 
+      body.answers || 
+      body.respostas || 
+      [];
+
+    console.log('[INSIGHTS] Normalized payload keys - metadata:', typeof metadata, '| questionnaire:', typeof questionnaire);
+
+    // Validação básica de estrutura
+    if (!metadata || typeof metadata !== 'object') {
+      return res.status(400).json({ 
+        error: "Payload inválido: metadata ausente ou inválida",
+        receivedKeys: Object.keys(body),
+        requestId: req.headers["x-request-id"]
+      });
+    }
+
+    if (!questionnaire || (Array.isArray(questionnaire) && questionnaire.length === 0)) {
+      return res.status(400).json({ 
+        error: "Payload inválido: questionnaire/questionario ausente ou vazio",
+        receivedKeys: Object.keys(body),
+        requestId: req.headers["x-request-id"]
+      });
+    }
+
+    // Normalizar para enviar ao n8n
+    const normalizedPayload = {
+      metadata,
+      questionnaire: Array.isArray(questionnaire) ? questionnaire : [questionnaire]
+    };
 
     const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL?.trim();
     if (!n8nWebhookUrl || n8nWebhookUrl.length === 0 || n8nWebhookUrl.startsWith("https://SEU_N8N")) {
@@ -480,18 +479,18 @@ app.post("/api/insights", apiRateLimiter, async (req: Request, res: Response, ne
       });
     }
 
-    console.log("[INSIGHTS] Chamando webhook n8n configurado");
+    console.log("[INSIGHTS] Enviando payload normalizado ao webhook n8n");
 
     const n8nResponse = await fetch(n8nWebhookUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify(payload)
+      body: JSON.stringify(normalizedPayload)
     });
 
     if (!n8nResponse.ok) {
-      throw new Error(`O webhook do n8n respondeu com erro crítico HTTP ${n8nResponse.status}`);
+      throw new Error(`n8n webhook retornou HTTP ${n8nResponse.status}`);
     }
 
     const rawResponse = await n8nResponse.text();
@@ -504,18 +503,35 @@ app.post("/api/insights", apiRateLimiter, async (req: Request, res: Response, ne
       if (match && match[1]) {
         parsedData = JSON.parse(match[1].trim());
       } else {
-        throw new Error("A resposta provida pelo servidor n8n não obedece à sintaxe JSON.");
+        throw new Error("Resposta do n8n não é JSON válido");
       }
     }
 
-    const normalizedObject = Array.isArray(parsedData) ? parsedData[0] : parsedData;
-    
-    if (!normalizedObject || !normalizedObject.report_data) {
-      throw new Error("A resposta validada do n8n não contém o bloco 'report_data' obrigatório.");
+    console.log('[INSIGHTS] n8n response keys:', Object.keys(parsedData || {}));
+
+    // Normalizar resposta do n8n: aceita report_data, relatorio ou participantReport
+    const reportData = 
+      parsedData?.report_data || 
+      parsedData?.relatorio || 
+      parsedData?.participantReport;
+
+    if (!reportData) {
+      console.error('[INSIGHTS] n8n response missing expected report fields. Received keys:', Object.keys(parsedData || {}));
+      return res.status(502).json({
+        error: "n8n retornou resposta sem dados de relatório",
+        expectedFields: ["report_data", "relatorio", "participantReport"],
+        receivedKeys: Object.keys(parsedData || {}),
+        requestId: req.headers["x-request-id"]
+      });
     }
 
-    console.log("[N8N WEBHOOK] Sucesso: Novo laudo de Socioestilo recebido do n8n e envelopado com sucesso.");
-    return res.json(normalizedObject);
+    console.log("[INSIGHTS] Sucesso: Relatório gerado pelo n8n");
+    
+    return res.json({
+      success: true,
+      report_data: reportData,
+      raw: parsedData
+    });
   } catch (err) {
     next(err);
   }
