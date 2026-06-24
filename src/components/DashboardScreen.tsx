@@ -2336,18 +2336,16 @@ export default function DashboardScreen({
                                     <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Questão</th>
                                     <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Resposta Selecionada</th>
                                     <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Estilo Orientado</th>
-                                    <th className="px-2 md:px-4 py-2 md:py-2.5 text-right">Peso</th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-150 text-slate-700 font-semibold bg-white">
-                                  {reportData.questionario.respostas.map((rLine: any, idx: number) => (
+                                  {(reportData.memoria_calculo?.respostas || []).map((rLine: any, idx: number) => (
                                     <tr key={idx} className="hover:bg-slate-50/50">
-                                      <td className="px-2 md:px-4 py-1.5 md:py-2 truncate max-w-[120px] md:max-w-[170px] text-[9px] md:text-[10px]" title={rLine.pergunta}>{rLine.pergunta}</td>
-                                      <td className="px-2 md:px-4 py-1.5 md:py-2 italic font-medium text-[9px] md:text-[10px]">{rLine.resposta_escolhida}</td>
+                                      <td className="px-2 md:px-4 py-1.5 md:py-2 truncate max-w-[120px] md:max-w-[170px] text-[9px] md:text-[10px]" title={rLine.questao}>{rLine.questao}</td>
+                                      <td className="px-2 md:px-4 py-1.5 md:py-2 italic font-medium text-[9px] md:text-[10px]">{rLine.resposta}</td>
                                       <td className="px-2 md:px-4 py-1.5 md:py-3 font-extrabold text-[#D80E2A] text-[9px] md:text-[10px]">
-                                        {rLine.estilo_associado}
+                                        {rLine.socioEstilo}
                                       </td>
-                                      <td className="px-2 md:px-4 py-1.5 md:py-2 text-right font-black text-slate-550 text-[9px] md:text-[10px]">+{rLine.pontuacao_atribuida} pt</td>
                                     </tr>
                                   ))}
                                 </tbody>
