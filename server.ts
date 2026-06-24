@@ -433,9 +433,16 @@ app.post("/api/insights", apiRateLimiter, async (req: Request, res: Response, ne
   try {
     const parseResult = insightsSchema.safeParse(req.body);
     if (!parseResult.success) {
-      const missingFields = parseResult.error.errors
+      // Defensive validation: ensure parseResult.error.errors is an array before calling .map()
+      const errorsList = Array.isArray(parseResult.error.errors) ? parseResult.error.errors : [];
+      console.log("[INSIGHTS] parseResult.error.errors", typeof parseResult.error.errors, parseResult.error.errors);
+      console.log("[INSIGHTS] errorsList after defensive check", typeof errorsList, errorsList.length);
+
+      const missingFields = errorsList
         .map((error) => error.path.length ? error.path.join(".") : "body")
         .filter((value, index, self) => value && self.indexOf(value) === index);
+
+      console.log("[INSIGHTS] missingFields after map and filter", typeof missingFields, missingFields);
 
       return res.status(400).json({ 
         error: "O payload fornecido não atende aos requisitos mínimos de estrutura e tipo do Socioestilo.",
