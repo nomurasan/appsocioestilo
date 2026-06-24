@@ -822,6 +822,7 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
         }).filter(Boolean);
       })()
     },
+    memoria_calculo: report_data.memoria_calculo || {},
     auditoria: {
       workflow_version: report_data.auditoria?.workflow_version || "9.0",
       prompt_version: report_data.auditoria?.prompt_version || "System_v9",
@@ -886,7 +887,9 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     dinamica_estilo_a_desenvolver: finalReportData.dinamica_dos_estilos.estilo_a_desenvolver,
     evidencias_observadas_texto: finalReportData.evidencias_observadas.join("\n"),
     potencial_desenvolvimento_texto: finalReportData.potencial_desenvolvimento.join("\n"),
-    recomendacoes_praticas_texto: finalReportData.recomendacoes_praticas.join("\n")
+    recomendacoes_praticas_texto: finalReportData.recomendacoes_praticas.join("\n"),
+    memoria_calculo_por_questao_json: report_data?.campos?.memoria_calculo_por_questao_json || "",
+    memoria_calculo_respostas_json: report_data?.campos?.memoria_calculo_respostas_json || ""
   };
 
   return {
@@ -930,6 +933,23 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       description: "Análise metodológica de comportamento e socioestilos."
     }
   };
+}
+
+function getMemoriaCalculoPorQuestao(reportData: any): any[] {
+  const direto = reportData?.memoria_calculo?.por_questao;
+  if (Array.isArray(direto) && direto.length) return direto;
+
+  const raw = reportData?.campos?.memoria_calculo_por_questao_json;
+  if (typeof raw === "string" && raw.trim()) {
+    try {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed)) return parsed;
+    } catch (e) {
+      console.warn("[MEMORIA_CALCULO] erro ao parsear memoria_calculo_por_questao_json", e);
+    }
+  }
+
+  return [];
 }
 
 interface DashboardScreenProps {
@@ -2330,26 +2350,53 @@ export default function DashboardScreen({
                           <div className="space-y-4">
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">7.1 Rastreabilidade das Respostas Individuais</h4>
                             <div className="overflow-x-auto border border-slate-150 rounded-2xl bg-white shadow-3xs max-h-[280px] overflow-y-auto w-full">
-                              <table className="min-w-full divide-y divide-slate-150 text-[9px] md:text-[10px]">
-                                <thead className="bg-slate-100 font-extrabold text-[#112363] uppercase tracking-wider sticky top-0 z-10 text-[8px] md:text-[10px]">
-                                  <tr>
-                                    <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Questão</th>
-                                    <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Resposta Selecionada</th>
-                                    <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Estilo Orientado</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-150 text-slate-700 font-semibold bg-white">
-                                  {(reportData.memoria_calculo?.respostas || []).map((rLine: any, idx: number) => (
-                                    <tr key={idx} className="hover:bg-slate-50/50">
-                                      <td className="px-2 md:px-4 py-1.5 md:py-2 truncate max-w-[120px] md:max-w-[170px] text-[9px] md:text-[10px]" title={rLine.questao}>{rLine.questao}</td>
-                                      <td className="px-2 md:px-4 py-1.5 md:py-2 italic font-medium text-[9px] md:text-[10px]">{rLine.resposta}</td>
-                                      <td className="px-2 md:px-4 py-1.5 md:py-3 font-extrabold text-[#D80E2A] text-[9px] md:text-[10px]">
-                                        {rLine.socioEstilo}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
+                              {(() => {
+                                const memoriaPorQuestao = getMemoriaCalculoPorQuestao(reportData);
+                                let linhas: any[] = memoriaPorQuestao.flatMap((q: any) =>
+                                  (q.estilosDasRespostas || []).map((r: any) => ({
+                                    questionId: q.questionId,
+                                    questao: q.questao,
+                                    resposta: r.resposta,
+                                    socioEstilo: r.socioEstilo,
+                                    pontos: r.pontos
+                                  }))
+                                );
+
+                                if (!linhas.length) {
+                                  const rawFallback = reportData?.campos?.memoria_calculo_respostas_json;
+                                  if (typeof rawFallback === "string" && rawFallback.trim()) {
+                                    try {
+                                      const parsed = JSON.parse(rawFallback);
+                                      if (Array.isArray(parsed)) linhas = parsed;
+                                    } catch (e) {
+                                      console.warn("[MEMORIA_CALCULO] erro ao parsear memoria_calculo_respostas_json", e);
+                                    }
+                                  }
+                                }
+
+                                return (
+                                  <table className="min-w-full divide-y divide-slate-150 text-[9px] md:text-[10px]">
+                                    <thead className="bg-slate-100 font-extrabold text-[#112363] uppercase tracking-wider sticky top-0 z-10 text-[8px] md:text-[10px]">
+                                      <tr>
+                                        <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Questão</th>
+                                        <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Resposta Selecionada</th>
+                                        <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Estilo da Resposta</th>
+                                        <th className="px-2 md:px-4 py-2 md:py-2.5 text-right">Pontos</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-150 text-slate-700 font-semibold bg-white">
+                                      {linhas.map((rLine: any, idx: number) => (
+                                        <tr key={idx} className="hover:bg-slate-50/50">
+                                          <td className="px-2 md:px-4 py-1.5 md:py-2 truncate max-w-[120px] md:max-w-[170px] text-[9px] md:text-[10px]" title={rLine.questao}>{rLine.questao || `Q${rLine.questionId}`}</td>
+                                          <td className="px-2 md:px-4 py-1.5 md:py-2 italic font-medium text-[9px] md:text-[10px]">{rLine.resposta}</td>
+                                          <td className="px-2 md:px-4 py-1.5 md:py-3 font-extrabold text-[#D80E2A] text-[9px] md:text-[10px]">{rLine.socioEstilo}</td>
+                                          <td className="px-2 md:px-4 py-1.5 md:py-2 text-right font-black text-slate-550 text-[9px] md:text-[10px]">+{rLine.pontos} pt</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                );
+                              })()}
                             </div>
                           </div>
 
