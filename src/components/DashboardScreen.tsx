@@ -382,7 +382,9 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     }).filter(item => item !== "");
   };
 
-  // Convert answersObj to processed questionnaire responses representation
+  // DEPRECATED: processedRespostas is kept only for backward compatibility and answer count.
+  // DO NOT USE for the memory responses table - use report_data.memoria_respostas instead!
+  // This is maintained only to calculate answersCount metric in assessment.
   const answersObj = activeResult?.answers || activeResult?.respostas_questionario || normPayload?.respostasQuestionario || normPayload?.respostas_questionario || {};
   const processedRespostas: any[] = [];
   try {
@@ -785,66 +787,27 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     ) : backupRecomendacoes,
     questionario: {
       respostas: (() => {
-        // Priority 1: Use memoria_calculo.respostas from report_data (new canonical structure)
-        let memoryList = report_data.memoria_calculo?.respostas;
+        // ÚNICA FONTE: memoria_respostas do n8n workflow
+        // Estrutura: { questionId, question, answer, socioStyle, points }
+        // Sem agregações, sem recalcular, sem fallbacks para estruturas legadas
         
-        // Priority 2: Fallback to memoria_calculo.por_questao
-        if (!Array.isArray(memoryList)) {
-          memoryList = report_data.memoria_calculo?.por_questao;
+        const memoriaRespostas = report_data.memoria_respostas;
+        
+        if (!Array.isArray(memoriaRespostas)) {
+          return [];
         }
         
-        // Priority 3: Fallback to report_data.questionario.respostas (legacy structure)
-        if (!Array.isArray(memoryList)) {
-          memoryList = report_data.questionario?.respostas;
-        }
-        
-        // Priority 4: Use processedRespostas only if nothing above works
-        if (!Array.isArray(memoryList)) {
-          memoryList = processedRespostas;
-        }
-        
-        // Normalize the list to ensure consistent field names
-        return Array.isArray(memoryList) ? memoryList.map((item: any) => {
+        // Mapear diretamente os dados do n8n, sem modificações de lógica
+        return memoriaRespostas.map((item: any) => {
           if (!item) return null;
           
-          // Extract questionId
-          const questionId = item.questionId || item.question_id || item.pergunta_id || 0;
-          
-          // Extract questão/pergunta
-          let pergunta = item.pergunta || item.questao || item.question || '';
-          if (!pergunta && questionId) {
-            pergunta = `Questão ${questionId}`;
-          }
-          
-          // Extract resposta/answer
-          let resposta_escolhida = item.resposta || item.resposta_escolhida || '';
-          if (!resposta_escolhida && item.selectedAnswers) {
-            resposta_escolhida = Array.isArray(item.selectedAnswers) ? item.selectedAnswers.join(", ") : String(item.selectedAnswers);
-          }
-          
-          // Extract estilo/socioEstilo
-          let estilo_associado = item.socioEstilo || item.estilo || item.estilo_associado || '';
-          if (!estilo_associado && item.selectedStyles) {
-            estilo_associado = Array.isArray(item.selectedStyles) ? item.selectedStyles.join(", ") : String(item.selectedStyles);
-          }
-          // Use "Não identificado" instead of "Geral" for missing style
-          if (!estilo_associado) {
-            estilo_associado = "Não identificado";
-          }
-          
-          // Extract pontos/points
-          let pontuacao_atribuida = item.pontos || item.pontuacao_atribuida || item.points || 0;
-          if (pontuacao_atribuida === undefined || pontuacao_atribuida === null) {
-            pontuacao_atribuida = 0;
-          }
-          
           return {
-            pergunta,
-            resposta_escolhida,
-            estilo_associado,
-            pontuacao_atribuida: Number(pontuacao_atribuida) || 0
+            pergunta: item.question || `Questão ${item.questionId || '?'}`,
+            resposta_escolhida: item.answer || '',
+            estilo_associado: item.socioStyle || "Não identificado",
+            pontuacao_atribuida: Number(item.points) || 0
           };
-        }).filter(Boolean) : [];
+        }).filter(Boolean);
       })()
     },
     auditoria: {

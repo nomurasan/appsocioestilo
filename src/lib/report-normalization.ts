@@ -2,6 +2,15 @@
  * Normalizar resposta do webhook n8n para estrutura canônica
  * Fonte principal: response.report_data
  * Fallbacks: response.metadata, response.assessment, response.persistence
+ * 
+ * Estrutura esperada de memoria_respostas:
+ * [{
+ *   questionId: number,
+ *   question: string,
+ *   answer: string,
+ *   socioStyle: string,
+ *   points: number
+ * }]
  */
 export function normalizeReportResponse(response: any): {
   success: boolean;
