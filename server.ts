@@ -206,6 +206,11 @@ if (IS_PROD) {
     console.error("[CRITICAL ERROR] GEMINI_API_KEY de produção é obrigatório para as inteligências de socioestilo.");
     process.exit(1);
   }
+
+  if (!process.env.N8N_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL.trim().length === 0 || process.env.N8N_WEBHOOK_URL.startsWith("https://SEU_N8N")) {
+    console.error("[CRITICAL ERROR] N8N_WEBHOOK_URL é obrigatória em produção e não foi configurada corretamente no Easypanel.");
+    process.exit(1);
+  }
 }
 
 // Configuração segura do cliente Supabase para o Backend
@@ -428,22 +433,30 @@ app.post("/api/insights", apiRateLimiter, async (req: Request, res: Response, ne
   try {
     const parseResult = insightsSchema.safeParse(req.body);
     if (!parseResult.success) {
+      const missingFields = parseResult.error.errors
+        .map((error) => error.path.length ? error.path.join(".") : "body")
+        .filter((value, index, self) => value && self.indexOf(value) === index);
+
       return res.status(400).json({ 
         error: "O payload fornecido não atende aos requisitos mínimos de estrutura e tipo do Socioestilo.",
         details: parseResult.error.flatten().fieldErrors,
+        missingFields,
         requestId: req.headers["x-request-id"]
       });
     }
 
     const payload = parseResult.data;
 
-    let n8nWebhookUrl = process.env.N8N_WEBHOOK_URL;
-    if (!n8nWebhookUrl || n8nWebhookUrl.trim().length === 0 || n8nWebhookUrl.startsWith("https://SEU_N8N")) {
-      n8nWebhookUrl = "https://n8n-n8n.5wxq0l.easypanel.host/webhook/socioestilo/analisar-direto";
+    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL?.trim();
+    if (!n8nWebhookUrl || n8nWebhookUrl.length === 0 || n8nWebhookUrl.startsWith("https://SEU_N8N")) {
+      return res.status(500).json({
+        error: "N8N_WEBHOOK_URL não configurada no backend.",
+        requestId: req.headers["x-request-id"]
+      });
     }
 
-    console.log(`[N8N WEBHOOK] Direcionando payload para o portal n8n no subdomínio privado.`);
-    
+    console.log("[INSIGHTS] Chamando webhook n8n configurado");
+
     const n8nResponse = await fetch(n8nWebhookUrl, {
       method: "POST",
       headers: {
@@ -517,7 +530,7 @@ async function bootstrap() {
   console.log(`Chave Supabase    : ${maskSecret(activeSupabaseKey)}`);
   console.log(`Chave Gemini      : ${maskSecret(process.env.GEMINI_API_KEY)}`);
   console.log(`Chave OpenAI      : ${maskSecret(process.env.OPENAI_API_KEY)}`);
-  console.log(`Webhook n8n       : ${maskSecret(process.env.N8N_WEBHOOK_URL)}`);
+  console.log(`Webhook n8n       : ${process.env.N8N_WEBHOOK_URL?.trim() ? "CONFIGURADA" : "NÃO CONFIGURADA"}`);
   console.log("=================================================================\n");
 
   if (process.env.NODE_ENV !== "production") {
