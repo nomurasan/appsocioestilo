@@ -136,6 +136,14 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     report_data = {};
   }
 
+  // Diagnostic log to validate data arrival from report_data
+  console.log("[RELATORIO]", {
+    memoria: report_data?.memoria_respostas?.length,
+    fontes: report_data?.fundamentacao?.fontes_consultadas?.length || report_data?.fontes_consultadas?.length,
+    chunks: report_data?.fundamentacao?.chunks_recuperados?.length || report_data?.chunks_recuperados?.length,
+    autores: report_data?.fundamentacao?.referenciais_teoricos?.length || report_data?.referenciais_teoricos?.length
+  });
+
   // Extract google_studio if present and merge flat attributes back to structured format
   const gsData = normPayload?.google_studio || (typeof activeResult?.raw_payload === 'object' ? activeResult?.raw_payload?.google_studio : null) || (activeResult?.google_studio);
   if (gsData && typeof gsData === 'object') {
@@ -623,16 +631,12 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       estilo_a_desenvolver: safeDinamicaVal(report_data.dinamica_dos_estilos?.estilo_a_desenvolver || report_data.dinamica_dos_estilos?.estiloADesenvolver || backupDinamica.estilo_a_desenvolver)
     },
     referenciais_teoricos: (() => {
-      const google_studio = normPayload?.google_studio || gsData;
-      const report_data_obj = report_data;
-      const raw = google_studio?.referenciais_teoricos_json
-        || report_data_obj?.referenciais_teoricos_json
-        || normPayload?.referenciais_teoricos_json
-        || google_studio?.referenciais_teoricos
-        || report_data_obj?.referenciais_teoricos
-        || normPayload?.referenciais_teoricos
+      const raw = report_data.fundamentacao?.referenciais_teoricos
+        || report_data.referenciais_teoricos
+        || report_data.referencias_teoricas
+        || report_data.referencias_metodologicas?.referenciais_teoricos
         || [];
-      
+
       if (Array.isArray(raw)) {
         return raw.map((item: any) => {
           if (!item) return null;
@@ -651,7 +655,9 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       return [];
     })(),
     fontes_consultadas: (() => {
-      const raw = report_data.fontes_consultadas || normPayload?.fontes_consultadas || gsData?.fontes_consultadas || [];
+      const raw = report_data.fundamentacao?.fontes_consultadas
+        || report_data.fontes_consultadas
+        || [];
       if (Array.isArray(raw)) {
         return raw.map((item: any) => {
           if (!item) return null;
@@ -665,7 +671,9 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       return [];
     })(),
     chunks_recuperados: (() => {
-      const raw = report_data.chunks_recuperados || normPayload?.chunks_recuperados || gsData?.chunks_recuperados || [];
+      const raw = report_data.fundamentacao?.chunks_recuperados
+        || report_data.chunks_recuperados
+        || [];
       if (Array.isArray(raw)) {
         return raw.map((item: any) => {
           if (!item) return null;
@@ -679,7 +687,9 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       return [];
     })(),
     rag_fontes_consultadas: (() => {
-      const raw = report_data.fontes_consultadas || normPayload?.fontes_consultadas || gsData?.fontes_consultadas || [];
+      const raw = report_data.fundamentacao?.fontes_consultadas
+        || report_data.fontes_consultadas
+        || [];
       if (Array.isArray(raw)) {
         return raw.map((item: any) => {
           if (!item) return null;
@@ -690,7 +700,10 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       return [];
     })(),
     rag_chunks_recuperados: (() => {
-      const rawChunks = report_data.chunks_recuperados || normPayload?.chunks_recuperados || gsData?.chunks_recuperados || report_data.referencias_metodologicas?.chunks_recuperados;
+      const rawChunks = report_data.fundamentacao?.chunks_recuperados
+        || report_data.chunks_recuperados
+        || report_data.referencias_metodologicas?.chunks_recuperados
+        || [];
       if (Array.isArray(rawChunks) && rawChunks.length > 0) {
         return rawChunks.map((item: any) => {
           if (!item) return null;
@@ -701,7 +714,9 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
           };
         }).filter((item: any) => item && (item.documento || item.chunk));
       }
-      const rawFontes = report_data.fontes_consultadas || normPayload?.fontes_consultadas || gsData?.fontes_consultadas || [];
+      const rawFontes = report_data.fundamentacao?.fontes_consultadas
+        || report_data.fontes_consultadas
+        || [];
       if (Array.isArray(rawFontes)) {
         const extracted: any[] = [];
         rawFontes.forEach((item: any) => {
@@ -718,41 +733,38 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       return [];
     })(),
     fontes_consultadas_texto: (() => {
-      const google_studio = normPayload?.google_studio || gsData;
-      const report_data_obj = report_data;
-      const val = google_studio?.fontes_consultadas_texto
-        || report_data_obj?.fontes_consultadas_texto
-        || (Array.isArray(report_data_obj?.fontes_consultadas) && report_data_obj.fontes_consultadas.length > 0
-            ? report_data_obj.fontes_consultadas.map((f: any) => typeof f === 'object' ? (f.documento || f.documento_recuperado || f.source || String(f)) : String(f)).join('\n')
+      const val = report_data.fundamentacao?.fontes_consultadas_texto
+        || (Array.isArray(report_data.fundamentacao?.fontes_consultadas) && report_data.fundamentacao.fontes_consultadas.length > 0
+            ? report_data.fundamentacao.fontes_consultadas.map((f: any) => typeof f === 'object' ? (f.documento || f.documento_recuperado || f.source || String(f)) : String(f)).join('\n')
             : '')
-        || (Array.isArray(google_studio?.fontes_consultadas) && google_studio.fontes_consultadas.length > 0
-            ? google_studio.fontes_consultadas.map((f: any) => typeof f === 'object' ? (f.documento || f.documento_recuperado || f.source || String(f)) : String(f)).join('\n')
+        || report_data.fontes_consultadas_texto
+        || (Array.isArray(report_data.fontes_consultadas) && report_data.fontes_consultadas.length > 0
+            ? report_data.fontes_consultadas.map((f: any) => typeof f === 'object' ? (f.documento || f.documento_recuperado || f.source || String(f)) : String(f)).join('\n')
             : '')
         || '';
       return typeof val === 'string' ? val : '';
     })(),
     chunks_recuperados_texto: (() => {
-      const google_studio = normPayload?.google_studio || gsData;
-      const report_data_obj = report_data;
-      const val = google_studio?.chunks_recuperados_texto
-        || report_data_obj?.chunks_recuperados_texto
-        || (Array.isArray(report_data_obj?.chunks_recuperados) && report_data_obj.chunks_recuperados.length > 0
-            ? report_data_obj.chunks_recuperados.map((c: any) => typeof c === 'object' ? `${c.documento || c.documento_recuperado || c.document || ''} - Chunk ${c.chunk !== undefined ? c.chunk : (c.chunk_idx !== undefined ? c.chunk_idx : '')}` : String(c)).join('\n')
+      const val = report_data.fundamentacao?.chunks_recuperados_texto
+        || (Array.isArray(report_data.fundamentacao?.chunks_recuperados) && report_data.fundamentacao.chunks_recuperados.length > 0
+            ? report_data.fundamentacao.chunks_recuperados.map((c: any) => typeof c === 'object' ? `${c.documento || c.documento_recuperado || c.document || ''} - Chunk ${c.chunk !== undefined ? c.chunk : (c.chunk_idx !== undefined ? c.chunk_idx : '')}` : String(c)).join('\n')
             : '')
-        || (Array.isArray(google_studio?.chunks_recuperados) && google_studio.chunks_recuperados.length > 0
-            ? google_studio.chunks_recuperados.map((c: any) => typeof c === 'object' ? `${c.documento || c.documento_recuperado || c.document || ''} - Chunk ${c.chunk !== undefined ? c.chunk : (c.chunk_idx !== undefined ? c.chunk_idx : '')}` : String(c)).join('\n')
+        || report_data.chunks_recuperados_texto
+        || (Array.isArray(report_data.chunks_recuperados) && report_data.chunks_recuperados.length > 0
+            ? report_data.chunks_recuperados.map((c: any) => typeof c === 'object' ? `${c.documento || c.documento_recuperado || c.document || ''} - Chunk ${c.chunk !== undefined ? c.chunk : (c.chunk_idx !== undefined ? c.chunk_idx : '')}` : String(c)).join('\n')
             : '')
         || '';
       return typeof val === 'string' ? val : '';
     })(),
     referenciais_teoricos_texto: (() => {
-      const google_studio = normPayload?.google_studio || gsData;
-      const report_data_obj = report_data;
-      const val = google_studio?.referenciais_teoricos_texto
-        || report_data_obj?.referenciais_teoricos_texto
-        || google_studio?.referenciais_teoricos_texto
-        || (report_data_obj?.auditoria && typeof report_data_obj?.auditoria === 'object' ? report_data_obj?.auditoria?.referenciais_teoricos_texto : '')
-        || normPayload?.referenciais_teoricos_texto
+      const val = report_data.fundamentacao?.referenciais_teoricos_texto
+        || (Array.isArray(report_data.fundamentacao?.referenciais_teoricos) && report_data.fundamentacao.referenciais_teoricos.length > 0
+            ? report_data.fundamentacao.referenciais_teoricos.map((item: any) => typeof item === 'object' ? `${item.autor || item.author || ''}${item.contribuicao ? ` - ${item.contribuicao || item.contribution || item.conceito || item.conceito_aplicado || item.concept || item.obra || ''}` : ''}`.trim() : String(item)).join('\n')
+            : '')
+        || report_data.referenciais_teoricos_texto
+        || (Array.isArray(report_data.referenciais_teoricos) && report_data.referenciais_teoricos.length > 0
+            ? report_data.referenciais_teoricos.map((item: any) => typeof item === 'object' ? `${item.autor || item.author || ''}${item.contribuicao ? ` - ${item.contribuicao || item.contribution || item.conceito || item.conceito_aplicado || item.concept || item.obra || ''}` : ''}`.trim() : String(item)).join('\n')
+            : '')
         || '';
       return typeof val === 'string' ? val : '';
     })(),
