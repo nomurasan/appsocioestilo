@@ -432,22 +432,34 @@ app.post("/api/knowledge-search", apiRateLimiter, async (req: Request, res: Resp
 app.post("/api/insights", apiRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const parseResult = insightsSchema.safeParse(req.body);
+    
+    console.log("[INSIGHTS] Validation result - success:", parseResult.success);
+    
     if (!parseResult.success) {
-      // Defensive validation: ensure parseResult.error.errors is an array before calling .map()
-      const errorsList = Array.isArray(parseResult.error.errors) ? parseResult.error.errors : [];
-      console.log("[INSIGHTS] parseResult.error.errors", typeof parseResult.error.errors, parseResult.error.errors);
-      console.log("[INSIGHTS] errorsList after defensive check", typeof errorsList, errorsList.length);
+      // Zod v3+ uses .issues, fallback to .errors for compatibility
+      const zodIssues =
+        Array.isArray(parseResult.error?.issues)
+          ? parseResult.error.issues
+          : Array.isArray((parseResult.error as any)?.errors)
+            ? (parseResult.error as any).errors
+            : [];
 
-      const missingFields = errorsList
-        .map((error) => error.path.length ? error.path.join(".") : "body")
-        .filter((value, index, self) => value && self.indexOf(value) === index);
+      console.log("[INSIGHTS] Zod issues count:", zodIssues.length);
+      console.log("[INSIGHTS] Issues summary:", zodIssues.map(issue => ({ 
+        path: issue.path?.join(".") || "root",
+        message: issue.message 
+      })));
 
-      console.log("[INSIGHTS] missingFields after map and filter", typeof missingFields, missingFields);
+      const missingFields = zodIssues
+        .map((issue: any) => issue.path?.length ? issue.path.join(".") : "body")
+        .filter((value: any, index: number, self: any) => value && self.indexOf(value) === index);
+
+      const details = parseResult.error.flatten?.().fieldErrors || {};
 
       return res.status(400).json({ 
-        error: "O payload fornecido não atende aos requisitos mínimos de estrutura e tipo do Socioestilo.",
-        details: parseResult.error.flatten().fieldErrors,
+        error: "Payload inválido para geração de insights",
         missingFields,
+        details,
         requestId: req.headers["x-request-id"]
       });
     }
