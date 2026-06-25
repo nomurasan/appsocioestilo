@@ -51,7 +51,7 @@ export const QUESTIONS: Question[] = [
       { text: "Colocar coisas em seus lugares, trabalhos manuais, consertar coisas, resolver problemas." },
       { text: "Fazer atividades sem planos rígidos, fazer algo diferente, ouvir música, sair para se divertir." },
       { text: "Conversar com amigos, fazer trabalho voluntário, preparar eventos que reunam amigos ou família." },
-      { text: "Ler um bom livro, estudar novidades na internet, comparar produtos e serviços." }
+      { text: "Colocar as finanças em ordem e em planilhas, estudar novidades na internet, comparar produtos e serviços." }
     ]
   },
   {
@@ -70,7 +70,7 @@ export const QUESTIONS: Question[] = [
       { text: "Tem ótima noção de responsabilidade, uma pessoa que sempre pensa nos impactos das ações." },
       { text: "Tem grande facilidade em relacionamentos. É influente, convincente e com muitos amigos." },
       { text: "Sempre pensa nos outros e faz com que eles participem das conversas, dos assuntos e das ações." },
-      { text: "Sempre pensa nos resultados e é muito persistente." },
+      { text: "Tem grande foco nos resultados e é muito persistente." },
       { text: "É considerado pelos outros como alguém humano, compreensivo e preocupado com o bem estar de todos." }
     ]
   },
