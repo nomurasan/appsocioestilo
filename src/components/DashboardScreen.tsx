@@ -2584,38 +2584,12 @@ export default function DashboardScreen({
                                       <BookOpen className="w-4 h-4 text-[#112363]" /> 8.2 Base de Conhecimento Consultada
                                     </strong>
                                     
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full text-xs">
-                                      {/* Documentos Utilizados */}
-                                      <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-2 shadow-3xs">
-                                        <div className="flex items-center space-x-1.5 border-b border-slate-200 pb-1.5">
-                                          <span className="w-2 h-2 rounded-full bg-[#112363] shrink-0" />
-                                          <strong className="text-slate-800 font-black uppercase text-[9px] tracking-wider">Documentos Utilizados</strong>
-                                        </div>
-                                        {!fontes ? (
-                                          <p className="text-[10.5px] text-slate-500 font-semibold pl-1 py-1 italic">
-                                            Não foram recuperadas referências da Base de Conhecimento para esta análise.
-                                          </p>
-                                        ) : (
-                                          <ul className="space-y-1 text-slate-700 pl-1 font-semibold text-[10.5px]">
-                                            {fontes.split('\n').map((doc: string, idx: number) => {
-                                              const d = doc.trim();
-                                              if (!d) return null;
-                                              return (
-                                                <li key={idx} className="flex items-start gap-1.5">
-                                                  <span className="text-[#112363] mt-0.5">•</span>
-                                                  <span>{d}</span>
-                                                </li>
-                                              );
-                                            })}
-                                          </ul>
-                                        )}
-                                      </div>
-
-                                      {/* Chunks Recuperados */}
+                                    <div className="w-full text-xs">
+                                      {/* Documentos Utilizados e Chunks Recuperados */}
                                       <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-2 shadow-3xs">
                                         <div className="flex items-center space-x-1.5 border-b border-slate-200 pb-1.5">
                                           <span className="w-2 h-2 rounded-full bg-[#D80E2A] shrink-0" />
-                                          <strong className="text-slate-800 font-black uppercase text-[9px] tracking-wider">Chunks Recuperados</strong>
+                                          <strong className="text-slate-800 font-black uppercase text-[9px] tracking-wider">Documentos Utilizados e Chunks Recuperados</strong>
                                         </div>
                                         {!chunks ? (
                                           <p className="text-[10.5px] text-slate-500 font-semibold pl-1 py-1 italic">
