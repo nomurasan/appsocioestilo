@@ -2578,15 +2578,15 @@ export default function DashboardScreen({
                               return (
                                 <div className="space-y-4 font-sans w-full">
                                   
-                                  {/* Section 8.2: Base de Conhecimento Consultada */}
-                                  <div className="space-y-3 font-sans w-full border-t border-slate-100 pt-3">
-                                    <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
-                                      <BookOpen className="w-4 h-4 text-[#112363]" /> 8.2 Base de Conhecimento Consultada
-                                    </strong>
-                                    
-                                    <div className="w-full text-xs">
-                                      {/* Documentos Utilizados e Chunks Recuperados */}
-                                      <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-2 shadow-3xs">
+                                  {/* Sections 8.2 + 8.3 lado a lado */}
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-3">
+
+                                    {/* Section 8.2: Base de Conhecimento Consultada */}
+                                    <div className="space-y-2 font-sans">
+                                      <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
+                                        <BookOpen className="w-4 h-4 text-[#112363]" /> 8.2 Base de Conhecimento Consultada
+                                      </strong>
+                                      <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-2 shadow-3xs text-xs">
                                         <div className="flex items-center space-x-1.5 border-b border-slate-200 pb-1.5">
                                           <span className="w-2 h-2 rounded-full bg-[#D80E2A] shrink-0" />
                                           <strong className="text-slate-800 font-black uppercase text-[9px] tracking-wider">Documentos Utilizados e Chunks Recuperados</strong>
@@ -2596,12 +2596,10 @@ export default function DashboardScreen({
                                             Nenhum chunk recuperado para esta análise.
                                           </p>
                                         ) : (
-                                          <ul className="space-y-1 text-slate-700 pl-1 max-h-[140px] overflow-y-auto font-semibold text-[10.5px]">
+                                          <ul className="space-y-1 text-slate-700 pl-1 max-h-[160px] overflow-y-auto font-semibold text-[10.5px]">
                                             {chunks.split('\n').map((c: string, idx: number) => {
                                               const chunkLine = c.trim();
                                               if (!chunkLine) return null;
-                                              
-                                              // Try to split on " - " to render nicely if possible
                                               const parts = chunkLine.split(/\s*-\s*/);
                                               if (parts.length > 1) {
                                                 const docPart = parts[0];
@@ -2613,7 +2611,6 @@ export default function DashboardScreen({
                                                   </li>
                                                 );
                                               }
-                                              
                                               return (
                                                 <li key={idx} className="flex items-start gap-1.5">
                                                   <span className="text-[#D80E2A] mt-0.5">•</span>
@@ -2625,64 +2622,58 @@ export default function DashboardScreen({
                                         )}
                                       </div>
                                     </div>
-                                  </div>
 
-                                  {/* Section 8.3: Fundamentação Teórica */}
-                                  <div className="space-y-3 font-sans w-full border-t border-slate-100 pt-3 mt-1">
-                                    <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
-                                      <BookOpen className="w-4 h-4 text-[#112363]" /> 8.3 Fundamentação Teórica de Socioestilos Utilizada
-                                    </strong>
-                                    
-                                    {(() => {
-                                      const textVal = (reportData.referenciais_teoricos_texto || '').trim();
-                                      const jsonList = Array.isArray(reportData.referenciais_teoricos) ? reportData.referenciais_teoricos : [];
+                                    {/* Section 8.3: Fundamentação Teórica */}
+                                    <div className="space-y-2 font-sans">
+                                      <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
+                                        <BookOpen className="w-4 h-4 text-[#112363]" /> 8.3 Fundamentação Teórica de Socioestilos Utilizada
+                                      </strong>
+                                      {(() => {
+                                        const textVal = (reportData.referenciais_teoricos_texto || '').trim();
+                                        const jsonList = Array.isArray(reportData.referenciais_teoricos) ? reportData.referenciais_teoricos : [];
 
-                                      // Parse "Autor: Contribuição." lines into structured entries
-                                      const parseLinhas = (text: string) =>
-                                        text.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
-                                          const colonIdx = line.indexOf(':');
-                                          if (colonIdx > 0) {
-                                            return { autor: line.substring(0, colonIdx).trim(), contribuicao: line.substring(colonIdx + 1).trim() };
-                                          }
-                                          return { autor: line, contribuicao: '' };
-                                        });
+                                        const parseLinhas = (text: string) =>
+                                          text.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+                                            const colonIdx = line.indexOf(':');
+                                            if (colonIdx > 0) {
+                                              return { autor: line.substring(0, colonIdx).trim(), contribuicao: line.substring(colonIdx + 1).trim() };
+                                            }
+                                            return { autor: line, contribuicao: '' };
+                                          });
 
-                                      const ReferenciaisGrid = ({ entries }: { entries: { autor: string; contribuicao: string }[] }) => (
-                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                          {entries.map((ref, idx) => (
-                                            <div key={idx} className="p-3 bg-white border border-slate-150 rounded-xl shadow-3xs space-y-1 hover:bg-slate-50/50 transition-colors">
-                                              <div className="flex items-center gap-1.5">
-                                                <span className="w-1.5 h-1.5 rounded-full bg-[#112363] shrink-0 mt-0.5" />
-                                                <strong className="text-[#112363] font-extrabold text-[11px]">{ref.autor}</strong>
-                                              </div>
-                                              {ref.contribuicao && (
-                                                <p className="text-slate-600 font-semibold text-[10.5px] leading-relaxed pl-3">{ref.contribuicao}</p>
-                                              )}
+                                        const entries: { autor: string; contribuicao: string }[] = textVal
+                                          ? parseLinhas(textVal)
+                                          : jsonList.map((ref: any) => ({
+                                              autor: ref.autor || ref.author || '',
+                                              contribuicao: ref.contribuicao || ref.contribution || ref.conceito_aplicado || ref.conceito || ref.concept || ref.obra || ''
+                                            })).filter((e: any) => e.autor);
+
+                                        if (entries.length > 0) {
+                                          return (
+                                            <div className="space-y-2">
+                                              {entries.map((ref, idx) => (
+                                                <div key={idx} className="p-3 bg-white border border-slate-150 rounded-xl shadow-3xs space-y-1 hover:bg-slate-50/50 transition-colors">
+                                                  <div className="flex items-center gap-1.5">
+                                                    <span className="w-1.5 h-1.5 rounded-full bg-[#112363] shrink-0 mt-0.5" />
+                                                    <strong className="text-[#112363] font-extrabold text-[11px]">{ref.autor}</strong>
+                                                  </div>
+                                                  {ref.contribuicao && (
+                                                    <p className="text-slate-600 font-semibold text-[10.5px] leading-relaxed pl-3">{ref.contribuicao}</p>
+                                                  )}
+                                                </div>
+                                              ))}
                                             </div>
-                                          ))}
-                                        </div>
-                                      );
+                                          );
+                                        }
 
-                                      // Prioridade 1: texto pronto → parsear e exibir em cards
-                                      if (textVal) {
-                                        return <ReferenciaisGrid entries={parseLinhas(textVal)} />;
-                                      }
+                                        return (
+                                          <div className="p-4 bg-slate-50 border border-slate-150 rounded-2xl text-center text-slate-500 font-semibold text-xs py-4">
+                                            Nenhum referencial teórico específico foi identificado.
+                                          </div>
+                                        );
+                                      })()}
+                                    </div>
 
-                                      // Prioridade 2: array estruturado
-                                      if (jsonList.length > 0) {
-                                        const entries = jsonList.map((ref: any) => ({
-                                          autor: ref.autor || ref.author || '',
-                                          contribuicao: ref.contribuicao || ref.contribution || ref.conceito_aplicado || ref.conceito || ref.concept || ref.obra || ''
-                                        })).filter((e: any) => e.autor);
-                                        return <ReferenciaisGrid entries={entries} />;
-                                      }
-
-                                      return (
-                                        <div className="p-4 bg-slate-50 border border-slate-150 rounded-2xl text-center text-slate-500 font-semibold text-xs py-4">
-                                          Nenhum referencial teórico específico foi identificado nos documentos utilizados nesta análise.
-                                        </div>
-                                      );
-                                    })()}
                                   </div>
 
                                 </div>
