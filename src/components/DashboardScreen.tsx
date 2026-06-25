@@ -962,25 +962,36 @@ function getMemoriaCalculoPorQuestao(reportData: any): any[] {
 
 function getMemoriaCalculoRespostas(reportData: any): any[] {
   const direto = reportData?.memoria_calculo?.respostas;
+  console.log("[HELPER_MEMORIA] direto:", Array.isArray(direto) ? direto.length + " itens, primeiro=" + JSON.stringify(direto?.[0]) : typeof direto);
   if (Array.isArray(direto) && direto.length) return direto;
 
-  const candidates = [
-    reportData?.campos?.memoria_calculo_respostas_json,
-    reportData?.memoria_calculo_respostas_json,
-  ];
-
-  for (const raw of candidates) {
-    if (Array.isArray(raw) && raw.length) return raw;
-    if (typeof raw === "string" && raw.trim()) {
-      try {
-        const parsed = JSON.parse(raw);
-        if (Array.isArray(parsed) && parsed.length) return parsed;
-      } catch (error) {
-        console.warn("[MEMORIA_CALCULO] erro ao parsear memoria_calculo_respostas_json", error);
-      }
+  const rawCampos = reportData?.campos?.memoria_calculo_respostas_json;
+  console.log("[HELPER_MEMORIA] campos_json type:", typeof rawCampos, "length:", rawCampos?.length);
+  if (Array.isArray(rawCampos) && rawCampos.length) return rawCampos;
+  if (typeof rawCampos === "string" && rawCampos.trim()) {
+    try {
+      const parsed = JSON.parse(rawCampos);
+      console.log("[HELPER_MEMORIA] campos_json parsed:", Array.isArray(parsed) ? parsed.length + " itens" : typeof parsed);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    } catch (error) {
+      console.warn("[MEMORIA_CALCULO] erro ao parsear campos.memoria_calculo_respostas_json", error);
     }
   }
 
+  const rawRoot = reportData?.memoria_calculo_respostas_json;
+  console.log("[HELPER_MEMORIA] root_json type:", typeof rawRoot, "length:", rawRoot?.length);
+  if (Array.isArray(rawRoot) && rawRoot.length) return rawRoot;
+  if (typeof rawRoot === "string" && rawRoot.trim()) {
+    try {
+      const parsed = JSON.parse(rawRoot);
+      console.log("[HELPER_MEMORIA] root_json parsed:", Array.isArray(parsed) ? parsed.length + " itens" : typeof parsed);
+      if (Array.isArray(parsed) && parsed.length) return parsed;
+    } catch (error) {
+      console.warn("[MEMORIA_CALCULO] erro ao parsear root.memoria_calculo_respostas_json", error);
+    }
+  }
+
+  console.warn("[HELPER_MEMORIA] nenhuma fonte encontrou dados — retornando []");
   return [];
 }
 
