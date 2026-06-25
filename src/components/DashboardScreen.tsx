@@ -144,6 +144,14 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     autores: report_data?.fundamentacao?.referenciais_teoricos?.length || report_data?.referenciais_teoricos?.length
   });
 
+  console.log("[MEMORIA_CALCULO_ORIGEM]", {
+    "report_data.memoria_calculo_respostas_json type": typeof report_data?.memoria_calculo_respostas_json,
+    "report_data.memoria_calculo_respostas_json length": typeof report_data?.memoria_calculo_respostas_json === "string" ? report_data.memoria_calculo_respostas_json.length : (Array.isArray(report_data?.memoria_calculo_respostas_json) ? report_data.memoria_calculo_respostas_json.length : "N/A"),
+    "report_data.campos?.memoria_calculo_respostas_json type": typeof report_data?.campos?.memoria_calculo_respostas_json,
+    "report_data.memoria_calculo?.respostas length": report_data?.memoria_calculo?.respostas?.length,
+    "keys em report_data": Object.keys(report_data || {}).join(", ")
+  });
+
   // Extract google_studio if present and merge flat attributes back to structured format
   const gsData = normPayload?.google_studio || (typeof activeResult?.raw_payload === 'object' ? activeResult?.raw_payload?.google_studio : null) || (activeResult?.google_studio);
   if (gsData && typeof gsData === 'object') {
@@ -2377,10 +2385,13 @@ export default function DashboardScreen({
                               {(() => {
                                 const memoriaRespostas = getMemoriaCalculoRespostas(reportData);
                                 console.log("[PAGINA_07_MEMORIA]", {
-                                  direto: reportData?.memoria_calculo?.respostas?.length,
-                                  json: reportData?.campos?.memoria_calculo_respostas_json?.length,
-                                  linhas: memoriaRespostas.length,
-                                  primeira: memoriaRespostas[0]
+                                  "1_direto(memoria_calculo.respostas)": reportData?.memoria_calculo?.respostas?.length,
+                                  "2_campos_json_type": typeof reportData?.campos?.memoria_calculo_respostas_json,
+                                  "2_campos_json_length": reportData?.campos?.memoria_calculo_respostas_json?.length,
+                                  "3_root_json_type": typeof reportData?.memoria_calculo_respostas_json,
+                                  "3_root_json_length": reportData?.memoria_calculo_respostas_json?.length,
+                                  "4_linhas_resolvidas": memoriaRespostas.length,
+                                  "5_primeira": memoriaRespostas[0]
                                 });
                                 return (
                                   <table className="min-w-full divide-y divide-slate-150 text-[9px] md:text-[10px]">
