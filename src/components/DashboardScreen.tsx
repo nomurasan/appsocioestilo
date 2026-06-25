@@ -765,14 +765,22 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       return typeof val === 'string' ? val : '';
     })(),
     referenciais_teoricos_texto: (() => {
+      const buildFromArray = (arr: any[]) =>
+        arr.map((item: any) =>
+          typeof item === 'object'
+            ? `${item.autor || item.author || ''}${item.contribuicao || item.contribution || item.conceito_aplicado || item.conceito || item.concept || item.obra ? `: ${item.contribuicao || item.contribution || item.conceito_aplicado || item.conceito || item.concept || item.obra || ''}` : ''}`.trim()
+            : String(item)
+        ).filter(Boolean).join('\n');
+
       const val = report_data.fundamentacao?.referenciais_teoricos_texto
-        || (Array.isArray(report_data.fundamentacao?.referenciais_teoricos) && report_data.fundamentacao.referenciais_teoricos.length > 0
-            ? report_data.fundamentacao.referenciais_teoricos.map((item: any) => typeof item === 'object' ? `${item.autor || item.author || ''}${item.contribuicao ? ` - ${item.contribuicao || item.contribution || item.conceito || item.conceito_aplicado || item.concept || item.obra || ''}` : ''}`.trim() : String(item)).join('\n')
-            : '')
+        || report_data.referencias_metodologicas?.referenciais_teoricos_texto
         || report_data.referenciais_teoricos_texto
+        || (Array.isArray(report_data.fundamentacao?.referenciais_teoricos) && report_data.fundamentacao.referenciais_teoricos.length > 0
+            ? buildFromArray(report_data.fundamentacao.referenciais_teoricos) : '')
+        || (Array.isArray(report_data.referencias_metodologicas?.referenciais_teoricos) && report_data.referencias_metodologicas.referenciais_teoricos.length > 0
+            ? buildFromArray(report_data.referencias_metodologicas.referenciais_teoricos) : '')
         || (Array.isArray(report_data.referenciais_teoricos) && report_data.referenciais_teoricos.length > 0
-            ? report_data.referenciais_teoricos.map((item: any) => typeof item === 'object' ? `${item.autor || item.author || ''}${item.contribuicao ? ` - ${item.contribuicao || item.contribution || item.conceito || item.conceito_aplicado || item.concept || item.obra || ''}` : ''}`.trim() : String(item)).join('\n')
-            : '')
+            ? buildFromArray(report_data.referenciais_teoricos) : '')
         || '';
       return typeof val === 'string' ? val : '';
     })(),
@@ -2655,40 +2663,46 @@ export default function DashboardScreen({
                                       const textVal = (reportData.referenciais_teoricos_texto || '').trim();
                                       const jsonList = Array.isArray(reportData.referenciais_teoricos) ? reportData.referenciais_teoricos : [];
 
-                                      // Prioridade 1: Exibir texto pronto para exibição
-                                      if (textVal) {
-                                        return (
-                                          <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl font-bold text-[11px] leading-relaxed text-slate-700 whitespace-pre-line shadow-3xs">
-                                            {textVal}
-                                          </div>
-                                        );
-                                      }
+                                      // Parse "Autor: Contribuição." lines into structured entries
+                                      const parseLinhas = (text: string) =>
+                                        text.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+                                          const colonIdx = line.indexOf(':');
+                                          if (colonIdx > 0) {
+                                            return { autor: line.substring(0, colonIdx).trim(), contribuicao: line.substring(colonIdx + 1).trim() };
+                                          }
+                                          return { autor: line, contribuicao: '' };
+                                        });
 
-                                      // Prioridade 2: Montar a partir da estrutura detalhada (JSON)
-                                      if (jsonList.length > 0) {
-                                        return (
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            {jsonList.map((ref: any, idx: number) => (
-                                              <div key={idx} className="p-3 bg-slate-50 border border-slate-150 rounded-2xl space-y-1 shadow-3xs hover:bg-slate-100/50 transition-colors text-xs">
-                                                {ref.autor && (
-                                                  <div>
-                                                    <strong className="text-slate-800 font-extrabold text-[11px] leading-snug">{ref.autor}</strong>
-                                                  </div>
-                                                )}
-                                                {ref.contribuicao && (
-                                                  <div>
-                                                    <p className="text-slate-650 leading-relaxed font-semibold text-[10.5px] mt-0.5">
-                                                      Contribuição: {ref.contribuicao}
-                                                    </p>
-                                                  </div>
-                                                )}
+                                      const ReferenciaisGrid = ({ entries }: { entries: { autor: string; contribuicao: string }[] }) => (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                          {entries.map((ref, idx) => (
+                                            <div key={idx} className="p-3 bg-white border border-slate-150 rounded-xl shadow-3xs space-y-1 hover:bg-slate-50/50 transition-colors">
+                                              <div className="flex items-center gap-1.5">
+                                                <span className="w-1.5 h-1.5 rounded-full bg-[#112363] shrink-0 mt-0.5" />
+                                                <strong className="text-[#112363] font-extrabold text-[11px]">{ref.autor}</strong>
                                               </div>
-                                            ))}
-                                          </div>
-                                        );
+                                              {ref.contribuicao && (
+                                                <p className="text-slate-600 font-semibold text-[10.5px] leading-relaxed pl-3">{ref.contribuicao}</p>
+                                              )}
+                                            </div>
+                                          ))}
+                                        </div>
+                                      );
+
+                                      // Prioridade 1: texto pronto → parsear e exibir em cards
+                                      if (textVal) {
+                                        return <ReferenciaisGrid entries={parseLinhas(textVal)} />;
                                       }
 
-                                      // Mensagem de Fallback
+                                      // Prioridade 2: array estruturado
+                                      if (jsonList.length > 0) {
+                                        const entries = jsonList.map((ref: any) => ({
+                                          autor: ref.autor || ref.author || '',
+                                          contribuicao: ref.contribuicao || ref.contribution || ref.conceito_aplicado || ref.conceito || ref.concept || ref.obra || ''
+                                        })).filter((e: any) => e.autor);
+                                        return <ReferenciaisGrid entries={entries} />;
+                                      }
+
                                       return (
                                         <div className="p-4 bg-slate-50 border border-slate-150 rounded-2xl text-center text-slate-500 font-semibold text-xs py-4">
                                           Nenhum referencial teórico específico foi identificado nos documentos utilizados nesta análise.
