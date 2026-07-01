@@ -293,6 +293,11 @@ function mapDbResultadoToResultado(item: any): any {
       console.error('Error parsing scores:', e);
     }
   }
+  
+  // Ensure scores is a valid object with expected keys
+  if (!parsedScores || typeof parsedScores !== 'object' || Object.keys(parsedScores).length === 0) {
+    parsedScores = { Assertivo: 0, Participativo: 0, Integrador: 0, Analitico: 0 };
+  }
 
   let parsedInsights = undefined;
   if (item.ai_insights) {
@@ -809,7 +814,7 @@ export async function criarResultado(
     perfil_terciario: rawPayload.db_record?.perfil_terciario || assessment.thirdProfile || cp.perfilTerciario || null,
     perfil_menos_utili: rawPayload.db_record?.perfil_menos_utilizado || rawPayload.db_record?.perfil_menos_utili || assessment.lowestProfile || cp.perfilMenosUtilizado || null,
     perfil_menos_utilizado: rawPayload.db_record?.perfil_menos_utilizado || rawPayload.db_record?.perfil_menos_utili || assessment.lowestProfile || cp.perfilMenosUtilizado || null,
-    scores: rawPayload.db_record?.scores || assessment.scores || cp.scores || null,
+    scores: rawPayload.db_record?.scores || assessment.scores || cp.scores || scores || null,
     raw_payload: rawPayload, // Stores full JSON returned by n8n
     ai_insights: rawPayload, // Stores full JSON payload as requested to protect all report sections
     data_conclusao: rawPayload.db_record?.data_conclusao || metadata.completedAt || cp.completedAt || null,
