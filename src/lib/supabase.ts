@@ -927,6 +927,7 @@ export async function listarResultados(): Promise<Resultado[]> {
   }
 
   return mapped;
+}
 
 /**
  * Buscar Resultado
