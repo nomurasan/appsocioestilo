@@ -2,8 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Building2, Users, Settings, Trash2, PlusCircle, Edit3, Check, X, 
   ChevronRight, ArrowLeft, RefreshCw, Shield, AlertTriangle, 
-  UserPlus, CheckCircle2, Sliders, ShieldAlert, FileText, Search, Grid, Eye,
-  Download, Database
+  UserPlus, CheckCircle2, Sliders, ShieldAlert, FileText, Search, Grid, Eye
 } from 'lucide-react';
 import { Empresa, Usuario, Resultado, Scores, STYLE_NAMES } from '../types';
 import { 
@@ -515,63 +514,6 @@ export default function AdminScreen({
         </div>
       ) : (
         <div className="space-y-8">
-          {/* Section for n8n Flow and SQL Scripts Export Downloads */}
-          <div className="bg-gradient-to-r from-slate-50 to-gray-50 border border-gray-200 rounded-3xl p-6" id="section-export-downloads">
-            <h4 className="text-sm font-black text-[#112363] uppercase tracking-wider mb-2">
-              Recursos de Integração n8n & Banco de Dados (Supabase)
-            </h4>
-            <p className="text-xxs text-gray-500 font-semibold mb-4 leading-relaxed">
-              Baixe os templates e scripts necessários para manter sua automação n8n e a tabela do Supabase em conformidade com as respostas individualizadas do questionário.
-            </p>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-              {/* Card 1: n8n Workflow JSON File */}
-              <div className="bg-white border border-gray-150 rounded-2xl p-5 flex flex-col justify-between shadow-sm">
-                <div>
-                  <div className="flex items-center space-x-2 text-[#112363] mb-2">
-                    <div className="p-1.5 rounded-lg bg-[#112363]/5">
-                      <FileText className="w-4 h-4 text-[#112363]" />
-                    </div>
-                    <span className="text-xs font-bold">Fluxo n8n - Socioestilo RAG (JSON)</span>
-                  </div>
-                  <p className="text-[10px] text-gray-500 leading-relaxed mb-4">
-                    Workflow pronto para importação no n8n. Inclui recebimento do webhook de respostas individuais, normalização de styles, busca vetorial direta (modo tool) no Supabase e resposta formatada JSON.
-                  </p>
-                </div>
-                <a
-                  href="/n8n_workflow_socioestilo.json"
-                  download="n8n_workflow_socioestilo.json"
-                  className="flex items-center justify-center space-x-1.5 bg-[#112363] hover:bg-[#112363]/90 text-white font-extrabold text-[10px] py-2.5 px-4 rounded-xl transition-all text-center cursor-pointer shadow-sm active:scale-98"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>DOWNLOAD WORKFLOW (.JSON)</span>
-                </a>
-              </div>
-
-              {/* Card 2: Supabase Complete Configuration Script (Columns, RLS, vector RPC) */}
-              <div className="bg-white border border-gray-150 rounded-2xl p-5 flex flex-col justify-between shadow-sm">
-                <div>
-                  <div className="flex items-center space-x-2 text-[#D80E2A] mb-2">
-                    <div className="p-1.5 rounded-lg bg-red-50">
-                      <Database className="w-4 h-4 text-[#D80E2A]" />
-                    </div>
-                    <span className="text-xs font-bold">Script SQL Completo (Colunas, RLS e Busca Vetorial)</span>
-                  </div>
-                  <p className="text-[10px] text-gray-500 leading-relaxed mb-4">
-                    Script SQL completo para adicionar as colunas <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-gray-500">q1</code> a <code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-gray-500">q14</code>, estruturar políticas Row Level Security (RLS) sem causar erros de gravação e registrar as funções RPC de busca por PgVector (<code className="bg-gray-100 px-1 py-0.5 rounded font-mono text-gray-500">match_documents</code>). Execute-o no SQL Editor do Supabase.
-                  </p>
-                </div>
-                <a
-                  href="/suporte_supabase_completo.sql"
-                  download="suporte_supabase_completo.sql"
-                  className="flex items-center justify-center space-x-1.5 bg-[#D80E2A] hover:bg-[#D80E2A]/90 text-white font-extrabold text-[10px] py-2.5 px-4 rounded-xl transition-all text-center cursor-pointer shadow-sm active:scale-98"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>DOWNLOAD SCRIPT COMPLETO (.SQL)</span>
-                </a>
-              </div>
-            </div>
-          </div>
-
           <div className="space-y-4 animate-fade-in" id="section-empresas">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2.5">
