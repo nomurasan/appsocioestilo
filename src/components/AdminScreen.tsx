@@ -581,9 +581,27 @@ export default function AdminScreen({
                   // Only count results with valid scores (at least one > 0)
                   const companyResultCount = resultados.filter(e => {
                     if (e.empresa_id !== emp.id) return false;
-                    if (!e.scores || typeof e.scores !== 'object') return false;
+                    if (!e.scores || typeof e.scores !== 'object') {
+                      if (isSelected && process.env.NODE_ENV === 'development') {
+                        console.warn('[AdminScreen] Result filtered: invalid scores', { 
+                          id: e.id, 
+                          scores: e.scores, 
+                          scoresType: typeof e.scores 
+                        });
+                      }
+                      return false;
+                    }
                     const scoreValues = Object.values(e.scores) as number[];
-                    return scoreValues.length > 0 && scoreValues.some(s => typeof s === 'number' && s > 0);
+                    const hasValidScores = scoreValues.length > 0 && scoreValues.some(s => typeof s === 'number' && s > 0);
+                    if (!hasValidScores && isSelected && process.env.NODE_ENV === 'development') {
+                      console.warn('[AdminScreen] Result filtered: no valid scores > 0', { 
+                        id: e.id, 
+                        scores: e.scores,
+                        scoreValues,
+                        empresa_id: e.empresa_id
+                      });
+                    }
+                    return hasValidScores;
                   }).length;
 
                   return (

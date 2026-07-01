@@ -887,6 +887,10 @@ export async function listarResultados(): Promise<Resultado[]> {
   }
   if (!rawData || rawData.length === 0) return [];
 
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[listarResultados] Raw count from DB:', rawData.length);
+  }
+
   // Fetch all users and companies to map names easily and perfectly
   const { data: usersData } = await supabase.from('usuarios').select('uid, nome');
   const { data: empsData } = await supabase.from('empresas').select('id_empresa, nome');
@@ -905,7 +909,7 @@ export async function listarResultados(): Promise<Resultado[]> {
     });
   }
 
-  return rawData.map((item: any) => {
+  const mapped = rawData.map((item: any) => {
     const mapped = mapDbResultadoToResultado(item);
     if (mapped) {
       mapped.nome_usuario = userMap[mapped.id_usuario] || 'Usuário Desconhecido';
@@ -913,7 +917,16 @@ export async function listarResultados(): Promise<Resultado[]> {
     }
     return mapped;
   }).filter(Boolean) as Resultado[];
-}
+
+  if (process.env.NODE_ENV === 'development') {
+    console.log('[listarResultados] Mapped count:', mapped.length);
+    // Log items that got filtered out
+    if (mapped.length < rawData.length) {
+      console.warn(`[listarResultados] ${rawData.length - mapped.length} items filtered by mapDbResultadoToResultado`);
+    }
+  }
+
+  return mapped;
 
 /**
  * Buscar Resultado

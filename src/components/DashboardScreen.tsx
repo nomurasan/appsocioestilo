@@ -1170,10 +1170,29 @@ export default function DashboardScreen({
       if (!userKey) return;
       
       // Only include results with valid scores (at least one score > 0)
-      if (!result.scores || typeof result.scores !== 'object') return;
+      if (!result.scores || typeof result.scores !== 'object') {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[DashboardScreen] Result filtered: invalid scores', { 
+            id: result.id, 
+            scores: result.scores, 
+            scoresType: typeof result.scores 
+          });
+        }
+        return;
+      }
       const scoreValues = Object.values(result.scores) as number[];
       const hasValidScores = scoreValues.length > 0 && scoreValues.some(s => typeof s === 'number' && s > 0);
-      if (!hasValidScores) return;
+      if (!hasValidScores) {
+        if (process.env.NODE_ENV === 'development') {
+          console.warn('[DashboardScreen] Result filtered: no valid scores > 0', { 
+            id: result.id, 
+            scores: result.scores,
+            scoreValues,
+            userKey
+          });
+        }
+        return;
+      }
       
       const existing = latestMap[userKey];
       if (!existing || new Date(result.data_conclusao) > new Date(existing.data_conclusao)) {
