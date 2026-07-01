@@ -1170,7 +1170,9 @@ export default function DashboardScreen({
       if (!userKey) return;
       
       // Only include results with valid scores (at least one score > 0)
-      const hasValidScores = result.scores && Object.values(result.scores).some(s => (s as number) > 0);
+      if (!result.scores || typeof result.scores !== 'object') return;
+      const scoreValues = Object.values(result.scores) as number[];
+      const hasValidScores = scoreValues.length > 0 && scoreValues.some(s => typeof s === 'number' && s > 0);
       if (!hasValidScores) return;
       
       const existing = latestMap[userKey];

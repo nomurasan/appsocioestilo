@@ -577,7 +577,14 @@ export default function AdminScreen({
                 {empresas.map((emp) => {
                   const isSelected = selectedCompanyId === emp.id;
                   const companyUserCount = usuarios.filter(u => u.empresa_id === emp.id).length;
-                  const companyResultCount = resultados.filter(e => e.empresa_id === emp.id).length;
+                  
+                  // Only count results with valid scores (at least one > 0)
+                  const companyResultCount = resultados.filter(e => {
+                    if (e.empresa_id !== emp.id) return false;
+                    if (!e.scores || typeof e.scores !== 'object') return false;
+                    const scoreValues = Object.values(e.scores) as number[];
+                    return scoreValues.length > 0 && scoreValues.some(s => typeof s === 'number' && s > 0);
+                  }).length;
 
                   return (
                     <div 
