@@ -1169,6 +1169,10 @@ export default function DashboardScreen({
       const userKey = result.id_usuario || result.nome_usuario;
       if (!userKey) return;
       
+      // Only include results with valid scores (at least one score > 0)
+      const hasValidScores = result.scores && Object.values(result.scores).some(s => (s as number) > 0);
+      if (!hasValidScores) return;
+      
       const existing = latestMap[userKey];
       if (!existing || new Date(result.data_conclusao) > new Date(existing.data_conclusao)) {
         latestMap[userKey] = result;

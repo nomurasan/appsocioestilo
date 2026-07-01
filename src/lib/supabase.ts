@@ -340,6 +340,21 @@ function mapDbResultadoToResultado(item: any): any {
   const rawAnswersParsed = safeParseJSON(item.respostas_questionario) || item.answers || {};
   const finalAnswersObj = Object.keys(rawAnswersParsed).length > 0 ? rawAnswersParsed : reconstructedAnswers;
 
+  // Calculate perfilDominante from scores if not present
+  let effectivePerfilDominante = item.perfil_dominante;
+  if (!effectivePerfilDominante && parsedScores) {
+    const scoreKeys: (keyof Scores)[] = ['Assertivo', 'Participativo', 'Integrador', 'Analitico'];
+    let maxScore = -1;
+    let maxStyle = '';
+    scoreKeys.forEach(style => {
+      if (((parsedScores as any)[style] || 0) > maxScore) {
+        maxScore = (parsedScores as any)[style] || 0;
+        maxStyle = style;
+      }
+    });
+    effectivePerfilDominante = maxStyle || undefined;
+  }
+
   return {
     id: String(item.id_resultado || item.id || ''),
     id_resultado: String(item.id_resultado || item.id || ''),
@@ -348,7 +363,7 @@ function mapDbResultadoToResultado(item: any): any {
     empresa_id: String(item.id_empresa === 0 || item.id_empresa ? item.id_empresa : mapUuidToCompanyId(item.empresa_id)),
     empresa_nome: item.company_name || item.empresa_nome || '',
     scores: parsedScores,
-    perfil_dominante: item.perfil_dominante || undefined,
+    perfil_dominante: effectivePerfilDominante,
     data_conclusao: item.generated_at || item.data_conclusao || item.created_at || '',
     ai_insights: parsedInsights,
     answers: finalAnswersObj,
@@ -606,6 +621,20 @@ export async function criarResultado(
     const reportData = aiInsights?.report_data || {};
     scores = reportData.resultado?.scores || { Assertivo: 0, Participativo: 0, Integrador: 0, Analitico: 0 };
     perfilDominante = reportData.resultado?.perfil_dominante || '';
+    
+    // If perfil_dominante is empty, calculate it from scores
+    if (!perfilDominante && scores) {
+      const scoreKeys: (keyof Scores)[] = ['Assertivo', 'Participativo', 'Integrador', 'Analitico'];
+      let maxScore = -1;
+      let maxStyle = '';
+      scoreKeys.forEach(style => {
+        if ((scores[style] || 0) > maxScore) {
+          maxScore = scores[style] || 0;
+          maxStyle = style;
+        }
+      });
+      perfilDominante = maxStyle || '';
+    }
   } else {
     scores = param3 || { Assertivo: 0, Participativo: 0, Integrador: 0, Analitico: 0 };
     perfilDominante = param4 || '';
@@ -614,6 +643,20 @@ export async function criarResultado(
     userName = param7 || '';
     companyName = param8 || '';
     finalAnswersDetailed = param9;
+    
+    // If perfil_dominante is empty, calculate it from scores
+    if (!perfilDominante && scores) {
+      const scoreKeys: (keyof Scores)[] = ['Assertivo', 'Participativo', 'Integrador', 'Analitico'];
+      let maxScore = -1;
+      let maxStyle = '';
+      scoreKeys.forEach(style => {
+        if ((scores[style] || 0) > maxScore) {
+          maxScore = scores[style] || 0;
+          maxStyle = style;
+        }
+      });
+      perfilDominante = maxStyle || '';
+    }
   }
 
   if (!userName || !companyName) {
