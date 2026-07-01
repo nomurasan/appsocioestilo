@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, buscarUsuario, listarResultadosUsuario, atualizarUsuario, mapFirebaseUidToUuid, syncFirebaseUserWithSupabaseAuth } from './lib/supabase';
+import { supabase, buscarUsuario, buscarUsuarioPorEmail, listarResultadosUsuario, atualizarUsuario, mapFirebaseUidToUuid, syncFirebaseUserWithSupabaseAuth } from './lib/supabase';
 import { auth as fbAuth, signOut as fbSignOut } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Usuario, Resultado } from './types';
@@ -55,22 +55,32 @@ export default function App() {
       // Fetch user profile using the ORIGINAL UID (buscar_usuario will map it internally)
       let profile = await buscarUsuario(originalUid);
 
-      // Self-healing migration for legacy users: if no profile exists for original UID but one exists under a different mapping, migrate it.
+      // Self-healing migration for legacy users: if no profile exists for original UID but one exists under a different mapping, try additional lookups.
       if (!profile && userObj.origin === 'firebase') {
-        const legacyUid = mapFirebaseUidToUuid(userObj.id);
-        profile = await buscarUsuario(legacyUid);
-        if (profile) {
-          try {
-            const newMappedUid = mapFirebaseUidToUuid(originalUid);
-            await supabase.from('usuarios').update({ uid: newMappedUid }).eq('uid', legacyUid);
-            profile.uid = newMappedUid;
-            console.log(`[DEBUG AUTH] Migrated public.usuarios uid from legacy ${legacyUid} to ${newMappedUid}`);
-          } catch (migErr) {
-            console.error("Failed to migrate legacy uid:", migErr);
-          }
+        // 1) Try the resolved Supabase auth UID, if different from the Firebase UID.
+        if (resolvedId && resolvedId !== originalUid) {
+          profile = await buscarUsuario(resolvedId);
         }
       }
-      
+
+      if (!profile && userObj.origin === 'firebase') {
+        const mappedUid = mapFirebaseUidToUuid(userObj.id);
+        if (mappedUid && mappedUid !== originalUid && mappedUid !== resolvedId) {
+          profile = await buscarUsuario(mappedUid);
+        }
+      }
+
+      if (!profile && userObj.origin === 'firebase' && userObj.email) {
+        profile = await buscarUsuarioPorEmail(userObj.email);
+      }
+
+      if (!profile && userObj.origin === 'firebase') {
+        const legacyUid = mapFirebaseUidToUuid(userObj.id);
+        if (legacyUid && legacyUid !== originalUid && legacyUid !== resolvedId) {
+          profile = await buscarUsuario(legacyUid);
+        }
+      }
+
       if (profile) {
         // Auto-upgrade user profile to admin if email matches nomura.eduardo@gmail.com
         if (mappedUser.email === 'nomura.eduardo@gmail.com' && profile.role !== 'admin') {

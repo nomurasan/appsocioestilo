@@ -529,14 +529,47 @@ export async function listarUsuarios(): Promise<Usuario[]> {
  * Buscar Usuário
  */
 export async function buscarUsuario(uid: string): Promise<Usuario | null> {
-  const mappedUid = mapFirebaseUidToUuid(uid);
-  const { data, error } = await supabase.from('usuarios').select('*').eq('uid', mappedUid).maybeSingle();
+  const trimmedUid = String(uid || '').trim();
+  const mappedUid = mapFirebaseUidToUuid(trimmedUid);
+
+  // First try the UID exactly as provided, then try the deterministic mapped Firebase UID.
+  let { data, error } = await supabase.from('usuarios').select('*').eq('uid', trimmedUid).maybeSingle();
   if (error) {
-    handleSupabaseError(error, OperationType.GET, `buscar_usuario: ${mappedUid}`);
+    handleSupabaseError(error, OperationType.GET, `buscar_usuario: ${trimmedUid}`);
   }
+
+  if (!data && mappedUid !== trimmedUid) {
+    const result = await supabase.from('usuarios').select('*').eq('uid', mappedUid).maybeSingle();
+    data = result.data;
+    error = result.error;
+    if (error) {
+      handleSupabaseError(error, OperationType.GET, `buscar_usuario: ${mappedUid}`);
+    }
+  }
+
   if (!data) return null;
   
   const user = mapDbUsuarioToUsuario(data, mappedUid);
+  if (user && user.empresa_id) {
+    const { data: empData } = await supabase.from('empresas').select('nome').eq('id_empresa', parseBigIntId(user.empresa_id)).maybeSingle();
+    if (empData) {
+      user.empresa_nome = empData.nome || '';
+    }
+  }
+  return user;
+}
+
+export async function buscarUsuarioPorEmail(email: string): Promise<Usuario | null> {
+  const normalizedEmail = String(email || '').trim().toLowerCase();
+  if (!normalizedEmail) return null;
+
+  const { data, error } = await supabase.from('usuarios').select('*').ilike('email', normalizedEmail).maybeSingle();
+  if (error) {
+    handleSupabaseError(error, OperationType.GET, `buscar_usuario_por_email: ${normalizedEmail}`);
+  }
+  if (!data) return null;
+
+  const user = mapDbUsuarioToUsuario(data);
   if (user && user.empresa_id) {
     const { data: empData } = await supabase.from('empresas').select('nome').eq('id_empresa', parseBigIntId(user.empresa_id)).maybeSingle();
     if (empData) {
