@@ -36,7 +36,10 @@ export default function App() {
       return;
     }
 
+    // Keep original UID for buscar_usuario (which will map internally)
+    const originalUid = userObj.id;
     let resolvedId = userObj.id;
+    
     if (userObj.origin === 'firebase') {
       try {
         resolvedId = await syncFirebaseUserWithSupabaseAuth(userObj.id, userObj.email || '');
@@ -49,18 +52,19 @@ export default function App() {
     setCurrentUser(mappedUser);
     
     try {
-      // Fetch user profile with RPC buscar_usuario
-      let profile = await buscarUsuario(resolvedId);
+      // Fetch user profile using the ORIGINAL UID (buscar_usuario will map it internally)
+      let profile = await buscarUsuario(originalUid);
 
-      // Self-healing migration for legacy users: if no profile exists for resolvedId but one exists for the old mapped Firebase ID, migrate it.
+      // Self-healing migration for legacy users: if no profile exists for original UID but one exists under a different mapping, migrate it.
       if (!profile && userObj.origin === 'firebase') {
         const legacyUid = mapFirebaseUidToUuid(userObj.id);
         profile = await buscarUsuario(legacyUid);
         if (profile) {
           try {
-            await supabase.from('usuarios').update({ uid: resolvedId }).eq('uid', legacyUid);
-            profile.uid = resolvedId;
-            console.log(`[DEBUG AUTH] Migrated public.usuarios uid from legacy ${legacyUid} to resolvedId ${resolvedId}`);
+            const newMappedUid = mapFirebaseUidToUuid(originalUid);
+            await supabase.from('usuarios').update({ uid: newMappedUid }).eq('uid', legacyUid);
+            profile.uid = newMappedUid;
+            console.log(`[DEBUG AUTH] Migrated public.usuarios uid from legacy ${legacyUid} to ${newMappedUid}`);
           } catch (migErr) {
             console.error("Failed to migrate legacy uid:", migErr);
           }
@@ -82,7 +86,7 @@ export default function App() {
         // Check if user has already taken the test previously via RPC, with a bulletproof localStorage fallback
         let latestResult: Resultado | null = null;
         try {
-          const resultsList = await listarResultadosUsuario(resolvedId);
+          const resultsList = await listarResultadosUsuario(originalUid);
           if (resultsList && resultsList.length > 0) {
             resultsList.sort((a, b) => b.data_conclusao.localeCompare(a.data_conclusao));
             latestResult = resultsList[0];
@@ -93,7 +97,8 @@ export default function App() {
 
         if (!latestResult) {
           try {
-            const cached = localStorage.getItem(`potenciar_result_${resolvedId}`);
+            const mappedUid = userObj.origin === 'firebase' ? mapFirebaseUidToUuid(originalUid) : originalUid;
+            const cached = localStorage.getItem(`potenciar_result_${mappedUid}`);
             if (cached) {
               latestResult = JSON.parse(cached);
             } else if (userObj.origin === 'firebase') {
