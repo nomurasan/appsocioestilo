@@ -196,19 +196,20 @@ export default function AdminScreen({
 
   const resultBelongsToUser = (result: Resultado, user: Usuario) => {
     const anyResult = result as any;
-    const ids = [result.id_usuario, anyResult.user_id, anyResult.uid].filter(Boolean).map(String);
-    if (ids.includes(String(user.uid))) return true;
-
     const metadata = getResultMetadata(result);
     const resultEmail = metadata.email || metadata.userEmail || metadata.user_email || anyResult.email || anyResult.user_email;
     if (resultEmail && normalizeText(resultEmail) === normalizeText(user.email)) return true;
 
     const resultName = result.nome_usuario || result.user_name || metadata.userName || metadata.name || metadata.nome;
     const sameName = resultName && normalizeText(resultName) === normalizeText(user.nome);
-    if (!sameName) return false;
-
     const resultCompany = result.empresa_nome || result.company_name || metadata.companyName || metadata.empresa;
-    return !resultCompany || !user.empresa_nome || normalizeText(resultCompany) === normalizeText(user.empresa_nome);
+    if (sameName) {
+      return !resultCompany || !user.empresa_nome || normalizeText(resultCompany) === normalizeText(user.empresa_nome);
+    }
+    if (resultName) return false;
+
+    const ids = [result.id_usuario, anyResult.user_id, anyResult.uid].filter(Boolean).map(String);
+    return ids.includes(String(user.uid));
   };
 
   const getLatestResultForUser = (user: Usuario) => {
@@ -358,7 +359,7 @@ export default function AdminScreen({
         const companyUsers = usuarios.filter(u => u.empresa_id === id);
         
         // Find company or user results
-        const companyResults = resultados.filter(r => r.empresa_id === id || companyUsers.some(u => u.uid === r.id_usuario));
+        const companyResults = resultados.filter(r => r.empresa_id === id || companyUsers.some(u => resultBelongsToUser(r, u)));
         
         // 1. Delete all results for this company's users
         for (const r of companyResults) {
@@ -389,7 +390,8 @@ export default function AdminScreen({
         await excluirUsuario(id);
 
         // 2. Delete any results belonging to the user via RPC: excluir_resultado
-        const userResults = resultados.filter(r => r.id_usuario === id);
+        const deletedUser = usuarios.find(u => u.uid === id);
+        const userResults = deletedUser ? resultados.filter(r => resultBelongsToUser(r, deletedUser)) : resultados.filter(r => r.id_usuario === id);
         for (const r of userResults) {
           const resultId = (r as any).id || (r as any).id_resultado;
           await excluirResultado(resultId);

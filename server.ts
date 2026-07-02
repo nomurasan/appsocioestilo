@@ -422,6 +422,27 @@ app.post("/api/knowledge-search", apiRateLimiter, async (req: Request, res: Resp
 });
 
 // Rota proxy para envio dos questionários ao webhook do n8n com normalização flexível (V21 compatible)
+app.get("/api/resultados", apiRateLimiter, async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { data, error } = await supabase.from("resultados").select("*");
+
+    if (error) {
+      console.error("[RESULTADOS] Falha ao listar resultados via backend:", error.message);
+      return res.status(500).json({
+        error: "Não foi possível carregar os resultados.",
+        details: error.message
+      });
+    }
+
+    return res.json({
+      data: data || [],
+      count: data?.length || 0
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.post("/api/insights", apiRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Validação básica: não vazio

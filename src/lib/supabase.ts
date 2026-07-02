@@ -183,6 +183,28 @@ export function handleSupabaseError(error: any, operationType: OperationType, pa
 // AUXILIARY PARSERS & MODEL MAPPERS
 // -------------------------------------------------------------
 
+async function fetchBackendResultados(): Promise<any[]> {
+  if (typeof fetch !== 'function') return [];
+
+  try {
+    const response = await fetch('/api/resultados', {
+      method: 'GET',
+      headers: { Accept: 'application/json' }
+    });
+
+    if (!response.ok) {
+      console.warn('[listarResultados] Backend fallback returned status:', response.status);
+      return [];
+    }
+
+    const payload = await response.json();
+    return Array.isArray(payload?.data) ? payload.data : [];
+  } catch (err) {
+    console.warn('[listarResultados] Backend fallback failed:', err);
+    return [];
+  }
+}
+
 export function parseBigIntId(id: any): number | null {
   if (id === undefined || id === null || id === '') return null;
   const unmapped = mapUuidToCompanyId(id);
@@ -995,9 +1017,14 @@ export async function criarResultado(
  * Listar Resultados
  */
 export async function listarResultados(): Promise<Resultado[]> {
-  const { data: rawData, error } = await supabase.from('resultados').select('*');
+  let { data: rawData, error } = await supabase.from('resultados').select('*');
   if (error) {
-    handleSupabaseError(error, OperationType.LIST, 'listar_resultados');
+    console.warn('[listarResultados] Direct Supabase read failed, trying backend fallback:', error.message);
+    rawData = await fetchBackendResultados();
+  }
+  const backendRawData = await fetchBackendResultados();
+  if (backendRawData.length > (rawData?.length || 0)) {
+    rawData = backendRawData;
   }
   if (!rawData || rawData.length === 0) return [];
 
@@ -1026,8 +1053,8 @@ export async function listarResultados(): Promise<Resultado[]> {
   const mapped = rawData.map((item: any) => {
     const mapped = mapDbResultadoToResultado(item);
     if (mapped) {
-      mapped.nome_usuario = userMap[mapped.id_usuario] || mapped.nome_usuario || mapped.user_name || 'Usuário Desconhecido';
-      mapped.empresa_nome = empMap[mapped.empresa_id] || mapped.empresa_nome || mapped.company_name || '';
+      mapped.nome_usuario = mapped.nome_usuario || mapped.user_name || userMap[mapped.id_usuario] || 'Usuário Desconhecido';
+      mapped.empresa_nome = mapped.empresa_nome || mapped.company_name || empMap[mapped.empresa_id] || '';
     }
     return mapped;
   }).filter(Boolean) as Resultado[];

@@ -1038,6 +1038,37 @@ export default function DashboardScreen({
   // Allow choosing to view other teammate profiles in detail
   const [selectedMemberResult, setSelectedMemberResult] = useState<Resultado | null>(null);
 
+  const normalizeTeamText = (value: any) => {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase();
+  };
+
+  const getResultMetadata = (result: Resultado) => {
+    const anyResult = result as any;
+    return anyResult.metadata || anyResult.raw_payload?.metadata || anyResult.ai_insights?.metadata || {};
+  };
+
+  const resultMatchesTargetCompany = (result: Resultado) => {
+    const metadata = getResultMetadata(result);
+    const targetName = normalizeTeamText(targetCompanyNome);
+    const companyNames = [
+      result.empresa_nome,
+      result.company_name,
+      metadata.companyName,
+      metadata.empresa,
+      metadata.company,
+      metadata.empresa_nome
+    ].filter(Boolean);
+
+    if (adminSelectedCompanyId && String(result.empresa_id) === String(adminSelectedCompanyId)) return true;
+    if (targetName && companyNames.some(name => normalizeTeamText(name) === targetName)) return true;
+
+    return targetName && companyNames.length === 0 && !result.empresa_id;
+  };
+
   // Load team results from Supabase for the target company
   useEffect(() => {
     const fetchTeamResults = async () => {
@@ -1045,10 +1076,7 @@ export default function DashboardScreen({
       setTeamError(null);
       try {
         const allResults = await listarResultados();
-        const results = allResults.filter(r => 
-          r.empresa_nome === targetCompanyNome || 
-          (adminSelectedCompanyId && r.empresa_id === adminSelectedCompanyId)
-        );
+        const results = allResults.filter(resultMatchesTargetCompany);
         setTeamResults(results);
       } catch (err) {
         setTeamError('Não foi possível carregar os resultados da equipe. Verifique as configurações de rede ou tente atualizar.');
@@ -1166,7 +1194,16 @@ export default function DashboardScreen({
   const getLatestResultPerUser = (allResults: Resultado[]): Resultado[] => {
     const latestMap: Record<string, Resultado> = {};
     allResults.forEach((result) => {
-      const userKey = result.id_usuario || result.nome_usuario;
+      const metadata = getResultMetadata(result);
+      const userKey = normalizeTeamText(
+        result.nome_usuario ||
+        result.user_name ||
+        metadata.userName ||
+        metadata.name ||
+        metadata.nome ||
+        metadata.email ||
+        result.id_usuario
+      );
       if (!userKey) return;
       
       // Only include results with valid scores (at least one score > 0)
