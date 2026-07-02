@@ -63,14 +63,14 @@ export default function App() {
         }
       }
 
-      if (!profile && userObj.origin === 'firebase') {
+      if (!profile) {
         const mappedUid = mapFirebaseUidToUuid(userObj.id);
         if (mappedUid && mappedUid !== originalUid && mappedUid !== resolvedId) {
           profile = await buscarUsuario(mappedUid);
         }
       }
 
-      if (!profile && userObj.origin === 'firebase' && userObj.email) {
+      if (!profile && userObj.email) {
         profile = await buscarUsuarioPorEmail(userObj.email);
       }
 
