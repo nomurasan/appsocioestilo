@@ -171,6 +171,52 @@ export default function AdminScreen({
 
   // --- BUSINESS LOGIC: USERS & ADEQUAÇÕES ---
 
+  const normalizeText = (value: any) => {
+    return String(value || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .trim()
+      .toLowerCase();
+  };
+
+  const normalizeDominantProfile = (value: any): keyof Scores | '' => {
+    const normalized = normalizeText(value);
+    if (!normalized) return '';
+    if (normalized.includes('conserv') || normalized.includes('agreg') || normalized.includes('integ') || normalized.includes('amav')) return 'Integrador';
+    if (normalized.includes('assert') || normalized.includes('direto')) return 'Assertivo';
+    if (normalized.includes('particip') || normalized.includes('express')) return 'Participativo';
+    if (normalized.includes('analit')) return 'Analitico';
+    return '';
+  };
+
+  const getResultMetadata = (result: Resultado) => {
+    const anyResult = result as any;
+    return anyResult.metadata || anyResult.raw_payload?.metadata || anyResult.ai_insights?.metadata || {};
+  };
+
+  const resultBelongsToUser = (result: Resultado, user: Usuario) => {
+    const anyResult = result as any;
+    const ids = [result.id_usuario, anyResult.user_id, anyResult.uid].filter(Boolean).map(String);
+    if (ids.includes(String(user.uid))) return true;
+
+    const metadata = getResultMetadata(result);
+    const resultEmail = metadata.email || metadata.userEmail || metadata.user_email || anyResult.email || anyResult.user_email;
+    if (resultEmail && normalizeText(resultEmail) === normalizeText(user.email)) return true;
+
+    const resultName = result.nome_usuario || result.user_name || metadata.userName || metadata.name || metadata.nome;
+    const sameName = resultName && normalizeText(resultName) === normalizeText(user.nome);
+    if (!sameName) return false;
+
+    const resultCompany = result.empresa_nome || result.company_name || metadata.companyName || metadata.empresa;
+    return !resultCompany || !user.empresa_nome || normalizeText(resultCompany) === normalizeText(user.empresa_nome);
+  };
+
+  const getLatestResultForUser = (user: Usuario) => {
+    return resultados
+      .filter(r => resultBelongsToUser(r, user))
+      .sort((a, b) => b.data_conclusao.localeCompare(a.data_conclusao))[0];
+  };
+
   const handleStartEditUser = (user: Usuario) => {
     setEditingUser(user);
     setEditUserNome(user.nome);
@@ -178,15 +224,15 @@ export default function AdminScreen({
     setEditUserRole(user.role || 'user');
 
     // Check if this user already has an active score result
-    const userResult = resultados.find(r => r.id_usuario === user.uid);
+    const userResult = getLatestResultForUser(user);
     if (userResult) {
       setHasSocioestiloResult(true);
       const sAny = userResult.scores as any;
       setEditUserScores({
         Assertivo: userResult.scores.Assertivo ?? sAny.Direto ?? 0,
         Participativo: userResult.scores.Participativo ?? sAny.Expressivo ?? 0,
-        Integrador: userResult.scores.Integrador ?? sAny.Amavel ?? 0,
-        Analitico: userResult.scores.Analitico ?? 0
+        Integrador: userResult.scores.Integrador ?? sAny.integrador ?? sAny.Amavel ?? sAny.conservador_agregador ?? sAny["Conservador agregador"] ?? 0,
+        Analitico: userResult.scores.Analitico ?? sAny["Analítico"] ?? sAny.analitico ?? 0
       });
     } else {
       setHasSocioestiloResult(false);
@@ -218,7 +264,7 @@ export default function AdminScreen({
       );
 
       // 2. Adjust or Create scores if desired
-      const existingResult = resultados.find(r => r.id_usuario === editingUser.uid);
+      const existingResult = getLatestResultForUser(editingUser);
       
       if (hasSocioestiloResult) {
         // Validate scores
@@ -388,10 +434,7 @@ export default function AdminScreen({
   };
 
   const handleViewUserReportInternal = (user: Usuario, specificResult?: Resultado) => {
-    const userAttempts = resultados
-      .filter(r => r.id_usuario === user.uid)
-      .sort((a, b) => b.data_conclusao.localeCompare(a.data_conclusao));
-    const result = specificResult || userAttempts[0];
+    const result = specificResult || getLatestResultForUser(user);
     if (result && onViewUserReport) {
       onViewUserReport(user, result);
     } else {
@@ -400,13 +443,16 @@ export default function AdminScreen({
   };
 
   // Helper to find dominant style for a user (considering latest result)
-  const getUserDominantStyle = (uid: string) => {
-    const userAttempts = resultados
-      .filter(r => r.id_usuario === uid)
-      .sort((a, b) => b.data_conclusao.localeCompare(a.data_conclusao));
-    const result = userAttempts[0];
+  const getUserDominantStyle = (user: Usuario) => {
+    const result = getLatestResultForUser(user);
     if (!result) return "Não Respondeu";
-    
+
+    const profileFromResult = normalizeDominantProfile(result.perfil_dominante);
+    if (profileFromResult) {
+      const profileScore = result.scores?.[profileFromResult] || 0;
+      return `${STYLE_NAMES[profileFromResult] || profileFromResult}${profileScore > 0 ? ` (${profileScore}pts)` : ''}`;
+    }
+
     const { scores } = result;
     let dominant: keyof Scores = 'Assertivo';
     let max = -1;
@@ -782,7 +828,7 @@ export default function AdminScreen({
                   <tbody className="bg-white divide-y divide-gray-100">
                     {filteredUsers.map((user) => {
                       const userAttempts = resultados
-                        .filter(r => r.id_usuario === user.uid)
+                        .filter(r => resultBelongsToUser(r, user))
                         .sort((a, b) => b.data_conclusao.localeCompare(a.data_conclusao));
                       const userResult = userAttempts[0];
                       const isUserAdmin = user.role === 'admin' || user.email === 'nomura.eduardo@gmail.com';
@@ -818,7 +864,7 @@ export default function AdminScreen({
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-100' 
                                 : 'bg-gray-50 text-gray-500 border-gray-150'
                             }`}>
-                              {getUserDominantStyle(user.uid)}
+                              {getUserDominantStyle(user)}
                             </span>
                           </td>
 

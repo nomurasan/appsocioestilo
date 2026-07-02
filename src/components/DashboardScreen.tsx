@@ -864,7 +864,7 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     perfil_menos_utilizado: finalLow,
     score_assertivo: styleValues.Assertivo,
     score_participativo: styleValues.Participativo,
-    score_conservador_agregador: styleValues["Integrador"],
+    score_integrador: styleValues["Integrador"],
     score_analitico: styleValues.Analítico,
     total_pontos: totalPoints,
     parecer_executivo: finalReportData.narrativa.parecer_executivo,

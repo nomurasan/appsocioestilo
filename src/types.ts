@@ -66,6 +66,7 @@ export interface Resultado {
   fontes_consultadas?: any;
   relatorio_pronto_para_app?: any;
   raw_payload?: any;
+  metadata?: any;
   dinamica_dos_estilos?: {
     lado_luz: string;
     lado_sombra: string;

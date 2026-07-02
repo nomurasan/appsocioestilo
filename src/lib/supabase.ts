@@ -282,6 +282,27 @@ function computeDetailedAnswers(answers?: Record<string, string | string[]>) {
   return detailed;
 }
 
+function normalizeProfileName(value: any): string {
+  if (!value) return '';
+  const profile = String(value).trim();
+  const normalized = profile.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+  if (normalized.includes('conserv') || normalized.includes('agreg') || normalized.includes('integ') || normalized.includes('amav')) {
+    return 'Integrador';
+  }
+  if (normalized.includes('assert') || normalized.includes('direto')) {
+    return 'Assertivo';
+  }
+  if (normalized.includes('particip') || normalized.includes('express')) {
+    return 'Participativo';
+  }
+  if (normalized.includes('analit')) {
+    return 'Analitico';
+  }
+
+  return profile;
+}
+
 function mapDbResultadoToResultado(item: any): any {
   if (!item) return null;
   
@@ -311,14 +332,14 @@ function mapDbResultadoToResultado(item: any): any {
   const columnScores: Scores = {
     Assertivo: readNumericScore(item.score_assertivo, item.assertivo),
     Participativo: readNumericScore(item.score_participativo, item.participativo),
-    Integrador: readNumericScore(item.score_conservador_agregador, item.score_integrador, item.conservador_agregador, item.integrador),
+    Integrador: readNumericScore(item.score_integrador, item.score_conservador_agregador, item.integrador, item.conservador_agregador),
     Analitico: readNumericScore(item.score_analitico, item.score_analitico_sem_acento, item.analitico)
   };
 
   const hasColumnScore = {
     Assertivo: hasScoreValue(item.score_assertivo, item.assertivo),
     Participativo: hasScoreValue(item.score_participativo, item.participativo),
-    Integrador: hasScoreValue(item.score_conservador_agregador, item.score_integrador, item.conservador_agregador, item.integrador),
+    Integrador: hasScoreValue(item.score_integrador, item.score_conservador_agregador, item.integrador, item.conservador_agregador),
     Analitico: hasScoreValue(item.score_analitico, item.score_analitico_sem_acento, item.analitico)
   };
 
@@ -357,6 +378,8 @@ function mapDbResultadoToResultado(item: any): any {
     return val;
   };
 
+  const parsedMetadata = safeParseJSON(item.metadata) || {};
+
   const reconstructedAnswers: Record<string, string | string[]> = {};
   try {
     const q1Options = [item.q1_opcao_1, item.q1_opcao_2, item.q1_opcao_3, item.q1_opcao_4, item.q1_opcao_5].filter(Boolean);
@@ -382,7 +405,17 @@ function mapDbResultadoToResultado(item: any): any {
   const finalAnswersObj = Object.keys(rawAnswersParsed).length > 0 ? rawAnswersParsed : reconstructedAnswers;
 
   // Calculate perfilDominante from scores if not present
-  let effectivePerfilDominante = item.perfil_dominante;
+  let effectivePerfilDominante = normalizeProfileName(
+    item.perfil_dominante ||
+    item.perfilDominante ||
+    item.perfil_predominante ||
+    item.dominant_profile ||
+    parsedMetadata.perfil_dominante ||
+    parsedMetadata.perfilDominante ||
+    parsedMetadata.dominantProfile ||
+    parsedMetadata.estilo_identificado ||
+    parsedMetadata.profile
+  );
   if (!effectivePerfilDominante && parsedScores) {
     const scoreKeys: (keyof Scores)[] = ['Assertivo', 'Participativo', 'Integrador', 'Analitico'];
     let maxScore = -1;
@@ -393,16 +426,16 @@ function mapDbResultadoToResultado(item: any): any {
         maxStyle = style;
       }
     });
-    effectivePerfilDominante = maxStyle || undefined;
+    effectivePerfilDominante = normalizeProfileName(maxStyle) || undefined;
   }
 
   return {
     id: String(item.id_resultado || item.id || ''),
     id_resultado: String(item.id_resultado || item.id || ''),
     id_usuario: item.id_usuario || item.user_id || item.uid || '',
-    nome_usuario: item.user_name || item.nome_usuario || item.usuario_nome || item.nome || 'Usuário Desconhecido',
+    nome_usuario: item.user_name || item.nome_usuario || item.usuario_nome || item.nome || parsedMetadata.userName || parsedMetadata.name || parsedMetadata.nome || 'Usuário Desconhecido',
     empresa_id: String(item.id_empresa === 0 || item.id_empresa ? item.id_empresa : mapUuidToCompanyId(item.empresa_id)),
-    empresa_nome: item.company_name || item.empresa_nome || '',
+    empresa_nome: item.company_name || item.empresa_nome || parsedMetadata.companyName || parsedMetadata.empresa || '',
     scores: parsedScores,
     perfil_dominante: effectivePerfilDominante,
     data_conclusao: item.generated_at || item.data_conclusao || item.created_at || '',
@@ -412,6 +445,7 @@ function mapDbResultadoToResultado(item: any): any {
     // Modern extra columns mapped dynamically
     user_name: item.user_name || '',
     company_name: item.company_name || '',
+    metadata: parsedMetadata,
     generated_at: item.generated_at || '',
     ranking: safeParseJSON(item.ranking),
     perfil_secundario: item.perfil_secundario || '',
@@ -892,7 +926,7 @@ export async function criarResultado(
     scores: rawPayload.db_record?.scores || assessment.scores || cp.scores || scores || null,
     score_assertivo: rawPayload.db_record?.score_assertivo ?? scoreAssertivo,
     score_participativo: rawPayload.db_record?.score_participativo ?? scoreParticipativo,
-    score_conservador_agregador: rawPayload.db_record?.score_conservador_agregador ?? rawPayload.db_record?.score_integrador ?? scoreIntegrador,
+    score_integrador: rawPayload.db_record?.score_integrador ?? rawPayload.db_record?.score_conservador_agregador ?? scoreIntegrador,
     score_analitico: rawPayload.db_record?.score_analitico ?? scoreAnalitico,
     total_pontos: rawPayload.db_record?.total_pontos ?? (scoreAssertivo + scoreParticipativo + scoreIntegrador + scoreAnalitico),
     raw_payload: rawPayload, // Stores full JSON returned by n8n
@@ -1093,7 +1127,7 @@ export async function atualizarResultado(
     ai_insights: aiInsights,
     score_assertivo: scoreAssertivo,
     score_participativo: scoreParticipativo,
-    score_conservador_agregador: scoreIntegrador,
+    score_integrador: scoreIntegrador,
     score_analitico: scoreAnalitico,
     total_pontos: scoreAssertivo + scoreParticipativo + scoreIntegrador + scoreAnalitico,
 
