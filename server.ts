@@ -443,6 +443,56 @@ app.get("/api/resultados", apiRateLimiter, async (_req: Request, res: Response, 
   }
 });
 
+app.delete("/api/resultados/:id", apiRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const id = String(req.params.id || '').trim();
+    if (!id) {
+      return res.status(400).json({ error: "ID do resultado é obrigatório." });
+    }
+
+    let deletedCount = 0;
+    const idColumns = ["id", "id_resultado", "relatorio_uuid"];
+
+    for (const column of idColumns) {
+      const { error, count } = await supabase
+        .from("resultados")
+        .delete({ count: "exact" })
+        .eq(column, id);
+
+      if (error) {
+        const message = error.message || "";
+        if (message.includes("does not exist") || message.includes("Could not find")) {
+          continue;
+        }
+
+        console.error("[RESULTADOS] Falha ao excluir resultado via backend:", error.message);
+        return res.status(500).json({
+          error: "Não foi possível excluir o resultado.",
+          details: error.message
+        });
+      }
+
+      deletedCount += count || 0;
+      if (deletedCount > 0) break;
+    }
+
+    if (!deletedCount) {
+      return res.status(404).json({
+        error: "Resultado não encontrado para exclusão.",
+        id
+      });
+    }
+
+    return res.json({
+      success: true,
+      deleted: deletedCount,
+      id
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.post("/api/insights", apiRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     // Validação básica: não vazio

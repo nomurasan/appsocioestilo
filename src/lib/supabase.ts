@@ -205,6 +205,30 @@ async function fetchBackendResultados(): Promise<any[]> {
   }
 }
 
+async function deleteBackendResultado(idResultado: string): Promise<boolean> {
+  if (typeof fetch !== 'function') return false;
+
+  try {
+    const response = await fetch(`/api/resultados/${encodeURIComponent(String(idResultado))}`, {
+      method: 'DELETE',
+      headers: { Accept: 'application/json' }
+    });
+
+    if (response.ok) return true;
+
+    const payload = await response.json().catch(() => ({}));
+    if (response.status === 404) {
+      console.warn('[excluirResultado] Backend did not find result:', payload);
+      return false;
+    }
+
+    throw new Error(payload?.details || payload?.error || `Backend returned status ${response.status}`);
+  } catch (err) {
+    console.warn('[excluirResultado] Backend delete failed:', err);
+    return false;
+  }
+}
+
 export function parseBigIntId(id: any): number | null {
   if (id === undefined || id === null || id === '') return null;
   const unmapped = mapUuidToCompanyId(id);
@@ -1225,6 +1249,9 @@ export async function atualizarResultado(
  * Excluir Resultado
  */
 export async function excluirResultado(idResultado: string): Promise<boolean> {
+  const deletedByBackend = await deleteBackendResultado(idResultado);
+  if (deletedByBackend) return true;
+
   const { error } = await supabase.from('resultados').delete().eq('id', parseResultId(idResultado));
   if (error) {
     handleSupabaseError(error, OperationType.DELETE, `excluir_resultado: ${idResultado}`);

@@ -384,6 +384,7 @@ export default function AdminScreen({
       } else if (type === 'resultado') {
         // Delete a specific result via RPC
         await excluirResultado(id);
+        setResultados(prev => prev.filter(result => String((result as any).id || (result as any).id_resultado || '') !== String(id)));
         triggerSuccess(`Resultado de teste excluído do banco de dados com sucesso.`);
       } else {
         // 1. Delete user from Supabase via RPC: excluir_usuario
