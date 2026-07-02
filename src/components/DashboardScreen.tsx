@@ -31,6 +31,57 @@ import { Usuario, Resultado, Scores, STYLE_NAMES } from '../types';
 import { PROFILE_DETAILS, QUESTIONS } from '../data/questions';
 import { listarResultados } from '../lib/supabase';
 
+type ChunkAuditItem = {
+  ordem?: number;
+  documento?: string | null;
+  chunk?: string | number | null;
+  conteudo?: string | null;
+};
+
+type ChunkContentAudit = {
+  consulta_utilizada?: string;
+  retrieved_at?: string;
+  finalidade?: string;
+  chunks_recuperados?: ChunkAuditItem[];
+};
+
+function parseJsonIfNeeded(value: any) {
+  if (!value || typeof value !== 'string') return value;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return value;
+  }
+}
+
+function getChunkContentAudit(report: any): ChunkContentAudit {
+  const audit = parseJsonIfNeeded(
+    report?.chunk_content_audit ||
+    report?.report_data?.fundamentacao?.chunk_content_audit ||
+    report?.relatorio_pronto_para_app?.fundamentacao?.chunk_content_audit ||
+    report?.fundamentacao?.chunk_content_audit ||
+    report?.campos?.chunk_content_audit_json ||
+    report?.report_data?.campos?.chunk_content_audit_json ||
+    {}
+  );
+
+  if (!audit || typeof audit !== 'object' || Array.isArray(audit)) {
+    return {};
+  }
+
+  return audit as ChunkContentAudit;
+}
+
+function chunkAuditToText(audit: ChunkContentAudit): string {
+  const chunks = audit.chunks_recuperados || [];
+  return chunks.map((item, index) => {
+    const documento = item.documento || 'Documento não identificado';
+    const chunk = item.chunk ?? 'não identificado';
+    const conteudo = item.conteudo || 'Conteúdo do chunk não disponível.';
+    return `${index + 1}. ${documento} - Chunk ${chunk}\n${conteudo}`;
+  }).join('\n\n');
+}
+
 // Helper to fully normalize and transition payloads to the unified n8n structured schema safely
 function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuario): any {
   // 1. Resolve rawPayload JSON String
@@ -694,6 +745,13 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       }
       return [];
     })(),
+    chunk_content_audit: getChunkContentAudit({
+      chunk_content_audit: report_data.chunk_content_audit,
+      report_data,
+      relatorio_pronto_para_app: activeResult?.relatorio_pronto_para_app,
+      fundamentacao: report_data.fundamentacao,
+      campos: report_data.campos
+    }),
     rag_fontes_consultadas: (() => {
       const raw = report_data.fundamentacao?.fontes_consultadas
         || report_data.fontes_consultadas
@@ -867,6 +925,8 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     score_integrador: styleValues["Integrador"],
     score_analitico: styleValues.Analítico,
     total_pontos: totalPoints,
+    chunk_content_audit_json: finalReportData.chunk_content_audit,
+    chunk_content_audit_texto: chunkAuditToText(finalReportData.chunk_content_audit),
     parecer_executivo: finalReportData.narrativa.parecer_executivo,
     oportunidades_texto: finalReportData.narrativa.oportunidades.join("\n"),
     oportunidade_1: finalReportData.narrativa.oportunidades[0] || "",
@@ -2737,6 +2797,54 @@ export default function DashboardScreen({
                                     </div>
 
                                   </div>
+
+                                  {isUserAdminOrNomura && (() => {
+                                    const audit = getChunkContentAudit(reportData);
+                                    const chunks = audit.chunks_recuperados || [];
+                                    if (chunks.length === 0) return null;
+
+                                    return (
+                                      <div className="space-y-2 font-sans border-t border-slate-100 pt-3">
+                                        <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
+                                          <FileText className="w-4 h-4 text-[#112363]" /> 8.4 Trilha de Auditoria RAG
+                                        </strong>
+                                        <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-3 shadow-3xs">
+                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] text-slate-600 font-semibold">
+                                            {audit.consulta_utilizada && (
+                                              <p><strong className="text-slate-800">Consulta utilizada:</strong> {audit.consulta_utilizada}</p>
+                                            )}
+                                            {audit.finalidade && (
+                                              <p><strong className="text-slate-800">Finalidade:</strong> {audit.finalidade}</p>
+                                            )}
+                                            {audit.retrieved_at && (
+                                              <p><strong className="text-slate-800">Recuperado em:</strong> {new Date(audit.retrieved_at).toLocaleString('pt-BR')}</p>
+                                            )}
+                                          </div>
+
+                                          <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                                            {chunks.map((item, index) => {
+                                              const documento = item.documento || 'Documento não identificado';
+                                              const chunk = item.chunk ?? 'não identificado';
+                                              return (
+                                                <details key={`${documento}-${chunk}-${index}`} className="group bg-white border border-slate-150 rounded-xl overflow-hidden">
+                                                  <summary className="list-none cursor-pointer px-3 py-2 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
+                                                    <span className="text-[10px] font-black text-[#112363] uppercase tracking-wide truncate">
+                                                      {item.ordem || index + 1}. {documento} - Chunk {chunk}
+                                                    </span>
+                                                    <span className="text-[9px] font-extrabold text-[#D80E2A] shrink-0 group-open:hidden">Ver conteúdo recuperado</span>
+                                                    <span className="text-[9px] font-extrabold text-slate-500 shrink-0 hidden group-open:inline">Ocultar conteúdo</span>
+                                                  </summary>
+                                                  <pre className="whitespace-pre-wrap text-[10px] leading-relaxed text-slate-700 bg-white border-t border-slate-100 p-3 font-mono max-h-[220px] overflow-y-auto">
+                                                    {item.conteudo || 'Conteúdo do chunk não disponível.'}
+                                                  </pre>
+                                                </details>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
 
                                 </div>
                               );
