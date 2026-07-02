@@ -18,7 +18,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<{ uid: string; email: string } | null>(null);
   const [userProfile, setUserProfile] = useState<Usuario | null>(null);
   const [myResult, setMyResult] = useState<Resultado | null>(null);
-  
+
   const [loading, setLoading] = useState(true);
   const [step, setStep] = useState<'loading' | 'auth' | 'onboarding' | 'menu' | 'chatbot' | 'dashboard' | 'admin'>('loading');
   const [adminViewUser, setAdminViewUser] = useState<{ user: Usuario; result: Resultado } | null>(null);
@@ -39,7 +39,7 @@ export default function App() {
     // Keep original UID for buscar_usuario (which will map internally)
     const originalUid = userObj.id;
     let resolvedId = userObj.id;
-    
+
     if (userObj.origin === 'firebase') {
       try {
         resolvedId = await syncFirebaseUserWithSupabaseAuth(userObj.id, userObj.email || '');
@@ -50,7 +50,7 @@ export default function App() {
 
     const mappedUser = { uid: resolvedId, email: userObj.email || '' };
     setCurrentUser(mappedUser);
-    
+
     try {
       // First try to resolve the user by email, because the email is the canonical registration key in Supabase.
       let profile: Usuario | null = null;
@@ -131,7 +131,7 @@ export default function App() {
         if (latestResult) {
           setMyResult(latestResult);
         }
-        
+
         setStep('menu');
       } else {
         // No profile found, force onboarding
@@ -227,7 +227,7 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col font-sans selection:bg-[#D80E2A]/20" id="app-root-wrapper">
-      
+
       {/* Fixed Navigation Header */}
       <Header
         userEmail={currentUser?.email || null}
@@ -263,7 +263,7 @@ export default function App() {
 
       {/* Main Body Layout */}
       <main className="flex-1 py-10 px-4 md:px-0 flex items-center justify-center" id="main-content-layout">
-        
+
         {step === 'auth' && (
           <AuthScreen onSuccess={handleAuthSuccess} />
         )}
@@ -314,21 +314,21 @@ export default function App() {
         )}
 
         {step === 'dashboard' && (
-          (adminViewUser && adminViewUser.user && adminViewUser.result) || 
+          (adminViewUser && adminViewUser.user && adminViewUser.result) ||
           (!adminViewUser && userProfile && myResult) ||
           (adminSelectedCompany)
         ) && (() => {
-          const activeUser = adminSelectedCompany 
+          const activeUser = adminSelectedCompany
             ? { nome: 'Administrador', empresa_nome: adminSelectedCompany.nome, email: '' } as Usuario
             : (adminViewUser ? adminViewUser.user : userProfile!);
-          
-          const activeResult = adminSelectedCompany 
-            ? null 
+
+          const activeResult = adminSelectedCompany
+            ? null
             : (adminViewUser ? adminViewUser.result : myResult!);
-          
+
           return (
             <div className="w-full flex flex-col space-y-6">
-              
+
               {/* Quick action bar to re-take questionnaire or go back */}
               <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-3 animate-fade-in print:hidden">
                 <button
