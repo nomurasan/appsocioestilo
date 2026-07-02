@@ -29,6 +29,8 @@ export interface Usuario {
 }
 
 export interface Resultado {
+  id?: string;
+  id_resultado?: string;
   id_usuario: string;
   nome_usuario: string;
   empresa_id: string;

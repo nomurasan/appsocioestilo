@@ -293,6 +293,42 @@ function mapDbResultadoToResultado(item: any): any {
       console.error('Error parsing scores:', e);
     }
   }
+
+  const readNumericScore = (...values: any[]): number => {
+    for (const value of values) {
+      if (value !== undefined && value !== null && value !== '') {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : 0;
+      }
+    }
+    return 0;
+  };
+
+  const hasScoreValue = (...values: any[]): boolean => {
+    return values.some(value => value !== undefined && value !== null && value !== '');
+  };
+
+  const columnScores: Scores = {
+    Assertivo: readNumericScore(item.score_assertivo, item.assertivo),
+    Participativo: readNumericScore(item.score_participativo, item.participativo),
+    Integrador: readNumericScore(item.score_conservador_agregador, item.score_integrador, item.conservador_agregador, item.integrador),
+    Analitico: readNumericScore(item.score_analitico, item.score_analitico_sem_acento, item.analitico)
+  };
+
+  const hasColumnScore = {
+    Assertivo: hasScoreValue(item.score_assertivo, item.assertivo),
+    Participativo: hasScoreValue(item.score_participativo, item.participativo),
+    Integrador: hasScoreValue(item.score_conservador_agregador, item.score_integrador, item.conservador_agregador, item.integrador),
+    Analitico: hasScoreValue(item.score_analitico, item.score_analitico_sem_acento, item.analitico)
+  };
+
+  const scoresAny = parsedScores as any;
+  parsedScores = {
+    Assertivo: hasColumnScore.Assertivo ? columnScores.Assertivo : readNumericScore(scoresAny.Assertivo, scoresAny.assertivo, scoresAny.Direto),
+    Participativo: hasColumnScore.Participativo ? columnScores.Participativo : readNumericScore(scoresAny.Participativo, scoresAny.participativo, scoresAny.Expressivo),
+    Integrador: hasColumnScore.Integrador ? columnScores.Integrador : readNumericScore(scoresAny.Integrador, scoresAny.integrador, scoresAny.Amavel, scoresAny["Conservador agregador"], scoresAny.conservador_agregador),
+    Analitico: hasColumnScore.Analitico ? columnScores.Analitico : readNumericScore(scoresAny.Analitico, scoresAny["Analítico"], scoresAny.analitico)
+  };
   
   // Ensure scores is a valid object with expected keys
   if (!parsedScores || typeof parsedScores !== 'object' || Object.keys(parsedScores).length === 0) {
@@ -835,6 +871,12 @@ export async function criarResultado(
     console.log("[criarResultado] Info: auth user id check:", err);
   }
 
+  const scoresForColumns = scores as any;
+  const scoreAssertivo = Number(scoresForColumns.Assertivo ?? scoresForColumns.assertivo ?? scoresForColumns.Direto ?? 0) || 0;
+  const scoreParticipativo = Number(scoresForColumns.Participativo ?? scoresForColumns.participativo ?? scoresForColumns.Expressivo ?? 0) || 0;
+  const scoreIntegrador = Number(scoresForColumns.Integrador ?? scoresForColumns.integrador ?? scoresForColumns.Amavel ?? scoresForColumns["Conservador agregador"] ?? scoresForColumns.conservador_agregador ?? 0) || 0;
+  const scoreAnalitico = Number(scoresForColumns.Analitico ?? scoresForColumns["Analítico"] ?? scoresForColumns.analitico ?? 0) || 0;
+
   const rawInsertPayload: any = {
     user_id: activeSupaUserId || rawPayload.db_record?.user_id || mappedUid,
     id_usuario: rawPayload.db_record?.id_usuario || rawPayload.db_record?.user_id || mappedUid,
@@ -848,6 +890,11 @@ export async function criarResultado(
     perfil_menos_utili: rawPayload.db_record?.perfil_menos_utilizado || rawPayload.db_record?.perfil_menos_utili || assessment.lowestProfile || cp.perfilMenosUtilizado || null,
     perfil_menos_utilizado: rawPayload.db_record?.perfil_menos_utilizado || rawPayload.db_record?.perfil_menos_utili || assessment.lowestProfile || cp.perfilMenosUtilizado || null,
     scores: rawPayload.db_record?.scores || assessment.scores || cp.scores || scores || null,
+    score_assertivo: rawPayload.db_record?.score_assertivo ?? scoreAssertivo,
+    score_participativo: rawPayload.db_record?.score_participativo ?? scoreParticipativo,
+    score_conservador_agregador: rawPayload.db_record?.score_conservador_agregador ?? rawPayload.db_record?.score_integrador ?? scoreIntegrador,
+    score_analitico: rawPayload.db_record?.score_analitico ?? scoreAnalitico,
+    total_pontos: rawPayload.db_record?.total_pontos ?? (scoreAssertivo + scoreParticipativo + scoreIntegrador + scoreAnalitico),
     raw_payload: rawPayload, // Stores full JSON returned by n8n
     ai_insights: rawPayload, // Stores full JSON payload as requested to protect all report sections
     data_conclusao: rawPayload.db_record?.data_conclusao || metadata.completedAt || cp.completedAt || null,
@@ -945,8 +992,8 @@ export async function listarResultados(): Promise<Resultado[]> {
   const mapped = rawData.map((item: any) => {
     const mapped = mapDbResultadoToResultado(item);
     if (mapped) {
-      mapped.nome_usuario = userMap[mapped.id_usuario] || 'Usuário Desconhecido';
-      mapped.empresa_nome = empMap[mapped.empresa_id] || '';
+      mapped.nome_usuario = userMap[mapped.id_usuario] || mapped.nome_usuario || mapped.user_name || 'Usuário Desconhecido';
+      mapped.empresa_nome = empMap[mapped.empresa_id] || mapped.empresa_nome || mapped.company_name || '';
     }
     return mapped;
   }).filter(Boolean) as Resultado[];
@@ -1034,11 +1081,21 @@ export async function atualizarResultado(
   aiInsights: any
 ): Promise<boolean> {
   const ext = computeResultProfilesAndScores(scores);
+  const scoresForColumns = scores as any;
+  const scoreAssertivo = Number(scoresForColumns.Assertivo ?? scoresForColumns.assertivo ?? scoresForColumns.Direto ?? 0) || 0;
+  const scoreParticipativo = Number(scoresForColumns.Participativo ?? scoresForColumns.participativo ?? scoresForColumns.Expressivo ?? 0) || 0;
+  const scoreIntegrador = Number(scoresForColumns.Integrador ?? scoresForColumns.integrador ?? scoresForColumns.Amavel ?? scoresForColumns["Conservador agregador"] ?? scoresForColumns.conservador_agregador ?? 0) || 0;
+  const scoreAnalitico = Number(scoresForColumns.Analitico ?? scoresForColumns["Analítico"] ?? scoresForColumns.analitico ?? 0) || 0;
 
   const rawUpdatePayload: any = {
     scores: scores,
     perfil_dominante: ext.perfil_dominante || perfilDominante,
     ai_insights: aiInsights,
+    score_assertivo: scoreAssertivo,
+    score_participativo: scoreParticipativo,
+    score_conservador_agregador: scoreIntegrador,
+    score_analitico: scoreAnalitico,
+    total_pontos: scoreAssertivo + scoreParticipativo + scoreIntegrador + scoreAnalitico,
 
     ranking: ext.ranking,
     perfil_secundario: ext.perfil_secundario,
