@@ -52,8 +52,16 @@ export default function App() {
     setCurrentUser(mappedUser);
     
     try {
-      // Fetch user profile using the ORIGINAL UID (buscar_usuario will map it internally)
-      let profile = await buscarUsuario(originalUid);
+      // First try to resolve the user by email, because the email is the canonical registration key in Supabase.
+      let profile: Usuario | null = null;
+      if (userObj.email) {
+        profile = await buscarUsuarioPorEmail(userObj.email);
+      }
+
+      // If no profile is found by email, fall back to UID lookup.
+      if (!profile) {
+        profile = await buscarUsuario(originalUid);
+      }
 
       // Self-healing migration for legacy users: if no profile exists for original UID but one exists under a different mapping, try additional lookups.
       if (!profile && userObj.origin === 'firebase') {
@@ -68,10 +76,6 @@ export default function App() {
         if (mappedUid && mappedUid !== originalUid && mappedUid !== resolvedId) {
           profile = await buscarUsuario(mappedUid);
         }
-      }
-
-      if (!profile && userObj.email) {
-        profile = await buscarUsuarioPorEmail(userObj.email);
       }
 
       if (!profile && userObj.origin === 'firebase') {
