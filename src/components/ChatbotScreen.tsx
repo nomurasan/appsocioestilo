@@ -3,7 +3,14 @@ import { User, ChevronRight, Check, Bot, Home, X, CheckCircle2 } from 'lucide-re
 import { QUESTIONS } from '../data/questions';
 import { Usuario, Scores, Resultado, AnswerDetail, STYLE_NAMES } from '../types';
 import { generateSocioestiloInsights } from '../lib/openai';
-import { criarResultado, atualizarUsuario } from '../lib/supabase';
+import {
+  abandonarRascunhoQuestionario,
+  buscarRascunhoQuestionario,
+  concluirRascunhoQuestionario,
+  criarResultado,
+  salvarRascunhoQuestionario,
+  atualizarUsuario
+} from '../lib/supabase';
 import { normalizeReportResponse } from '../lib/report-normalization';
 
 interface ChatbotScreenProps {
@@ -112,8 +119,81 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [reportSummary, setReportSummary] = useState("");
   const [normalizedResponse, setNormalizedResponse] = useState<any>(null);
+  const [draftLoading, setDraftLoading] = useState(true);
+  const [remoteDraft, setRemoteDraft] = useState<any>(null);
+  const [showDraftRecovery, setShowDraftRecovery] = useState(false);
+  const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
 
   const messageFeedRef = useRef<HTMLDivElement>(null);
+
+  const getNextPendingQuestionIndex = (currentAnswers: Record<string, string | string[]>) => {
+    const pendingIndex = QUESTIONS.findIndex(question => {
+      const value = currentAnswers[question.id.toString()];
+      return Array.isArray(value) ? value.length === 0 : !value;
+    });
+    return pendingIndex === -1 ? QUESTIONS.length : pendingIndex;
+  };
+
+  const buildMessagesFromAnswers = (currentAnswers: Record<string, string | string[]>, nextIndex: number): ChatMessage[] => {
+    const rebuiltMessages: ChatMessage[] = [
+      {
+        id: 'welcome-recovered',
+        sender: 'bot',
+        text: `Olá, ${usuario.nome}! Recuperei seu questionário em andamento.`
+      }
+    ];
+
+    QUESTIONS.slice(0, Math.min(nextIndex, QUESTIONS.length)).forEach(question => {
+      const value = currentAnswers[question.id.toString()];
+      if (!value) return;
+
+      rebuiltMessages.push({
+        id: `question-${question.id}-recovered`,
+        sender: 'bot',
+        text: `Questão ${question.id}. ${question.text}`,
+        isQuestion: false,
+        questionIndex: question.id - 1
+      });
+
+      rebuiltMessages.push({
+        id: `answer-${question.id}-recovered`,
+        sender: 'user',
+        text: Array.isArray(value) ? value.join(', ') : String(value)
+      });
+    });
+
+    if (nextIndex < QUESTIONS.length) {
+      const nextQuestion = QUESTIONS[nextIndex];
+      rebuiltMessages.push({
+        id: `question-${nextQuestion.id}`,
+        sender: 'bot',
+        text: `Questão ${nextQuestion.id}. ${nextQuestion.text}`,
+        isQuestion: true,
+        questionIndex: nextIndex
+      });
+    }
+
+    return rebuiltMessages;
+  };
+
+  const persistDraft = async (
+    index: number,
+    currentAnswers: Record<string, string | string[]>,
+    status: 'EM_ANDAMENTO' | 'CONCLUIDO' = 'EM_ANDAMENTO'
+  ) => {
+    setAutosaveStatus('saving');
+    const saved = status === 'CONCLUIDO'
+      ? await concluirRascunhoQuestionario(usuario, currentAnswers)
+      : await salvarRascunhoQuestionario(usuario, {
+          respostas: currentAnswers,
+          etapa_atual: index,
+          ultima_pergunta_respondida: Math.max(0, index),
+          percentual_concluido: Math.round((Object.keys(currentAnswers).length / QUESTIONS.length) * 100),
+          status
+        });
+
+    setAutosaveStatus(saved ? 'saved' : 'error');
+  };
 
   // Helper helper to write progress state
   const saveProgress = (
@@ -132,10 +212,37 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
         answers: currentAnswers
       };
       localStorage.setItem(`potenciar_progress_${usuario.uid}`, JSON.stringify(state));
+      void persistDraft(index, currentAnswers);
     } catch (e) {
       console.error('Erro ao gravar progresso temporário:', e);
     }
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadRemoteDraft = async () => {
+      setDraftLoading(true);
+      const draft = await buscarRascunhoQuestionario(usuario);
+      if (cancelled) return;
+
+      const draftAnswers = draft?.respostas || {};
+      const hasDraftAnswers = Object.keys(draftAnswers).length > 0;
+      const hasLocalProgress = Boolean(localStorage.getItem(`potenciar_progress_${usuario.uid}`));
+
+      if (draft && hasDraftAnswers && !hasLocalProgress) {
+        setRemoteDraft(draft);
+        setShowDraftRecovery(true);
+      }
+
+      setDraftLoading(false);
+    };
+
+    loadRemoteDraft();
+    return () => {
+      cancelled = true;
+    };
+  }, [usuario.uid]);
 
   // Focus and scroll active question inside the message feed container ONLY to avoid parent layout jumping
   useEffect(() => {
@@ -175,6 +282,41 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
   }, [messages, isTyping, currentQuestionIndex]);
 
   const delay = (ms: number) => new Promise(res => setTimeout(res, ms));
+
+  const handleContinueDraft = () => {
+    const draftAnswers = remoteDraft?.respostas || {};
+    const nextIndex = getNextPendingQuestionIndex(draftAnswers);
+    const rebuiltMessages = buildMessagesFromAnswers(draftAnswers, nextIndex);
+
+    setAnswers(draftAnswers);
+    setCurrentQuestionIndex(Math.min(nextIndex, QUESTIONS.length - 1));
+    setMessages(rebuiltMessages);
+    setStarted(true);
+    setShowDraftRecovery(false);
+    saveProgress(Math.min(nextIndex, QUESTIONS.length - 1), scores, rebuiltMessages, true, draftAnswers);
+  };
+
+  const handleStartOverDraft = async () => {
+    await abandonarRascunhoQuestionario(usuario);
+    localStorage.removeItem(`potenciar_progress_${usuario.uid}`);
+    setRemoteDraft(null);
+    setShowDraftRecovery(false);
+    setAnswers({});
+    setCurrentQuestionIndex(0);
+    setStarted(false);
+    setMessages([
+      {
+        id: 'welcome-new',
+        sender: 'bot',
+        text: `Olá, ${usuario.nome}! Bem-vindo à Potenciar Consultores Associados. Estou muito animado para te conduzir pelo teste de Socioestilo.`
+      },
+      {
+        id: 'prompt-proceed-new',
+        sender: 'bot',
+        text: 'Podemos prosseguir com o preenchimento do questionário?'
+      }
+    ]);
+  };
 
   // Accept to proceed with first question
   const handleAcceptProceed = async () => {
@@ -428,6 +570,7 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
 
     try {
       // CLEAR temporary progress on complete
+      await persistDraft(QUESTIONS.length, currentAnswers, 'CONCLUIDO');
       localStorage.removeItem(`potenciar_progress_${usuario.uid}`);
 
       const resultPayload = {
@@ -465,6 +608,63 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
   const progressPercent = Math.round((currentQuestionIndex / QUESTIONS.length) * 100);
   const activeQ = QUESTIONS[currentQuestionIndex];
 
+  if (draftLoading) {
+    return (
+      <div className="flex flex-col h-[420px] max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 items-center justify-center space-y-3">
+        <Bot className="w-8 h-8 text-[#112363] animate-pulse" />
+        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Verificando questionário em andamento...</p>
+      </div>
+    );
+  }
+
+  if (showDraftRecovery && remoteDraft) {
+    const draftAnswers = remoteDraft.respostas || {};
+    const answeredQuestions = QUESTIONS.filter(question => draftAnswers[question.id.toString()]);
+
+    return (
+      <div className="max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        <div className="p-6 border-b border-gray-100 bg-slate-50">
+          <h3 className="text-lg font-black text-[#112363]">Questionário iniciado encontrado</h3>
+          <p className="text-xs text-gray-500 mt-1">
+            Encontramos respostas salvas automaticamente. Você pode continuar de onde parou ou começar novamente.
+          </p>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[360px] overflow-y-auto pr-1">
+            {answeredQuestions.map(question => {
+              const value = draftAnswers[question.id.toString()];
+              return (
+                <div key={question.id} className="p-3 rounded-xl border border-gray-150 bg-gray-50/50 text-xs space-y-1">
+                  <strong className="text-[#112363] block">Questão {question.id}</strong>
+                  <p className="text-gray-500 line-clamp-2">{question.text}</p>
+                  <p className="text-gray-800 font-semibold">
+                    {Array.isArray(value) ? value.join(', ') : String(value)}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 pt-2">
+            <button
+              onClick={handleContinueDraft}
+              className="flex-1 bg-[#112363] text-white text-xs font-black py-3.5 px-5 rounded-xl hover:bg-[#112363]/90 transition-all"
+            >
+              Continuar de onde parei
+            </button>
+            <button
+              onClick={handleStartOverDraft}
+              className="flex-1 bg-white border border-gray-200 text-[#D80E2A] text-xs font-black py-3.5 px-5 rounded-xl hover:bg-red-50 transition-all"
+            >
+              Começar novamente
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-[740px] max-h-[85vh] min-h-[580px] max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden" id="chatbot-container">
       
@@ -479,6 +679,18 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
           </p>
         </div>
         <div className="flex items-center space-x-3.5">
+          {started && !testCompleted && autosaveStatus !== 'idle' && (
+            <span className={`hidden sm:inline-flex text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${
+              autosaveStatus === 'saving'
+                ? 'bg-amber-50 text-amber-700 border-amber-100'
+                : autosaveStatus === 'error'
+                ? 'bg-red-50 text-[#D80E2A] border-red-100'
+                : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+            }`}>
+              {autosaveStatus === 'saving' ? 'Salvando...' : autosaveStatus === 'error' ? 'Erro ao salvar. Tentando novamente.' : 'Salvo automaticamente'}
+            </span>
+          )}
+
           {started && !testCompleted && (
             <div className="flex items-center space-x-2 w-32 sm:w-40">
               <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">

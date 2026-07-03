@@ -4,12 +4,14 @@ import {
   ChevronRight, ArrowLeft, RefreshCw, Shield, AlertTriangle, 
   UserPlus, CheckCircle2, Sliders, ShieldAlert, FileText, Search, Grid, Eye
 } from 'lucide-react';
-import { Empresa, Usuario, Resultado, Scores, STYLE_NAMES } from '../types';
+import { Empresa, Usuario, Resultado, Scores, STYLE_NAMES, ReportParameter, ReportUserType } from '../types';
 import { 
   listarEmpresas, criarEmpresa, atualizarEmpresa, excluirEmpresa,
   listarUsuarios, buscarUsuario, atualizarUsuario, excluirUsuario,
-  listarResultados, buscarResultado, criarResultado, atualizarResultado, excluirResultado
+  listarResultados, buscarResultado, criarResultado, atualizarResultado, excluirResultado,
+  listarParametrosRelatorio, salvarParametrosRelatorio
 } from '../lib/supabase';
+import { REPORT_SECTION_TITLES } from '../lib/report-parameters';
 
 interface AdminScreenProps {
   currentUserProfile: Usuario;
@@ -35,6 +37,11 @@ export default function AdminScreen({
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [searchUserQuery, setSearchUserQuery] = useState('');
+  const [showReportParams, setShowReportParams] = useState(false);
+  const [reportParamUserType, setReportParamUserType] = useState<ReportUserType>('usuario');
+  const [reportParams, setReportParams] = useState<ReportParameter[]>([]);
+  const [loadingReportParams, setLoadingReportParams] = useState(false);
+  const [savingReportParams, setSavingReportParams] = useState(false);
   
   // Modals / Action States
   const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
@@ -103,6 +110,49 @@ export default function AdminScreen({
   useEffect(() => {
     fetchData();
   }, []);
+
+  const fetchReportParams = async (tipoUsuario: ReportUserType = reportParamUserType) => {
+    setLoadingReportParams(true);
+    try {
+      const params = await listarParametrosRelatorio(tipoUsuario);
+      setReportParams(params);
+    } catch (err) {
+      console.error("Erro carregando parametrização do relatório:", err);
+      setError("Não foi possível carregar a parametrização do relatório.");
+    } finally {
+      setLoadingReportParams(false);
+    }
+  };
+
+  useEffect(() => {
+    if (showReportParams) {
+      fetchReportParams(reportParamUserType);
+    }
+  }, [showReportParams, reportParamUserType]);
+
+  const toggleReportParam = (secao: string, campo?: string) => {
+    setReportParams(prev => {
+      if (!campo) {
+        const sectionItems = prev.filter(item => item.secao === secao);
+        const shouldEnable = sectionItems.some(item => !item.ativo);
+        return prev.map(item => item.secao === secao ? { ...item, ativo: shouldEnable } : item);
+      }
+      return prev.map(item => item.secao === secao && item.campo === campo ? { ...item, ativo: !item.ativo } : item);
+    });
+  };
+
+  const handleSaveReportParams = async () => {
+    setSavingReportParams(true);
+    try {
+      await salvarParametrosRelatorio(reportParamUserType, reportParams);
+      triggerSuccess("Parametrização do relatório salva com sucesso.");
+    } catch (err) {
+      console.error(err);
+      setError("Erro ao salvar a parametrização do relatório.");
+    } finally {
+      setSavingReportParams(false);
+    }
+  };
 
   // Display success message for a brief duration
   const triggerSuccess = (msg: string) => {
@@ -521,6 +571,19 @@ export default function AdminScreen({
           </button>
 
           <button
+            onClick={() => setShowReportParams(prev => !prev)}
+            className={`flex items-center space-x-2 border font-extrabold text-xs py-3.5 px-5 rounded-xl transition-all active:scale-98 cursor-pointer ${
+              showReportParams
+                ? 'bg-[#112363] text-white border-[#112363]'
+                : 'bg-white text-[#112363] border-gray-200 hover:border-[#112363]'
+            }`}
+            id="admin-btn-report-params"
+          >
+            <Sliders className="w-4.5 h-4.5" />
+            <span>PARAMETRIZAÇÃO DO RELATÓRIO</span>
+          </button>
+
+          <button
             onClick={() => setShowAddCompanyModal(true)}
             className="flex items-center space-x-2 bg-[#D80E2A] hover:bg-[#D80E2A]/90 text-white font-extrabold text-xs py-3.5 px-6 rounded-xl transition-all shadow-md active:scale-98 cursor-pointer"
             id="admin-btn-register-company"
@@ -563,6 +626,91 @@ export default function AdminScreen({
         </div>
       ) : (
         <div className="space-y-8">
+          {showReportParams && (
+            <div className="bg-white border border-gray-100 rounded-3xl p-5 md:p-6 shadow-xs space-y-5 animate-fade-in" id="report-parametrization-panel">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+                <div>
+                  <h4 className="text-sm font-black text-[#112363] uppercase tracking-wider">Parametrização do Relatório</h4>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Controle quais seções e indicadores aparecem no relatório final, sem alterar cálculos internos.
+                  </p>
+                </div>
+
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <div className="flex bg-gray-100 p-1 rounded-xl">
+                    {(['usuario', 'admin'] as ReportUserType[]).map(type => (
+                      <button
+                        key={type}
+                        onClick={() => setReportParamUserType(type)}
+                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${
+                          reportParamUserType === type ? 'bg-white text-[#112363] shadow-xs' : 'text-gray-500 hover:text-[#112363]'
+                        }`}
+                      >
+                        {type === 'usuario' ? 'Usuário' : 'Admin'}
+                      </button>
+                    ))}
+                  </div>
+
+                  <button
+                    onClick={handleSaveReportParams}
+                    disabled={savingReportParams}
+                    className="bg-[#D80E2A] hover:bg-[#D80E2A]/90 disabled:opacity-60 text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all"
+                  >
+                    {savingReportParams ? 'Salvando...' : 'Salvar Alterações'}
+                  </button>
+                </div>
+              </div>
+
+              {loadingReportParams ? (
+                <div className="p-8 text-center text-xs font-bold text-gray-400">Carregando parâmetros...</div>
+              ) : (
+                <div className="space-y-4">
+                  {Object.entries(REPORT_SECTION_TITLES).map(([secao, title]) => {
+                    const items = reportParams.filter(item => item.secao === secao);
+                    if (items.length === 0) return null;
+                    const sectionEnabled = items.every(item => item.ativo);
+
+                    return (
+                      <div key={secao} className="border border-gray-150 rounded-2xl overflow-hidden">
+                        <div className="bg-gray-50 px-4 py-3 flex items-center justify-between gap-3">
+                          <div>
+                            <strong className="text-xs font-black text-[#112363] uppercase tracking-wider">{title}</strong>
+                            <p className="text-[10px] text-gray-400">{items.filter(item => item.ativo).length} de {items.length} campos ativos</p>
+                          </div>
+                          <button
+                            onClick={() => toggleReportParam(secao)}
+                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${sectionEnabled ? 'bg-[#112363]' : 'bg-gray-300'}`}
+                            aria-label={`Alternar seção ${title}`}
+                          >
+                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${sectionEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
+                          </button>
+                        </div>
+
+                        <div className="divide-y divide-gray-100">
+                          {items.map(item => (
+                            <div key={`${item.secao}-${item.campo}`} className="px-4 py-3 flex items-center justify-between gap-4">
+                              <div>
+                                <strong className="text-xs font-bold text-gray-800">{item.titulo}</strong>
+                                <p className="text-[11px] text-gray-500 mt-0.5">{item.descricao}</p>
+                              </div>
+                              <button
+                                onClick={() => toggleReportParam(item.secao, item.campo)}
+                                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${item.ativo ? 'bg-[#D80E2A]' : 'bg-gray-300'}`}
+                                aria-label={`Alternar campo ${item.titulo}`}
+                              >
+                                <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${item.ativo ? 'translate-x-5' : 'translate-x-1'}`} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="space-y-4 animate-fade-in" id="section-empresas">
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-2.5">

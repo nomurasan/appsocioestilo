@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
-import { Usuario, Resultado, Empresa, Scores, AnswerDetail } from '../types';
+import { Usuario, Resultado, Empresa, Scores, AnswerDetail, ReportParameter, ReportUserType, QuestionarioRascunho } from '../types';
 import { QUESTIONS } from '../data/questions';
+import { getDefaultReportParameters } from './report-parameters';
 
 const env = (import.meta as any).env || {};
 
@@ -245,6 +246,168 @@ export function parseResultId(id: any): string | number {
   }
   const parsed = parseInt(strId, 10);
   return isNaN(parsed) ? strId : parsed;
+}
+
+const REPORT_PARAMETER_TABLES = ['relatorio_parametrizacoes', 'parametrizacao_relatorio', 'relatorio_parametros'];
+
+function mergeReportParameters(tipoUsuario: ReportUserType, rows: any[] = []): ReportParameter[] {
+  const defaults = getDefaultReportParameters(tipoUsuario);
+  const rowMap = new Map<string, any>();
+  rows.forEach(row => {
+    rowMap.set(`${row.secao}:${row.campo}`, row);
+  });
+
+  return defaults.map(item => {
+    const stored = rowMap.get(`${item.secao}:${item.campo}`);
+    return {
+      ...item,
+      ativo: stored?.ativo === undefined ? item.ativo : Boolean(stored.ativo),
+      titulo: stored?.titulo || item.titulo,
+      descricao: stored?.descricao || item.descricao,
+      ordem: stored?.ordem ?? item.ordem
+    };
+  }).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+}
+
+export async function listarParametrosRelatorio(tipoUsuario: ReportUserType): Promise<ReportParameter[]> {
+  for (const table of REPORT_PARAMETER_TABLES) {
+    const { data, error } = await supabase
+      .from(table)
+      .select('*')
+      .eq('tipo_usuario', tipoUsuario)
+      .order('ordem', { ascending: true });
+
+    if (!error) {
+      return mergeReportParameters(tipoUsuario, data || []);
+    }
+  }
+
+  return getDefaultReportParameters(tipoUsuario);
+}
+
+export async function salvarParametrosRelatorio(tipoUsuario: ReportUserType, parametros: ReportParameter[]): Promise<boolean> {
+  const payload = mergeReportParameters(tipoUsuario, parametros).map(item => ({
+    tipo_usuario: tipoUsuario,
+    secao: item.secao,
+    campo: item.campo,
+    titulo: item.titulo,
+    descricao: item.descricao,
+    ativo: item.ativo,
+    ordem: item.ordem || 0,
+    updated_at: new Date().toISOString()
+  }));
+
+  for (const table of REPORT_PARAMETER_TABLES) {
+    const { error } = await supabase
+      .from(table)
+      .upsert(payload, { onConflict: 'tipo_usuario,secao,campo' });
+
+    if (!error) return true;
+  }
+
+  throw new Error('Não foi possível salvar a parametrização do relatório no Supabase.');
+}
+
+function getDraftSessionToken(): string {
+  const key = 'potenciar_questionario_session_token';
+  let token = localStorage.getItem(key);
+  if (!token) {
+    token = `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    localStorage.setItem(key, token);
+  }
+  return token;
+}
+
+export async function buscarRascunhoQuestionario(usuario: Usuario): Promise<QuestionarioRascunho | null> {
+  const sessionToken = getDraftSessionToken();
+  const { data, error } = await supabase
+    .from('questionario_rascunhos')
+    .select('*')
+    .eq('status', 'EM_ANDAMENTO')
+    .or(`participante_id.eq.${usuario.uid},session_token.eq.${sessionToken}`)
+    .order('data_ultimo_acesso', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    console.warn('[questionario_rascunhos] Não foi possível buscar rascunho:', error.message);
+    return null;
+  }
+
+  if (!data) return null;
+  return {
+    id: String(data.id || ''),
+    empresa_id: String(data.empresa_id || usuario.empresa_id || ''),
+    participante_id: data.participante_id || usuario.uid,
+    session_token: data.session_token || sessionToken,
+    respostas: data.respostas || {},
+    etapa_atual: Number(data.etapa_atual || 0),
+    ultima_pergunta_respondida: data.ultima_pergunta_respondida ?? null,
+    percentual_concluido: Number(data.percentual_concluido || 0),
+    status: data.status || 'EM_ANDAMENTO',
+    data_inicio: data.data_inicio,
+    data_ultimo_acesso: data.data_ultimo_acesso,
+    data_finalizacao: data.data_finalizacao || null
+  };
+}
+
+export async function salvarRascunhoQuestionario(usuario: Usuario, parcial: Partial<QuestionarioRascunho>): Promise<boolean> {
+  const sessionToken = parcial.session_token || getDraftSessionToken();
+  const now = new Date().toISOString();
+  const respostas = parcial.respostas || {};
+
+  const payload: any = {
+    empresa_id: usuario.empresa_id || parcial.empresa_id || null,
+    participante_id: usuario.uid || parcial.participante_id || null,
+    session_token: sessionToken,
+    respostas,
+    etapa_atual: parcial.etapa_atual ?? 0,
+    ultima_pergunta_respondida: parcial.ultima_pergunta_respondida ?? null,
+    percentual_concluido: parcial.percentual_concluido ?? 0,
+    status: parcial.status || 'EM_ANDAMENTO',
+    data_inicio: parcial.data_inicio || now,
+    data_ultimo_acesso: now,
+    data_finalizacao: parcial.data_finalizacao || null
+  };
+
+  const { error } = await supabase
+    .from('questionario_rascunhos')
+    .upsert(payload, { onConflict: 'participante_id' });
+
+  if (!error) return true;
+
+  console.warn('[questionario_rascunhos] Upsert falhou:', error.message);
+  return false;
+}
+
+export async function concluirRascunhoQuestionario(usuario: Usuario, respostas: Record<string, string | string[]>): Promise<boolean> {
+  return salvarRascunhoQuestionario(usuario, {
+    respostas,
+    etapa_atual: QUESTIONS.length,
+    ultima_pergunta_respondida: QUESTIONS.length,
+    percentual_concluido: 100,
+    status: 'CONCLUIDO',
+    data_finalizacao: new Date().toISOString()
+  });
+}
+
+export async function abandonarRascunhoQuestionario(usuario: Usuario): Promise<boolean> {
+  const sessionToken = getDraftSessionToken();
+  const { error } = await supabase
+    .from('questionario_rascunhos')
+    .update({
+      status: 'ABANDONADO',
+      data_ultimo_acesso: new Date().toISOString()
+    })
+    .or(`participante_id.eq.${usuario.uid},session_token.eq.${sessionToken}`)
+    .eq('status', 'EM_ANDAMENTO');
+
+  if (error) {
+    console.warn('[questionario_rascunhos] Não foi possível abandonar rascunho:', error.message);
+    return false;
+  }
+
+  return true;
 }
 
 function mapDbEmpresaToEmpresa(item: any): Empresa | null {

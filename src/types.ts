@@ -99,6 +99,33 @@ export interface Resultado {
   q13_resposta?: string;
 }
 
+export type ReportUserType = 'admin' | 'usuario';
+
+export interface ReportParameter {
+  tipo_usuario: ReportUserType;
+  secao: string;
+  campo: string;
+  titulo: string;
+  descricao: string;
+  ativo: boolean;
+  ordem?: number;
+}
+
+export interface QuestionarioRascunho {
+  id?: string;
+  empresa_id: string;
+  participante_id?: string | null;
+  session_token?: string | null;
+  respostas: Record<string, string | string[]>;
+  etapa_atual: number;
+  ultima_pergunta_respondida?: number | null;
+  percentual_concluido: number;
+  status: 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ABANDONADO' | 'EXPIRADO';
+  data_inicio?: string;
+  data_ultimo_acesso?: string;
+  data_finalizacao?: string | null;
+}
+
 export interface AnswerDetail {
   questionId: number;
   question: string;

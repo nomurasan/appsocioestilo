@@ -27,9 +27,9 @@ import {
 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
-import { Usuario, Resultado, Scores, STYLE_NAMES } from '../types';
+import { Usuario, Resultado, Scores, STYLE_NAMES, ReportParameter, ReportUserType } from '../types';
 import { PROFILE_DETAILS, QUESTIONS } from '../data/questions';
-import { listarResultados } from '../lib/supabase';
+import { listarParametrosRelatorio, listarResultados } from '../lib/supabase';
 
 type ChunkAuditItem = {
   ordem?: number;
@@ -1094,9 +1094,37 @@ export default function DashboardScreen({
   const [teamResults, setTeamResults] = useState<Resultado[]>([]);
   const [loadingTeam, setLoadingTeam] = useState(false);
   const [teamError, setTeamError] = useState<string | null>(null);
+  const [reportParameters, setReportParameters] = useState<ReportParameter[]>([]);
 
   // Allow choosing to view other teammate profiles in detail
   const [selectedMemberResult, setSelectedMemberResult] = useState<Resultado | null>(null);
+
+  const reportUserType: ReportUserType = usuario.role === 'admin' || usuario.email === 'nomura.eduardo@gmail.com' ? 'admin' : 'usuario';
+
+  useEffect(() => {
+    let cancelled = false;
+    listarParametrosRelatorio(reportUserType)
+      .then(params => {
+        if (!cancelled) setReportParameters(params);
+      })
+      .catch(err => {
+        console.warn('[DashboardScreen] Não foi possível carregar parametrização do relatório:', err);
+        if (!cancelled) setReportParameters([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [reportUserType]);
+
+  const isReportFieldVisible = (secao: string, campo: string) => {
+    const param = reportParameters.find(item => item.secao === secao && item.campo === campo);
+    return param?.ativo ?? true;
+  };
+
+  const isAnyReportFieldVisible = (pairs: Array<[string, string]>) => {
+    return pairs.some(([secao, campo]) => isReportFieldVisible(secao, campo));
+  };
 
   const normalizeTeamText = (value: any) => {
     return String(value || '')
@@ -1476,6 +1504,7 @@ export default function DashboardScreen({
       for (let i = 1; i <= pageCount; i++) {
         const pageEl = document.getElementById(`${pagePrefix}${i}`);
         if (!pageEl) continue;
+        if (pageEl.classList.contains('hidden')) continue;
 
         // Render this single page element to keep memory usage super low and prevent crashes
         const canvas = await html2canvas(pageEl, {
@@ -1916,7 +1945,7 @@ export default function DashboardScreen({
                   <div className="space-y-6 md:space-y-8" id="participant-report-doc">
                       
                       {/* Page 1: CAPA (Seção 1) */}
-                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-6 md:p-10 min-h-[580px] flex flex-col justify-between relative overflow-hidden transition-all hover:shadow-sm" id="p-page-1">
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-6 md:p-10 min-h-[580px] flex flex-col justify-between relative overflow-hidden transition-all hover:shadow-sm ${!isReportFieldVisible('capa', 'identificacao') ? 'hidden' : ''}`} id="p-page-1">
                         <div className="absolute top-0 right-0 w-80 h-80 bg-red-50/10 rounded-full translate-x-24 -translate-y-24 shrink-0 pointer-events-none" />
                         <div className="absolute bottom-0 left-0 w-64 h-64 bg-slate-50/15 rounded-full -translate-x-12 translate-y-12 shrink-0 pointer-events-none" />
                         
@@ -1983,14 +2012,14 @@ export default function DashboardScreen({
                       </div>
 
                       {/* Page 2: VISÃO GERAL DO PERFIL & PARECER EXECUTIVO (Blocos 1 & 2) */}
-                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-2">
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['sintese', 'visao_geral'], ['sintese', 'parecer_executivo']]) ? 'hidden' : ''}`} id="p-page-2">
                         <div className="space-y-4 w-full">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider">01. Síntese do Perfil & Parecer Executivo de Liderança</h3>
                             <span className="text-[10px] font-bold text-gray-400 italic">Pág. 02 do Participante</span>
                           </div>
 
-                          <div className="space-y-3.5">
+                          <div className={`space-y-3.5 ${!isReportFieldVisible('sintese', 'visao_geral') ? 'hidden' : ''}`}>
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">1.1 Visão Geral do Perfil</h4>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                               <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
@@ -2012,7 +2041,7 @@ export default function DashboardScreen({
                             </div>
                           </div>
 
-                          <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100/90 relative overflow-hidden space-y-3">
+                          <div className={`bg-slate-50 p-6 rounded-2xl border border-slate-100/90 relative overflow-hidden space-y-3 ${!isReportFieldVisible('sintese', 'parecer_executivo') ? 'hidden' : ''}`}>
                             <div className="absolute top-0 right-0 p-2 text-[8px] font-black text-[#D80E2A] tracking-widest uppercase">Parecer do Orientador</div>
                             <h4 className="text-[11px] font-black text-[#D80E2A] uppercase tracking-wider">1.2 Parecer Executivo da Banca</h4>
                             <p className="text-xs text-slate-800 leading-relaxed font-semibold whitespace-pre-line">
@@ -2025,7 +2054,7 @@ export default function DashboardScreen({
                       </div>
 
                       {/* Page 3: DISTRIBUIÇÃO DOS ESTILOS & RANKING (Seção 4 & Seção 5) */}
-                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-3">
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['metricas', 'radar_estilos'], ['metricas', 'ranking_estilos'], ['dinamica', 'dinamica_estilos']]) ? 'hidden' : ''}`} id="p-page-3">
                         <div className="space-y-4 w-full font-sans">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
@@ -2040,7 +2069,7 @@ export default function DashboardScreen({
                             </h4>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 w-full">
+                          <div className={`grid grid-cols-1 md:grid-cols-2 gap-6 w-full ${!isReportFieldVisible('metricas', 'radar_estilos') ? 'hidden' : ''}`}>
                             {(() => {
                               const scoresObj = reportData.resultado?.scores || {};
                               const assertivoVal = getScoreVal(scoresObj, 'Assertivo');
@@ -2168,6 +2197,8 @@ export default function DashboardScreen({
                           </div>
 
                            {(() => {
+                            if (!isReportFieldVisible('metricas', 'ranking_estilos')) return null;
+
                             const hasRealRanking = reportData.resultado?.ranking && reportData.resultado.ranking.length > 0;
                             
                             if (hasRealRanking) {
@@ -2270,7 +2301,7 @@ export default function DashboardScreen({
                           })()}
 
                           {/* Dinâmica dos Estilos Seção */}
-                          <div className="space-y-3 mt-4">
+                          <div className={`space-y-3 mt-4 ${!isReportFieldVisible('dinamica', 'dinamica_estilos') ? 'hidden' : ''}`}>
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-100">
                               <Zap className="w-4 h-4 text-amber-500 fill-amber-300" /> 03. Lente Situacional & Dinâmica dos Estilos
                             </h4>
@@ -2318,7 +2349,7 @@ export default function DashboardScreen({
                       </div>
 
                       {/* Page 4: DIAGNÓSTICO COMPORTAMENTAL: LADO LUZ & SOMBREAMENTO (Seções 4.1 & 4.2) */}
-                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-4">
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['diagnostico', 'pontos_fortes'], ['diagnostico', 'evidencias_observadas'], ['diagnostico', 'pontos_desenvolvimento'], ['diagnostico', 'descricao_estilo']]) ? 'hidden' : ''}`} id="p-page-4">
                         <div className="space-y-4 w-full font-sans">
                           {/* Page Title */}
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
@@ -2338,7 +2369,7 @@ export default function DashboardScreen({
                               </div>
 
                               {/* Talentos */}
-                              <div className="space-y-3">
+                              <div className={`space-y-3 ${!isReportFieldVisible('diagnostico', 'pontos_fortes') ? 'hidden' : ''}`}>
                                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Talentos & Forças Naturais</span>
                                 <div className="space-y-2.5">
                                   {reportData.analise_comportamental.pontos_fortes_talentos.map((talent: string, idx: number) => (
@@ -2353,7 +2384,7 @@ export default function DashboardScreen({
                               </div>
 
                               {/* Evidências */}
-                              <div className="space-y-3">
+                              <div className={`space-y-3 ${!isReportFieldVisible('diagnostico', 'evidencias_observadas') ? 'hidden' : ''}`}>
                                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Evidências Observadas de Atuação</span>
                                 <div className="space-y-2.5">
                                   {reportData.evidencias_observadas.map((ev: string, idx: number) => renderEvidenceItem(ev, idx))}
@@ -2370,7 +2401,7 @@ export default function DashboardScreen({
                               </div>
 
                               {/* Riscos */}
-                              <div className="space-y-3">
+                              <div className={`space-y-3 ${!isReportFieldVisible('diagnostico', 'pontos_desenvolvimento') ? 'hidden' : ''}`}>
                                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Riscos Comportamentais Sob Pressão</span>
                                 <div className="space-y-2.5">
                                   {reportData.analise_comportamental.pontos_desenvolvimento.map((growth: string, idx: number) => (
@@ -2385,7 +2416,7 @@ export default function DashboardScreen({
                               </div>
 
                               {/* Expressão do Estilo */}
-                              <div className="space-y-3">
+                              <div className={`space-y-3 ${!isReportFieldVisible('diagnostico', 'descricao_estilo') ? 'hidden' : ''}`}>
                                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Expressão do Estilo Dominante</span>
                                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-150 shadow-2xs leading-relaxed text-xs text-slate-800 font-semibold relative overflow-hidden">
                                   <div className="absolute top-0 right-0 py-0.5 px-2 bg-indigo-50 border-l border-b border-indigo-100/60 rounded-bl text-[8px] font-black text-indigo-700 tracking-wider uppercase">
@@ -2402,7 +2433,7 @@ export default function DashboardScreen({
                       </div>
 
                       {/* Page 5: POTENCIAL DE DESENVOLVIMENTO & RECOMENDAÇÕES PRÁTICAS (Blocos 7 & 8) */}
-                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-5">
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['pdi', 'potencial_desenvolvimento'], ['pdi', 'recomendacoes_praticas'], ['pdi', 'conselho_alta_performance']]) ? 'hidden' : ''}`} id="p-page-5">
                         <div className="space-y-4 w-full font-sans">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
@@ -2412,7 +2443,7 @@ export default function DashboardScreen({
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 w-full text-xs animate-fade-in">
-                            <div className="space-y-4">
+                            <div className={`space-y-4 ${!isReportFieldVisible('pdi', 'potencial_desenvolvimento') ? 'hidden' : ''}`}>
                               <h4 className="text-xs font-black text-emerald-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-emerald-100">
                                 <TrendingUp className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 5.1 Potenciais de Expansão e Competências a Desenvolver
                               </h4>
@@ -2426,7 +2457,7 @@ export default function DashboardScreen({
                               </div>
                             </div>
 
-                            <div className="space-y-4">
+                            <div className={`space-y-4 ${!isReportFieldVisible('pdi', 'recomendacoes_praticas') ? 'hidden' : ''}`}>
                               <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">
                                 <CheckCircle2 className="w-4.5 h-4.5 text-[#112363] shrink-0" /> 5.2 Recomendações Táticas para Sucesso e Alta Performance
                               </h4>
@@ -2441,7 +2472,7 @@ export default function DashboardScreen({
                             </div>
                           </div>
 
-                          <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-4">
+                          <div className={`p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-4 ${!isReportFieldVisible('pdi', 'conselho_alta_performance') ? 'hidden' : ''}`}>
                             <span className="absolute top-0 right-0 py-1 px-2.5 bg-amber-100 text-amber-800 font-black rounded-bl-lg text-[8px] uppercase tracking-wider">Diretiva de Otimização</span>
                             <h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">5.3 Conselho Estratégico de Alta Performance</h4>
                             <p className="text-xs text-slate-850 leading-relaxed font-semibold italic">
@@ -2454,7 +2485,7 @@ export default function DashboardScreen({
                       </div>
 
                       {/* Page 6: METODOLOGIA POTENCIAR & MATRIZ (Seção 12 & Seção 13) */}
-                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-6">
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['metodologia', 'metodologia_potenciar'], ['metodologia', 'tabela_socioestilos']]) ? 'hidden' : ''}`} id="p-page-6">
                         <div className="space-y-4 w-full">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
@@ -2463,14 +2494,14 @@ export default function DashboardScreen({
                             <span className="text-[10px] font-bold text-gray-400 italic">Pág. 06 do Participante</span>
                           </div>
 
-                          <div className="space-y-2">
+                          <div className={`space-y-2 ${!isReportFieldVisible('metodologia', 'metodologia_potenciar') ? 'hidden' : ''}`}>
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">6.1 Alinhamento Científico da Metodologia dos Socioestilos</h4>
                             <div className="p-4 bg-[#112363]/5 rounded-xl border border-blue-100 text-xs leading-relaxed font-semibold text-slate-800">
                               {reportData.metodologia.metodologia_potenciar_ativada}
                             </div>
                           </div>
 
-                          <div className="space-y-4">
+                          <div className={`space-y-4 ${!isReportFieldVisible('metodologia', 'tabela_socioestilos') ? 'hidden' : ''}`}>
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">6.2 Tabela Comparativa de Atuação e Foco Operacional</h4>
                             <div className="overflow-x-auto border border-slate-150 rounded-2xl bg-white shadow-3xs">
                               <table className="min-w-full divide-y divide-slate-150 text-xs text-slate-700">
@@ -2502,7 +2533,7 @@ export default function DashboardScreen({
                             </div>
                           </div>
 
-                          <div className="text-slate-500 italic text-[11px] font-semibold text-center leading-relaxed max-w-2xl mx-auto pt-2 border-t border-slate-100">
+                          <div className={`text-slate-500 italic text-[11px] font-semibold text-center leading-relaxed max-w-2xl mx-auto pt-2 border-t border-slate-100 ${!isReportFieldVisible('metodologia', 'metodologia_potenciar') ? 'hidden' : ''}`}>
                             "{reportData.sobre_metodologia?.texto_final || ""}"
                           </div>
                         </div>
@@ -2511,7 +2542,7 @@ export default function DashboardScreen({
                       </div>
 
                       {/* Page 7: MEMÓRIA DO QUESTIONÁRIO & MEMÓRIA DE CÁLCULO (Seção 15 & Seção 16) */}
-                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-7">
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isReportFieldVisible('memoria', 'respostas_questionario') ? 'hidden' : ''}`} id="p-page-7">
                         <div className="space-y-4 w-full">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
@@ -2570,7 +2601,7 @@ export default function DashboardScreen({
                       </div>
 
                       {/* Page 8: AUDITORIA DO WORKFLOW n8n (Seção 17 / Admin View / Confidencial Lock) */}
-                      <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px]" id="p-page-8">
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['auditoria', 'timeline_processamento'], ['auditoria', 'metadados_integracao'], ['auditoria', 'base_conhecimento'], ['auditoria', 'fundamentacao_teorica'], ['auditoria', 'trilha_rag']]) ? 'hidden' : ''}`} id="p-page-8">
                         <div className="space-y-4 w-full">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
@@ -2589,7 +2620,7 @@ export default function DashboardScreen({
                             const rTotalVal = (assertivoVal + participativoVal + conservadorVal + analiticoVal) || 0;
 
                             return (
-                              <div className="space-y-3">
+                              <div className={`space-y-3 ${!isReportFieldVisible('auditoria', 'timeline_processamento') ? 'hidden' : ''}`}>
                                 <h4 className="text-[10.5px] font-black text-[#112363] uppercase tracking-wider">8.1 Linha do Tempo de Processamento Autônomo</h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 relative w-full">
                                   {/* Step 1 */}
@@ -2665,7 +2696,7 @@ export default function DashboardScreen({
                           })()}
 
                           <div className="space-y-4 text-xs w-full">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full">
+                            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 w-full ${!isReportFieldVisible('auditoria', 'metadados_integracao') ? 'hidden' : ''}`}>
                               <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5 shadow-3xs">
                                 <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block font-sans">Metadados Corporativos</span>
                                 <strong className="text-[#112363] block font-black text-xs leading-none font-sans">n8n Integration Channel</strong>
@@ -2701,10 +2732,10 @@ export default function DashboardScreen({
                                 <div className="space-y-4 font-sans w-full">
                                   
                                   {/* Sections 8.2 + 8.3 lado a lado */}
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-3">
+                                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-3 ${!isAnyReportFieldVisible([['auditoria', 'base_conhecimento'], ['auditoria', 'fundamentacao_teorica']]) ? 'hidden' : ''}`}>
 
                                     {/* Section 8.2: Base de Conhecimento Consultada */}
-                                    <div className="space-y-2 font-sans">
+                                    <div className={`space-y-2 font-sans ${!isReportFieldVisible('auditoria', 'base_conhecimento') ? 'hidden' : ''}`}>
                                       <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
                                         <BookOpen className="w-4 h-4 text-[#112363]" /> 8.2 Base de Conhecimento Consultada
                                       </strong>
@@ -2746,7 +2777,7 @@ export default function DashboardScreen({
                                     </div>
 
                                     {/* Section 8.3: Fundamentação Teórica */}
-                                    <div className="space-y-2 font-sans">
+                                    <div className={`space-y-2 font-sans ${!isReportFieldVisible('auditoria', 'fundamentacao_teorica') ? 'hidden' : ''}`}>
                                       <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
                                         <BookOpen className="w-4 h-4 text-[#112363]" /> 8.3 Fundamentação Teórica de Socioestilos Utilizada
                                       </strong>
@@ -2798,7 +2829,7 @@ export default function DashboardScreen({
 
                                   </div>
 
-                                  {isUserAdminOrNomura && (() => {
+                                  {isUserAdminOrNomura && isReportFieldVisible('auditoria', 'trilha_rag') && (() => {
                                     const audit = getChunkContentAudit(reportData);
                                     const chunks = audit.chunks_recuperados || [];
                                     if (chunks.length === 0) return null;
