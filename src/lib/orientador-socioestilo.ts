@@ -91,28 +91,43 @@ export async function enviarMensagemOrientador(params: {
   mensagem: string;
 }): Promise<{ resposta: string; conversaId: string | null; fontes: any[] }> {
   const env = (import.meta as any).env || {};
-  const webhookUrl = env.VITE_N8N_CHATBOT_WEBHOOK_URL;
+  const directWebhookUrl = env.VITE_N8N_CHATBOT_WEBHOOK_URL;
+  const proxyUrl = '/api/orientador/chatbot';
+  const requestUrl = proxyUrl || directWebhookUrl;
 
-  if (!webhookUrl) {
+  if (!requestUrl) {
     throw new Error('Webhook do Orientador SocioEstilo nao configurado.');
   }
 
-  const response = await fetch(webhookUrl, {
+  const payloadToSend = {
+    usuario_id: params.usuario.uid,
+    empresa_id: Number.isNaN(Number(params.usuario.empresa_id))
+      ? params.usuario.empresa_id
+      : Number(params.usuario.empresa_id),
+    resultado_id: getReportId(params.relatorio),
+    conversa_id: params.conversaId,
+    mensagem: params.mensagem
+  };
+
+  let response = await fetch(requestUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
       Accept: 'application/json'
     },
-    body: JSON.stringify({
-      usuario_id: params.usuario.uid,
-      empresa_id: Number.isNaN(Number(params.usuario.empresa_id))
-        ? params.usuario.empresa_id
-        : Number(params.usuario.empresa_id),
-      resultado_id: getReportId(params.relatorio),
-      conversa_id: params.conversaId,
-      mensagem: params.mensagem
-    })
+    body: JSON.stringify(payloadToSend)
   });
+
+  if (response.status === 404 && directWebhookUrl) {
+    response = await fetch(directWebhookUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify(payloadToSend)
+    });
+  }
 
   if (!response.ok) {
     throw new Error(`Falha no webhook do Orientador SocioEstilo: ${response.status}`);

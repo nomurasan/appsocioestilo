@@ -391,6 +391,14 @@ const insightsSchema = z.object({
   respostas: z.any().optional()
 }).passthrough();
 
+const orientadorChatbotSchema = z.object({
+  usuario_id: z.string().trim().min(1, "usuario_id e obrigatorio."),
+  empresa_id: z.union([z.string(), z.number()]).nullable().optional(),
+  resultado_id: z.string().trim().min(1, "resultado_id e obrigatorio."),
+  conversa_id: z.string().nullable().optional(),
+  mensagem: z.string().trim().min(1, "mensagem e obrigatoria.")
+}).passthrough();
+
 // ENPOINTS PROTEGIDOS POR RATE LIMITER E PAYLOAD SANITIZER
 
 // Endpoint de busca vetorial manual com proteção de Rate Limit e Validação Zod
@@ -488,6 +496,70 @@ app.delete("/api/resultados/:id", apiRateLimiter, async (req: Request, res: Resp
       deleted: deletedCount,
       id
     });
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post("/api/orientador/chatbot", apiRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const parseResult = orientadorChatbotSchema.safeParse(req.body);
+    if (!parseResult.success) {
+      return res.status(400).json({
+        success: false,
+        error: "Payload invalido para o Orientador SocioEstilo.",
+        details: parseResult.error.flatten().fieldErrors,
+        requestId: req.headers["x-request-id"]
+      });
+    }
+
+    const webhookUrl = process.env.N8N_CHATBOT_WEBHOOK_URL || process.env.VITE_N8N_CHATBOT_WEBHOOK_URL;
+    if (!webhookUrl || webhookUrl.trim().length === 0) {
+      console.error("[ORIENTADOR] N8N_CHATBOT_WEBHOOK_URL nao configurada no backend.");
+      return res.status(500).json({
+        success: false,
+        error: "Webhook do Orientador SocioEstilo nao configurado no servidor.",
+        requestId: req.headers["x-request-id"]
+      });
+    }
+
+    console.log("[ORIENTADOR] Enviando mensagem ao n8n:", {
+      usuario_id: parseResult.data.usuario_id,
+      empresa_id: parseResult.data.empresa_id,
+      resultado_id: parseResult.data.resultado_id,
+      conversa_id: parseResult.data.conversa_id || null,
+      webhook: maskSecret(webhookUrl)
+    });
+
+    const response = await fetch(webhookUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+        "X-Request-Id": String(req.headers["x-request-id"] || "")
+      },
+      body: JSON.stringify(parseResult.data)
+    });
+
+    const responseText = await response.text();
+    let payload: any = {};
+    try {
+      payload = responseText ? JSON.parse(responseText) : {};
+    } catch {
+      payload = { resposta: responseText };
+    }
+
+    if (!response.ok) {
+      console.error("[ORIENTADOR] n8n retornou erro:", response.status, responseText.slice(0, 500));
+      return res.status(response.status).json({
+        success: false,
+        error: "Nao foi possivel obter resposta do Orientador SocioEstilo neste momento.",
+        details: payload,
+        requestId: req.headers["x-request-id"]
+      });
+    }
+
+    return res.json(payload);
   } catch (err) {
     next(err);
   }

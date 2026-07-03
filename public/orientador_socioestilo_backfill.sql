@@ -138,15 +138,30 @@ SELECT
   ) AS perfil_menos_utilizado,
   COALESCE(
     CASE
-      WHEN jsonb_typeof(row_data -> 'scores') = 'object' THEN row_data -> 'scores'
+      WHEN score_values.has_any_score THEN jsonb_build_object(
+        'Assertivo', score_values.score_assertivo,
+        'Participativo', score_values.score_participativo,
+        'Integrador', score_values.score_integrador,
+        'Analitico', score_values.score_analitico
+      )
       ELSE NULL
     END,
     CASE
-      WHEN jsonb_typeof(row_data -> 'report_data' -> 'resultado' -> 'scores') = 'object' THEN row_data -> 'report_data' -> 'resultado' -> 'scores'
+      WHEN jsonb_typeof(row_data -> 'scores') = 'object'
+        AND row_data -> 'scores' <> '{}'::jsonb
+      THEN row_data -> 'scores'
       ELSE NULL
     END,
     CASE
-      WHEN jsonb_typeof(row_data -> 'raw_payload' -> 'report_data' -> 'resultado' -> 'scores') = 'object' THEN row_data -> 'raw_payload' -> 'report_data' -> 'resultado' -> 'scores'
+      WHEN jsonb_typeof(row_data -> 'report_data' -> 'resultado' -> 'scores') = 'object'
+        AND row_data -> 'report_data' -> 'resultado' -> 'scores' <> '{}'::jsonb
+      THEN row_data -> 'report_data' -> 'resultado' -> 'scores'
+      ELSE NULL
+    END,
+    CASE
+      WHEN jsonb_typeof(row_data -> 'raw_payload' -> 'report_data' -> 'resultado' -> 'scores') = 'object'
+        AND row_data -> 'raw_payload' -> 'report_data' -> 'resultado' -> 'scores' <> '{}'::jsonb
+      THEN row_data -> 'raw_payload' -> 'report_data' -> 'resultado' -> 'scores'
       ELSE NULL
     END,
     '{}'::jsonb
@@ -194,6 +209,35 @@ CROSS JOIN LATERAL (
       NULLIF(row_data -> 'raw_payload' -> 'report_data' -> 'identificacao' ->> 'empresa', '')
     ) AS empresa_nome_text
 ) ids
+CROSS JOIN LATERAL (
+  SELECT
+    COALESCE(NULLIF(row_data ->> 'score_assertivo', ''), NULLIF(row_data ->> 'assertivo', ''))::numeric AS score_assertivo,
+    COALESCE(NULLIF(row_data ->> 'score_participativo', ''), NULLIF(row_data ->> 'participativo', ''))::numeric AS score_participativo,
+    COALESCE(
+      NULLIF(row_data ->> 'score_integrador', ''),
+      NULLIF(row_data ->> 'score_conservador_agregador', ''),
+      NULLIF(row_data ->> 'integrador', ''),
+      NULLIF(row_data ->> 'conservador_agregador', '')
+    )::numeric AS score_integrador,
+    COALESCE(
+      NULLIF(row_data ->> 'score_analitico', ''),
+      NULLIF(row_data ->> 'score_analitico_sem_acento', ''),
+      NULLIF(row_data ->> 'analitico', '')
+    )::numeric AS score_analitico,
+    (
+      NULLIF(row_data ->> 'score_assertivo', '') IS NOT NULL OR
+      NULLIF(row_data ->> 'assertivo', '') IS NOT NULL OR
+      NULLIF(row_data ->> 'score_participativo', '') IS NOT NULL OR
+      NULLIF(row_data ->> 'participativo', '') IS NOT NULL OR
+      NULLIF(row_data ->> 'score_integrador', '') IS NOT NULL OR
+      NULLIF(row_data ->> 'score_conservador_agregador', '') IS NOT NULL OR
+      NULLIF(row_data ->> 'integrador', '') IS NOT NULL OR
+      NULLIF(row_data ->> 'conservador_agregador', '') IS NOT NULL OR
+      NULLIF(row_data ->> 'score_analitico', '') IS NOT NULL OR
+      NULLIF(row_data ->> 'score_analitico_sem_acento', '') IS NOT NULL OR
+      NULLIF(row_data ->> 'analitico', '') IS NOT NULL
+    ) AS has_any_score
+) score_values
 CROSS JOIN LATERAL (
   SELECT COALESCE(
     NULLIF(row_data ->> 'generated_at', ''),
