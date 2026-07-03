@@ -1,5 +1,5 @@
 import { Resultado, Scores, Usuario } from '../types';
-import { listarResultadosUsuario } from './supabase';
+import { listarOrientadorRelatoriosUsuario, listarResultadosUsuario } from './supabase';
 
 export type OrientadorChatMessage = {
   role: 'user' | 'assistant';
@@ -46,9 +46,21 @@ function toTimestamp(result: Resultado) {
 }
 
 export async function listarRelatoriosGeradosUsuario(uid: string): Promise<Resultado[]> {
-  const relatorios = await listarResultadosUsuario(uid);
+  const [relatorios, relatoriosIndexados] = await Promise.all([
+    listarResultadosUsuario(uid).catch(() => []),
+    listarOrientadorRelatoriosUsuario(uid).catch(() => [])
+  ]);
 
-  return relatorios
+  const merged = Array.from(
+    new Map(
+      [...relatorios, ...relatoriosIndexados].map(relatorio => [
+        relatorio.id_resultado || relatorio.id || `${relatorio.id_usuario}-${relatorio.data_conclusao}`,
+        relatorio
+      ])
+    ).values()
+  );
+
+  return merged
     .filter(relatorio => Boolean(relatorio.id || relatorio.id_resultado))
     .sort((a, b) => toTimestamp(b) - toTimestamp(a));
 }

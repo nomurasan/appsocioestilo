@@ -1262,9 +1262,28 @@ export async function listarResultados(): Promise<Resultado[]> {
  */
 export async function buscarResultado(idResultado: string): Promise<Resultado | null> {
   const parsedId = parseResultId(idResultado);
-  const { data: rawData, error } = await supabase.from('resultados').select('*').eq('id', parsedId).maybeSingle();
-  if (error) {
-    handleSupabaseError(error, OperationType.GET, `buscar_resultado: ${idResultado}`);
+  const idCandidates = Array.from(new Set([parsedId, String(idResultado)].filter(Boolean)));
+  let rawData: any = null;
+  let lastError: any = null;
+
+  for (const candidate of idCandidates) {
+    const byId = await supabase.from('resultados').select('*').eq('id', candidate).maybeSingle();
+    if (!byId.error && byId.data) {
+      rawData = byId.data;
+      break;
+    }
+    if (byId.error) lastError = byId.error;
+
+    const byIdResultado = await supabase.from('resultados').select('*').eq('id_resultado', String(candidate)).maybeSingle();
+    if (!byIdResultado.error && byIdResultado.data) {
+      rawData = byIdResultado.data;
+      break;
+    }
+    if (byIdResultado.error) lastError = byIdResultado.error;
+  }
+
+  if (!rawData && lastError) {
+    console.warn(`[buscarResultado] Nao foi possivel localizar por id/id_resultado: ${idResultado}`, lastError.message);
   }
   if (!rawData) return null;
 
@@ -1283,6 +1302,67 @@ export async function buscarResultado(idResultado: string): Promise<Resultado | 
     }
   }
   return mapped;
+}
+
+function mapOrientadorRelatorioToResultado(item: any): Resultado | null {
+  if (!item) return null;
+
+  const scores = item.scores && typeof item.scores === 'object'
+    ? item.scores
+    : { Assertivo: 0, Participativo: 0, Integrador: 0, Analitico: 0 };
+
+  return {
+    id: String(item.resultado_id || item.id || ''),
+    id_resultado: String(item.resultado_id || item.id || ''),
+    id_usuario: String(item.usuario_id || ''),
+    nome_usuario: item.nome_participante || 'Usuario Desconhecido',
+    empresa_id: String(item.empresa_id || ''),
+    empresa_nome: item.empresa_nome || '',
+    scores,
+    perfil_dominante: item.perfil_dominante || '',
+    perfil_secundario: item.perfil_secundario || '',
+    perfil_menos_utilizado: item.perfil_menos_utilizado || '',
+    data_conclusao: item.generated_at || item.created_at || '',
+    generated_at: item.generated_at || item.created_at || '',
+    metadata: {
+      source: 'orientador_relatorios',
+      orientador_relatorio_id: item.id
+    }
+  };
+}
+
+export async function listarOrientadorRelatoriosUsuario(uid: string): Promise<Resultado[]> {
+  const mappedUid = mapFirebaseUidToUuid(uid);
+  const userFilters = Array.from(new Set([mappedUid, uid].filter(Boolean)))
+    .map(userId => `usuario_id.eq.${userId}`)
+    .join(',');
+
+  const { data, error } = await supabase
+    .from('orientador_relatorios')
+    .select('*')
+    .or(userFilters)
+    .order('generated_at', { ascending: false, nullsFirst: false });
+
+  if (error) {
+    console.warn(`[orientador_relatorios] Nao foi possivel consultar indice para ${mappedUid}:`, error.message);
+    return [];
+  }
+
+  return (data || []).map(mapOrientadorRelatorioToResultado).filter(Boolean) as Resultado[];
+}
+
+export async function listarOrientadorRelatorios(): Promise<Resultado[]> {
+  const { data, error } = await supabase
+    .from('orientador_relatorios')
+    .select('*')
+    .order('generated_at', { ascending: false, nullsFirst: false });
+
+  if (error) {
+    console.warn('[orientador_relatorios] Nao foi possivel listar indice de relatorios:', error.message);
+    return [];
+  }
+
+  return (data || []).map(mapOrientadorRelatorioToResultado).filter(Boolean) as Resultado[];
 }
 
 /**

@@ -105,40 +105,16 @@ INSERT INTO public.orientador_relatorios (
   updated_at
 )
 SELECT
+  ids.resultado_id_text AS resultado_id,
+  ids.usuario_id_text AS usuario_id,
+  COALESCE(ids.empresa_id_text, u.id_empresa::text) AS empresa_id,
   COALESCE(
-    NULLIF(row_data ->> 'id_resultado', ''),
-    NULLIF(row_data ->> 'id', ''),
-    NULLIF(row_data -> 'report_data' -> 'identificacao' ->> 'relatorio_uuid', ''),
-    NULLIF(row_data -> 'raw_payload' -> 'report_data' -> 'identificacao' ->> 'relatorio_uuid', '')
-  ) AS resultado_id,
-  COALESCE(
-    NULLIF(row_data ->> 'id_usuario', ''),
-    NULLIF(row_data ->> 'user_id', ''),
-    NULLIF(row_data ->> 'uid', ''),
-    NULLIF(row_data -> 'metadata' ->> 'userId', ''),
-    NULLIF(row_data -> 'raw_payload' -> 'metadata' ->> 'userId', '')
-  ) AS usuario_id,
-  COALESCE(
-    NULLIF(row_data ->> 'empresa_id', ''),
-    NULLIF(row_data ->> 'id_empresa', ''),
-    NULLIF(row_data -> 'metadata' ->> 'companyId', ''),
-    NULLIF(row_data -> 'raw_payload' -> 'metadata' ->> 'companyId', '')
-  ) AS empresa_id,
-  COALESCE(
-    NULLIF(row_data ->> 'nome_usuario', ''),
-    NULLIF(row_data ->> 'user_name', ''),
-    NULLIF(row_data -> 'metadata' ->> 'userName', ''),
-    NULLIF(row_data -> 'raw_payload' -> 'metadata' ->> 'userName', ''),
-    NULLIF(row_data -> 'report_data' -> 'identificacao' ->> 'nome', ''),
-    NULLIF(row_data -> 'raw_payload' -> 'report_data' -> 'identificacao' ->> 'nome', '')
+    ids.nome_participante_text,
+    u.nome
   ) AS nome_participante,
   COALESCE(
-    NULLIF(row_data ->> 'empresa_nome', ''),
-    NULLIF(row_data ->> 'company_name', ''),
-    NULLIF(row_data -> 'metadata' ->> 'companyName', ''),
-    NULLIF(row_data -> 'raw_payload' -> 'metadata' ->> 'companyName', ''),
-    NULLIF(row_data -> 'report_data' -> 'identificacao' ->> 'empresa', ''),
-    NULLIF(row_data -> 'raw_payload' -> 'report_data' -> 'identificacao' ->> 'empresa', '')
+    ids.empresa_nome_text,
+    e.nome
   ) AS empresa_nome,
   CASE
     WHEN generated_at_text ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}' THEN generated_at_text::timestamptz
@@ -181,6 +157,44 @@ SELECT
 FROM public.resultados r
 CROSS JOIN LATERAL (SELECT to_jsonb(r) AS row_data) payload
 CROSS JOIN LATERAL (
+  SELECT
+    COALESCE(
+      NULLIF(row_data ->> 'id_resultado', ''),
+      NULLIF(row_data ->> 'id', ''),
+      NULLIF(row_data -> 'report_data' -> 'identificacao' ->> 'relatorio_uuid', ''),
+      NULLIF(row_data -> 'raw_payload' -> 'report_data' -> 'identificacao' ->> 'relatorio_uuid', '')
+    ) AS resultado_id_text,
+    COALESCE(
+      NULLIF(row_data ->> 'id_usuario', ''),
+      NULLIF(row_data ->> 'user_id', ''),
+      NULLIF(row_data ->> 'uid', ''),
+      NULLIF(row_data -> 'metadata' ->> 'userId', ''),
+      NULLIF(row_data -> 'raw_payload' -> 'metadata' ->> 'userId', '')
+    ) AS usuario_id_text,
+    COALESCE(
+      NULLIF(row_data ->> 'empresa_id', ''),
+      NULLIF(row_data ->> 'id_empresa', ''),
+      NULLIF(row_data -> 'metadata' ->> 'companyId', ''),
+      NULLIF(row_data -> 'raw_payload' -> 'metadata' ->> 'companyId', '')
+    ) AS empresa_id_text,
+    COALESCE(
+      NULLIF(row_data ->> 'nome_usuario', ''),
+      NULLIF(row_data ->> 'user_name', ''),
+      NULLIF(row_data -> 'metadata' ->> 'userName', ''),
+      NULLIF(row_data -> 'raw_payload' -> 'metadata' ->> 'userName', ''),
+      NULLIF(row_data -> 'report_data' -> 'identificacao' ->> 'nome', ''),
+      NULLIF(row_data -> 'raw_payload' -> 'report_data' -> 'identificacao' ->> 'nome', '')
+    ) AS nome_participante_text,
+    COALESCE(
+      NULLIF(row_data ->> 'empresa_nome', ''),
+      NULLIF(row_data ->> 'company_name', ''),
+      NULLIF(row_data -> 'metadata' ->> 'companyName', ''),
+      NULLIF(row_data -> 'raw_payload' -> 'metadata' ->> 'companyName', ''),
+      NULLIF(row_data -> 'report_data' -> 'identificacao' ->> 'empresa', ''),
+      NULLIF(row_data -> 'raw_payload' -> 'report_data' -> 'identificacao' ->> 'empresa', '')
+    ) AS empresa_nome_text
+) ids
+CROSS JOIN LATERAL (
   SELECT COALESCE(
     NULLIF(row_data ->> 'generated_at', ''),
     NULLIF(row_data ->> 'data_conclusao', ''),
@@ -191,24 +205,17 @@ CROSS JOIN LATERAL (
     NULLIF(row_data -> 'raw_payload' -> 'report_data' -> 'identificacao' ->> 'generated_at', '')
   ) AS generated_at_text
 ) dates
-WHERE COALESCE(
-    NULLIF(row_data ->> 'id_resultado', ''),
-    NULLIF(row_data ->> 'id', ''),
-    NULLIF(row_data -> 'report_data' -> 'identificacao' ->> 'relatorio_uuid', ''),
-    NULLIF(row_data -> 'raw_payload' -> 'report_data' -> 'identificacao' ->> 'relatorio_uuid', '')
-  ) IS NOT NULL
-  AND COALESCE(
-    NULLIF(row_data ->> 'id_usuario', ''),
-    NULLIF(row_data ->> 'user_id', ''),
-    NULLIF(row_data ->> 'uid', ''),
-    NULLIF(row_data -> 'metadata' ->> 'userId', ''),
-    NULLIF(row_data -> 'raw_payload' -> 'metadata' ->> 'userId', '')
-  ) IS NOT NULL
+LEFT JOIN public.usuarios u
+  ON u.uid::text = ids.usuario_id_text
+LEFT JOIN public.empresas e
+  ON e.id_empresa::text = COALESCE(ids.empresa_id_text, u.id_empresa::text)
+WHERE ids.resultado_id_text IS NOT NULL
+  AND ids.usuario_id_text IS NOT NULL
 ON CONFLICT (resultado_id) DO UPDATE SET
   usuario_id = EXCLUDED.usuario_id,
   empresa_id = EXCLUDED.empresa_id,
-  nome_participante = EXCLUDED.nome_participante,
-  empresa_nome = EXCLUDED.empresa_nome,
+  nome_participante = COALESCE(EXCLUDED.nome_participante, public.orientador_relatorios.nome_participante),
+  empresa_nome = COALESCE(EXCLUDED.empresa_nome, public.orientador_relatorios.empresa_nome),
   generated_at = EXCLUDED.generated_at,
   perfil_dominante = EXCLUDED.perfil_dominante,
   perfil_secundario = EXCLUDED.perfil_secundario,
@@ -216,6 +223,23 @@ ON CONFLICT (resultado_id) DO UPDATE SET
   scores = EXCLUDED.scores,
   status = EXCLUDED.status,
   updated_at = now();
+
+-- Completa dados cadastrais de linhas ja indexadas anteriormente com campos nulos.
+UPDATE public.orientador_relatorios o
+SET
+  nome_participante = COALESCE(NULLIF(o.nome_participante, ''), u.nome),
+  empresa_id = COALESCE(NULLIF(o.empresa_id, ''), u.id_empresa::text),
+  empresa_nome = COALESCE(NULLIF(o.empresa_nome, ''), e.nome),
+  updated_at = now()
+FROM public.usuarios u
+LEFT JOIN public.empresas e
+  ON e.id_empresa::text = u.id_empresa::text
+WHERE u.uid::text = o.usuario_id
+  AND (
+    o.nome_participante IS NULL OR o.nome_participante = '' OR
+    o.empresa_nome IS NULL OR o.empresa_nome = '' OR
+    o.empresa_id IS NULL OR o.empresa_id = ''
+  );
 
 -- -------------------------------------------------------------------------
 -- 5. RLS permissiva para leitura autenticada e escrita por backend/n8n
@@ -231,7 +255,7 @@ DROP POLICY IF EXISTS "Orientador mensagens leitura autenticada" ON public.orien
 CREATE POLICY "Orientador relatorios leitura autenticada"
 ON public.orientador_relatorios
 FOR SELECT
-TO authenticated
+TO public, anon, authenticated
 USING (true);
 
 CREATE POLICY "Orientador conversas leitura autenticada"

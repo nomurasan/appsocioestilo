@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, buscarUsuario, buscarUsuarioPorEmail, listarResultadosUsuario, listarResultados, atualizarUsuario, mapFirebaseUidToUuid, syncFirebaseUserWithSupabaseAuth } from './lib/supabase';
+import { supabase, buscarUsuario, buscarUsuarioPorEmail, listarResultadosUsuario, listarOrientadorRelatoriosUsuario, listarOrientadorRelatorios, listarResultados, atualizarUsuario, mapFirebaseUidToUuid, syncFirebaseUserWithSupabaseAuth } from './lib/supabase';
 import { auth as fbAuth, signOut as fbSignOut } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Usuario, Resultado } from './types';
@@ -54,6 +54,13 @@ export default function App() {
       } catch (err) {
         console.warn(`[RESULTADOS] Falha ao buscar relatorios para uid candidato ${candidateId}:`, err);
       }
+
+      try {
+        const indexedReports = await listarOrientadorRelatoriosUsuario(candidateId);
+        foundById.push(...indexedReports);
+      } catch (err) {
+        console.warn(`[ORIENTADOR] Falha ao buscar indice de relatorios para uid candidato ${candidateId}:`, err);
+      }
     }
 
     if (foundById.length > 0) {
@@ -65,9 +72,16 @@ export default function App() {
     }
 
     try {
-      const allResults = await listarResultados();
+      const [allResults, allIndexedReports] = await Promise.all([
+        listarResultados().catch(() => []),
+        listarOrientadorRelatorios().catch(() => [])
+      ]);
       const normalizedProfileName = profile.nome.trim().toLowerCase();
-      const filtered = allResults.filter(result => {
+      const allAvailableReports = [...allResults, ...allIndexedReports];
+      const uniqueAvailableReports = Array.from(
+        new Map(allAvailableReports.map(result => [result.id_resultado || result.id || `${result.id_usuario}-${result.data_conclusao}`, result])).values()
+      );
+      const filtered = uniqueAvailableReports.filter(result => {
         const sameUserId = candidateIds.includes(String(result.id_usuario || ''));
         const sameName = normalizedProfileName && String(result.nome_usuario || result.user_name || '').trim().toLowerCase() === normalizedProfileName;
         const sameCompany = !profile.empresa_id || String(result.empresa_id || '') === String(profile.empresa_id);
