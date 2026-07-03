@@ -9,6 +9,7 @@ import Header from './components/Header';
 import AuthScreen from './components/AuthScreen';
 import OnboardingScreen from './components/OnboardingScreen';
 import ChatbotScreen from './components/ChatbotScreen';
+import OrientadorSocioEstiloScreen from './components/OrientadorSocioEstiloScreen';
 import DashboardScreen from './components/DashboardScreen';
 import MenuScreen from './components/MenuScreen';
 import AdminScreen from './components/AdminScreen';
@@ -20,7 +21,7 @@ export default function App() {
   const [myResult, setMyResult] = useState<Resultado | null>(null);
 
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<'loading' | 'auth' | 'onboarding' | 'menu' | 'chatbot' | 'dashboard' | 'admin'>('loading');
+  const [step, setStep] = useState<'loading' | 'auth' | 'onboarding' | 'menu' | 'chatbot' | 'orientador' | 'dashboard' | 'admin'>('loading');
   const [adminViewUser, setAdminViewUser] = useState<{ user: Usuario; result: Resultado } | null>(null);
   const [adminSelectedCompany, setAdminSelectedCompany] = useState<{ id: string; nome: string } | null>(null);
 
@@ -259,6 +260,12 @@ export default function App() {
           setAdminSelectedCompany(null);
           setStep('admin');
         }}
+        hasReport={Boolean(myResult)}
+        onGoToOrientador={() => {
+          setAdminViewUser(null);
+          setAdminSelectedCompany(null);
+          setStep('orientador');
+        }}
       />
 
       {/* Main Body Layout */}
@@ -309,6 +316,26 @@ export default function App() {
               usuario={userProfile}
               onFinish={handleChatbotFinished}
               onGoBack={() => setStep('menu')}
+            />
+          </div>
+        )}
+
+        {step === 'orientador' && userProfile && (
+          <div className="w-full flex flex-col space-y-4">
+            <div className="max-w-6xl mx-auto px-4 w-full flex justify-start">
+              <button
+                onClick={() => setStep('menu')}
+                className="flex items-center space-x-1.5 bg-white border border-gray-200 text-xxs font-bold text-[#112363] px-3.5 py-2 rounded-xl shadow-2xs hover:border-[#112363] active:scale-98 transition-all cursor-pointer animate-fade-in"
+                id="btn-orientador-back-menu"
+              >
+                <span>&larr; Painel Principal</span>
+              </button>
+            </div>
+            <OrientadorSocioEstiloScreen
+              usuario={userProfile}
+              initialResult={myResult}
+              onGoBack={() => setStep('menu')}
+              onStartQuestionnaire={() => setStep('chatbot')}
             />
           </div>
         )}

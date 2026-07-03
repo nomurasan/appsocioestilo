@@ -1,5 +1,5 @@
 import React from 'react';
-import { LogOut, User, Shield } from 'lucide-react';
+import { Bot, LogOut, User, Shield } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import Logo from './Logo';
 
@@ -10,9 +10,11 @@ interface HeaderProps {
   onLogout: () => void;
   onGoHome?: () => void;
   onGoToAdmin?: () => void;
+  hasReport?: boolean;
+  onGoToOrientador?: () => void;
 }
 
-export default function Header({ userEmail, userName, isAdmin, onLogout, onGoHome, onGoToAdmin }: HeaderProps) {
+export default function Header({ userEmail, userName, isAdmin, onLogout, onGoHome, onGoToAdmin, hasReport, onGoToOrientador }: HeaderProps) {
   const handleSignOut = async () => {
     try {
       await supabase.auth.signOut();
@@ -41,6 +43,18 @@ export default function Header({ userEmail, userName, isAdmin, onLogout, onGoHom
               >
                 <Shield className="w-3 h-3 text-white" />
                 <span>ADMIN</span>
+              </button>
+            )}
+
+            {hasReport && onGoToOrientador && (
+              <button
+                onClick={onGoToOrientador}
+                className="hidden md:flex bg-[#112363] text-white hover:bg-[#112363]/90 text-[10px] font-black uppercase px-3 cursor-pointer py-1.5 rounded-full shadow-sm items-center space-x-1 border border-blue-200 transition-colors"
+                id="btn-header-orientador"
+                title="Conversar com o Orientador SocioEstilo"
+              >
+                <Bot className="w-3 h-3 text-white" />
+                <span>Orientador</span>
               </button>
             )}
 

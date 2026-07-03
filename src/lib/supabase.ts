@@ -1290,7 +1290,13 @@ export async function buscarResultado(idResultado: string): Promise<Resultado | 
  */
 export async function listarResultadosUsuario(uid: string): Promise<Resultado[]> {
   const mappedUid = mapFirebaseUidToUuid(uid);
-  const { data: rawData, error } = await supabase.from('resultados').select('*').eq('user_id', mappedUid);
+  const userFilters = Array.from(new Set([mappedUid, uid].filter(Boolean)))
+    .flatMap(userId => [`user_id.eq.${userId}`, `id_usuario.eq.${userId}`])
+    .join(',');
+  const { data: rawData, error } = await supabase
+    .from('resultados')
+    .select('*')
+    .or(userFilters);
   if (error) {
     handleSupabaseError(error, OperationType.LIST, `listar_resultados_usuario: ${mappedUid}`);
   }
