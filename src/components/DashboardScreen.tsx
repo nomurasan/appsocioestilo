@@ -1632,7 +1632,7 @@ export default function DashboardScreen({
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8" id="dashboard-wrapper">
+    <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 overflow-x-hidden" id="dashboard-wrapper">
       <style>{`
         @media print {
           body {
@@ -1699,9 +1699,9 @@ export default function DashboardScreen({
 
 
       {/* Visual greeting card */}
-      <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 relative overflow-hidden print:hidden">
+      <div className="w-full max-w-full bg-white rounded-2xl border border-gray-100 shadow-xs p-6 md:p-8 flex flex-col md:flex-row md:items-center md:justify-between space-y-4 md:space-y-0 relative overflow-hidden print:hidden">
         <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full translate-x-12 -translate-y-12 shrink-0 pointer-events-none" />
-        <div>
+        <div className="min-w-0">
           <span className="text-xs text-[#D80E2A] font-bold uppercase tracking-wider flex items-center gap-1">
             <CheckCircle2 className="w-4 h-4" /> Diagnóstico Concluído
           </span>
@@ -1728,13 +1728,13 @@ export default function DashboardScreen({
 
       {/* Tab Switcher - Only display if we have individual result to toggle */}
       {hasIndividualResult && (
-        <div className="flex bg-slate-100 p-1 rounded-xl self-start w-full sm:w-auto items-center space-x-1 print:hidden" id="dashboard-tab-switcher">
+        <div className="flex bg-slate-100 p-1 rounded-xl self-start w-full sm:w-auto max-w-full items-center space-x-1 overflow-hidden print:hidden" id="dashboard-tab-switcher">
           <button
             onClick={() => {
               setSelectedMemberResult(null);
               setActiveTab('individual');
             }}
-            className={`flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`min-w-0 flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'individual' && !selectedMemberResult
                 ? 'bg-white text-[#112363] shadow-xs'
                 : 'text-slate-500 hover:text-[#112363] hover:bg-slate-50/50'
@@ -1747,7 +1747,7 @@ export default function DashboardScreen({
           
           <button
             onClick={() => setActiveTab('team')}
-            className={`flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+            className={`min-w-0 flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
               activeTab === 'team'
                 ? 'bg-white text-[#112363] shadow-xs'
                 : 'text-slate-500 hover:text-[#112363] hover:bg-slate-50/50'
@@ -1779,7 +1779,7 @@ export default function DashboardScreen({
           </div>
         ) : (
           /* 1. INDIVIDUAL DASHBOARD */
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8" id="individual-dashboard">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 min-w-0 max-w-full" id="individual-dashboard">
             
             {/* Visual warning/banner indicating who is being inspected */}
             {(selectedMemberResult || isViewingAsAdmin) && (
