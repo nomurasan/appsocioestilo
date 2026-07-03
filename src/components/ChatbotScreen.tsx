@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, ChevronRight, Check, Bot, Home, X, CheckCircle2 } from 'lucide-react';
-import { QUESTIONS } from '../data/questions';
-import { Usuario, Scores, Resultado, AnswerDetail, STYLE_NAMES } from '../types';
+import { QUESTIONS as STATIC_QUESTIONS } from '../data/questions';
+import { Usuario, Scores, Resultado, AnswerDetail, STYLE_NAMES, Question } from '../types';
 import { generateSocioestiloInsights } from '../lib/openai';
 import {
   abandonarRascunhoQuestionario,
   buscarRascunhoQuestionario,
   concluirRascunhoQuestionario,
   criarResultado,
+  listarQuestionMapping,
   salvarRascunhoQuestionario,
   atualizarUsuario
 } from '../lib/supabase';
@@ -123,15 +124,17 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
   const [remoteDraft, setRemoteDraft] = useState<any>(null);
   const [showDraftRecovery, setShowDraftRecovery] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [questions, setQuestions] = useState<Question[]>(STATIC_QUESTIONS);
+  const [questionMappingLoading, setQuestionMappingLoading] = useState(true);
 
   const messageFeedRef = useRef<HTMLDivElement>(null);
 
   const getNextPendingQuestionIndex = (currentAnswers: Record<string, string | string[]>) => {
-    const pendingIndex = QUESTIONS.findIndex(question => {
+    const pendingIndex = questions.findIndex(question => {
       const value = currentAnswers[question.id.toString()];
       return Array.isArray(value) ? value.length === 0 : !value;
     });
-    return pendingIndex === -1 ? QUESTIONS.length : pendingIndex;
+    return pendingIndex === -1 ? questions.length : pendingIndex;
   };
 
   const buildMessagesFromAnswers = (currentAnswers: Record<string, string | string[]>, nextIndex: number): ChatMessage[] => {
@@ -143,7 +146,7 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
       }
     ];
 
-    QUESTIONS.slice(0, Math.min(nextIndex, QUESTIONS.length)).forEach(question => {
+    questions.slice(0, Math.min(nextIndex, questions.length)).forEach(question => {
       const value = currentAnswers[question.id.toString()];
       if (!value) return;
 
@@ -162,8 +165,8 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
       });
     });
 
-    if (nextIndex < QUESTIONS.length) {
-      const nextQuestion = QUESTIONS[nextIndex];
+    if (nextIndex < questions.length) {
+      const nextQuestion = questions[nextIndex];
       rebuiltMessages.push({
         id: `question-${nextQuestion.id}`,
         sender: 'bot',
@@ -183,17 +186,41 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
   ) => {
     setAutosaveStatus('saving');
     const saved = status === 'CONCLUIDO'
-      ? await concluirRascunhoQuestionario(usuario, currentAnswers)
+      ? await concluirRascunhoQuestionario(usuario, currentAnswers, questions.length)
       : await salvarRascunhoQuestionario(usuario, {
           respostas: currentAnswers,
           etapa_atual: index,
           ultima_pergunta_respondida: Math.max(0, index),
-          percentual_concluido: Math.round((Object.keys(currentAnswers).length / QUESTIONS.length) * 100),
+          percentual_concluido: Math.round((Object.keys(currentAnswers).length / Math.max(questions.length, 1)) * 100),
           status
         });
 
     setAutosaveStatus(saved ? 'saved' : 'error');
   };
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadQuestionMapping = async () => {
+      setQuestionMappingLoading(true);
+      const mappedQuestions = await listarQuestionMapping();
+      if (cancelled) return;
+
+      if (mappedQuestions.length > 0) {
+        setQuestions(mappedQuestions);
+      } else {
+        console.warn('[question_mapping] Usando perguntas locais como fallback.');
+        setQuestions(STATIC_QUESTIONS);
+      }
+
+      setQuestionMappingLoading(false);
+    };
+
+    loadQuestionMapping();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Helper helper to write progress state
   const saveProgress = (
@@ -289,11 +316,11 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
     const rebuiltMessages = buildMessagesFromAnswers(draftAnswers, nextIndex);
 
     setAnswers(draftAnswers);
-    setCurrentQuestionIndex(Math.min(nextIndex, QUESTIONS.length - 1));
+    setCurrentQuestionIndex(Math.min(nextIndex, Math.max(questions.length - 1, 0)));
     setMessages(rebuiltMessages);
     setStarted(true);
     setShowDraftRecovery(false);
-    saveProgress(Math.min(nextIndex, QUESTIONS.length - 1), scores, rebuiltMessages, true, draftAnswers);
+    saveProgress(Math.min(nextIndex, Math.max(questions.length - 1, 0)), scores, rebuiltMessages, true, draftAnswers);
   };
 
   const handleStartOverDraft = async () => {
@@ -335,7 +362,8 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
     setIsTyping(true);
     await delay(1200);
 
-    const firstQ = QUESTIONS[0];
+    const firstQ = questions[0];
+    if (!firstQ) return;
     const newMessages: ChatMessage[] = [
       ...updatedMessages,
       {
@@ -356,11 +384,12 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
 
   // Multi-option toggle for Q1
   const handleToggleMultiOption = (text: string) => {
+    const maxChoices = questions[currentQuestionIndex]?.maxChoices || 5;
     setSelectedMultiOptions(prev => {
       if (prev.includes(text)) {
         return prev.filter(item => item !== text);
       }
-      if (prev.length >= 5) {
+      if (prev.length >= maxChoices) {
         return prev;
       }
       return [...prev, text];
@@ -368,7 +397,8 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
   };
 
   const handleConfirmMultiOptions = async () => {
-    if (selectedMultiOptions.length !== 5) return;
+    const maxChoices = questions[currentQuestionIndex]?.maxChoices || 5;
+    if (selectedMultiOptions.length !== maxChoices) return;
 
     // 1. Show user responses in Chat Bubbles
     const userMessageText = `Minhas qualidades: ${selectedMultiOptions.join(', ')}`;
@@ -383,7 +413,7 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
     // Keep the individual answers in memory
     const newAnswers = {
       ...answers,
-      [QUESTIONS[currentQuestionIndex].id.toString()]: [...selectedMultiOptions]
+      [questions[currentQuestionIndex].id.toString()]: [...selectedMultiOptions]
     };
     setAnswers(newAnswers);
 
@@ -407,7 +437,7 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
 
     const newAnswers = {
       ...answers,
-      [QUESTIONS[currentQuestionIndex].id.toString()]: optionText
+      [questions[currentQuestionIndex].id.toString()]: optionText
     };
     setAnswers(newAnswers);
 
@@ -422,9 +452,9 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
     setIsTyping(true);
     await delay(1400);
 
-    if (nextIndex < QUESTIONS.length) {
+    if (nextIndex < questions.length) {
       setCurrentQuestionIndex(nextIndex);
-      const nextQ = QUESTIONS[nextIndex];
+      const nextQ = questions[nextIndex];
 
       const newQuestionMsg: ChatMessage = {
         id: `question-${nextQ.id}`,
@@ -472,7 +502,7 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
     setIsTyping(true);
 
     // Format expected of payload (Rules 5, 6, 7, 8, 9)
-    const formattedAnswers = QUESTIONS
+    const formattedAnswers = questions
       .filter(q => q.id !== 14) // Exclude Q14
       .map(q => {
         const rawAns = currentAnswers[q.id.toString()];
@@ -570,7 +600,7 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
 
     try {
       // CLEAR temporary progress on complete
-      await persistDraft(QUESTIONS.length, currentAnswers, 'CONCLUIDO');
+      await persistDraft(questions.length, currentAnswers, 'CONCLUIDO');
       localStorage.removeItem(`potenciar_progress_${usuario.uid}`);
 
       const resultPayload = {
@@ -605,10 +635,11 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
     }
   };
 
-  const progressPercent = Math.round((currentQuestionIndex / QUESTIONS.length) * 100);
-  const activeQ = QUESTIONS[currentQuestionIndex];
+  const progressPercent = questions.length > 0 ? Math.round((currentQuestionIndex / questions.length) * 100) : 0;
+  const activeQ = questions[currentQuestionIndex];
+  const activeMaxChoices = activeQ?.maxChoices || 5;
 
-  if (draftLoading) {
+  if (draftLoading || questionMappingLoading) {
     return (
       <div className="flex flex-col h-[420px] max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 items-center justify-center space-y-3">
         <Bot className="w-8 h-8 text-[#112363] animate-pulse" />
@@ -619,7 +650,7 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
 
   if (showDraftRecovery && remoteDraft) {
     const draftAnswers = remoteDraft.respostas || {};
-    const answeredQuestions = QUESTIONS.filter(question => draftAnswers[question.id.toString()]);
+    const answeredQuestions = questions.filter(question => draftAnswers[question.id.toString()]);
 
     return (
       <div className="max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
@@ -675,7 +706,7 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
             Sua Conexão Comportamental
           </h3>
           <p className="text-xxs text-gray-400 mt-0.5" id="progress-text">
-            Socioestilo Chatbot &bull; {testCompleted ? 'Finalizando' : !started ? 'Apresentação' : `Questão ${currentQuestionIndex + 1} de ${QUESTIONS.length}`}
+            Socioestilo Chatbot &bull; {testCompleted ? 'Finalizando' : !started ? 'Apresentação' : `Questão ${currentQuestionIndex + 1} de ${questions.length}`}
           </p>
         </div>
         <div className="flex items-center space-x-3.5">
@@ -825,12 +856,12 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
                     {activeQ.mode === 'multi' ? (
                       <div className="space-y-4">
                         <p className="text-xxs font-bold text-gray-400 uppercase tracking-widest">
-                          Selecione exatamente 5 características:
+                          Selecione exatamente {activeMaxChoices} características:
                         </p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2" id="multi-choice-grid">
                           {activeQ.options.map((opt) => {
                             const isChecked = selectedMultiOptions.includes(opt.text);
-                            const isLimit = selectedMultiOptions.length >= 5 && !isChecked;
+                            const isLimit = selectedMultiOptions.length >= activeMaxChoices && !isChecked;
 
                             return (
                               <button
@@ -858,11 +889,11 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
 
                         <div className="flex items-center justify-between border-t border-gray-100 pt-3">
                           <span className="text-xs text-gray-500 font-semibold">
-                            {selectedMultiOptions.length} de 5 selecionadas
+                            {selectedMultiOptions.length} de {activeMaxChoices} selecionadas
                           </span>
                           <button
                             onClick={handleConfirmMultiOptions}
-                            disabled={selectedMultiOptions.length !== 5}
+                            disabled={selectedMultiOptions.length !== activeMaxChoices}
                             className="bg-[#112363] hover:bg-[#112363]/90 text-white font-bold py-2.5 px-5 rounded-xl text-xs flex items-center space-x-1.5 transition-all active:scale-98 disabled:opacity-40 cursor-pointer"
                             id="btn-confirm-qualities"
                           >

@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { Usuario, Resultado, Empresa, Scores, AnswerDetail, ReportParameter, ReportUserType, QuestionarioRascunho } from '../types';
+import { Usuario, Resultado, Empresa, Scores, AnswerDetail, ReportParameter, ReportUserType, QuestionarioRascunho, Question } from '../types';
 import { QUESTIONS } from '../data/questions';
 import { getDefaultReportParameters } from './report-parameters';
 
@@ -318,6 +318,53 @@ function getDraftSessionToken(): string {
   return token;
 }
 
+export async function listarQuestionMapping(): Promise<Question[]> {
+  const { data, error } = await supabase
+    .from('question_mapping')
+    .select('*')
+    .order('question_id', { ascending: true })
+    .order('answer_order', { ascending: true });
+
+  if (error) {
+    console.warn('[question_mapping] Nao foi possivel carregar perguntas da tabela:', error.message);
+    return [];
+  }
+
+  const questionsById = new Map<number, Question>();
+
+  (data || []).forEach((row: any) => {
+    const questionId = Number(row.question_id ?? row.questionId ?? row.id_question);
+    if (!Number.isFinite(questionId) || questionId <= 0) return;
+
+    const questionText = String(row.question ?? row.question_text ?? '').trim();
+    const answerText = String(row.answer ?? row.answer_text ?? row.option_text ?? '').trim();
+    if (!questionText || !answerText) return;
+
+    const rawMode = String(row.mode || '').trim().toLowerCase();
+    const mode: Question['mode'] = rawMode === 'multi' ? 'multi' : 'single';
+    const maxChoices = Number(row.max_choices ?? row.maxChoices);
+
+    if (!questionsById.has(questionId)) {
+      questionsById.set(questionId, {
+        id: questionId,
+        text: questionText,
+        mode,
+        maxChoices: Number.isFinite(maxChoices) && maxChoices > 0 ? maxChoices : undefined,
+        options: []
+      });
+    }
+
+    const question = questionsById.get(questionId)!;
+    if (!question.options.some(option => option.text === answerText)) {
+      question.options.push({ text: answerText });
+    }
+  });
+
+  return Array.from(questionsById.values())
+    .filter(question => question.text && question.options.length > 0)
+    .sort((a, b) => a.id - b.id);
+}
+
 export async function buscarRascunhoQuestionario(usuario: Usuario): Promise<QuestionarioRascunho | null> {
   const sessionToken = getDraftSessionToken();
   const { data, error } = await supabase
@@ -380,11 +427,11 @@ export async function salvarRascunhoQuestionario(usuario: Usuario, parcial: Part
   return false;
 }
 
-export async function concluirRascunhoQuestionario(usuario: Usuario, respostas: Record<string, string | string[]>): Promise<boolean> {
+export async function concluirRascunhoQuestionario(usuario: Usuario, respostas: Record<string, string | string[]>, totalPerguntas = QUESTIONS.length): Promise<boolean> {
   return salvarRascunhoQuestionario(usuario, {
     respostas,
-    etapa_atual: QUESTIONS.length,
-    ultima_pergunta_respondida: QUESTIONS.length,
+    etapa_atual: totalPerguntas,
+    ultima_pergunta_respondida: totalPerguntas,
     percentual_concluido: 100,
     status: 'CONCLUIDO',
     data_finalizacao: new Date().toISOString()
