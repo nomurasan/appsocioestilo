@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, buscarUsuario, buscarUsuarioPorEmail, listarResultadosUsuario, atualizarUsuario, mapFirebaseUidToUuid, syncFirebaseUserWithSupabaseAuth } from './lib/supabase';
+import { supabase, buscarUsuario, buscarUsuarioPorEmail, listarResultadosUsuario, listarResultados, atualizarUsuario, mapFirebaseUidToUuid, syncFirebaseUserWithSupabaseAuth } from './lib/supabase';
 import { auth as fbAuth, signOut as fbSignOut } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Usuario, Resultado } from './types';
@@ -24,6 +24,63 @@ export default function App() {
   const [step, setStep] = useState<'loading' | 'auth' | 'onboarding' | 'menu' | 'chatbot' | 'orientador' | 'dashboard' | 'admin'>('loading');
   const [adminViewUser, setAdminViewUser] = useState<{ user: Usuario; result: Resultado } | null>(null);
   const [adminSelectedCompany, setAdminSelectedCompany] = useState<{ id: string; nome: string } | null>(null);
+
+  const getResultTime = (result: Resultado) => {
+    const rawDate = result.generated_at || result.data_conclusao || '';
+    const time = rawDate ? new Date(rawDate).getTime() : 0;
+    return Number.isFinite(time) ? time : 0;
+  };
+
+  const findLatestResultForUser = async (
+    profile: Usuario,
+    originalUid: string,
+    resolvedId: string
+  ): Promise<Resultado | null> => {
+    const candidateIds = Array.from(new Set([
+      originalUid,
+      resolvedId,
+      profile.uid,
+      mapFirebaseUidToUuid(originalUid),
+      mapFirebaseUidToUuid(resolvedId),
+      mapFirebaseUidToUuid(profile.uid)
+    ].filter(Boolean)));
+
+    const foundById: Resultado[] = [];
+
+    for (const candidateId of candidateIds) {
+      try {
+        const results = await listarResultadosUsuario(candidateId);
+        foundById.push(...results);
+      } catch (err) {
+        console.warn(`[RESULTADOS] Falha ao buscar relatorios para uid candidato ${candidateId}:`, err);
+      }
+    }
+
+    if (foundById.length > 0) {
+      const uniqueResults = Array.from(
+        new Map(foundById.map(result => [result.id_resultado || result.id || `${result.id_usuario}-${result.data_conclusao}`, result])).values()
+      );
+      uniqueResults.sort((a, b) => getResultTime(b) - getResultTime(a));
+      return uniqueResults[0];
+    }
+
+    try {
+      const allResults = await listarResultados();
+      const normalizedProfileName = profile.nome.trim().toLowerCase();
+      const filtered = allResults.filter(result => {
+        const sameUserId = candidateIds.includes(String(result.id_usuario || ''));
+        const sameName = normalizedProfileName && String(result.nome_usuario || result.user_name || '').trim().toLowerCase() === normalizedProfileName;
+        const sameCompany = !profile.empresa_id || String(result.empresa_id || '') === String(profile.empresa_id);
+        return sameUserId || (sameName && sameCompany);
+      });
+
+      filtered.sort((a, b) => getResultTime(b) - getResultTime(a));
+      return filtered[0] || null;
+    } catch (err) {
+      console.warn('[RESULTADOS] Fallback geral de relatorios falhou:', err);
+      return null;
+    }
+  };
 
   // Helper handling user authenticated data loading
   const handleAuthUser = async (userObj: { id: string; email: string | null; origin: string } | null) => {
@@ -87,6 +144,7 @@ export default function App() {
       }
 
       if (profile) {
+        setMyResult(null);
         // Auto-upgrade user profile to admin if email matches nomura.eduardo@gmail.com
         if (mappedUser.email === 'nomura.eduardo@gmail.com' && profile.role !== 'admin') {
           profile.role = 'admin';
@@ -101,27 +159,27 @@ export default function App() {
         // Check if user has already taken the test previously via RPC, with a bulletproof localStorage fallback
         let latestResult: Resultado | null = null;
         try {
-          const resultsList = await listarResultadosUsuario(originalUid);
-          if (resultsList && resultsList.length > 0) {
-            resultsList.sort((a, b) => b.data_conclusao.localeCompare(a.data_conclusao));
-            latestResult = resultsList[0];
-          }
+          latestResult = await findLatestResultForUser(profile, originalUid, resolvedId);
         } catch (dbErr) {
           console.warn("Could not load results from database, trying local cache:", dbErr);
         }
 
         if (!latestResult) {
           try {
-            const mappedUid = userObj.origin === 'firebase' ? mapFirebaseUidToUuid(originalUid) : originalUid;
-            const cached = localStorage.getItem(`potenciar_result_${mappedUid}`);
-            if (cached) {
-              latestResult = JSON.parse(cached);
-            } else if (userObj.origin === 'firebase') {
-              // Try with legacy key as fallback
-              const legacyUid = mapFirebaseUidToUuid(userObj.id);
-              const legacyCached = localStorage.getItem(`potenciar_result_${legacyUid}`);
-              if (legacyCached) {
-                latestResult = JSON.parse(legacyCached);
+            const cacheKeys = Array.from(new Set([
+              originalUid,
+              resolvedId,
+              profile.uid,
+              mapFirebaseUidToUuid(originalUid),
+              mapFirebaseUidToUuid(resolvedId),
+              mapFirebaseUidToUuid(profile.uid)
+            ].filter(Boolean)));
+
+            for (const cacheKey of cacheKeys) {
+              const cached = localStorage.getItem(`potenciar_result_${cacheKey}`);
+              if (cached) {
+                latestResult = JSON.parse(cached);
+                break;
               }
             }
           } catch (e) {
