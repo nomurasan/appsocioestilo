@@ -39,6 +39,13 @@ export const REPORT_PARAMETER_CATALOG: CatalogItem[] = [
     ordem: 50
   },
   {
+    secao: 'metricas',
+    campo: 'comparativo_estilos_interpretacao',
+    titulo: 'Interpretacao da tabela comparativa',
+    descricao: 'Explicacao exibida junto da tabela comparativa de atuacao e foco operacional.',
+    ordem: 55
+  },
+  {
     secao: 'dinamica',
     campo: 'dinamica_estilos',
     titulo: 'Dinâmica dos estilos',
@@ -79,6 +86,34 @@ export const REPORT_PARAMETER_CATALOG: CatalogItem[] = [
     titulo: 'Potencial de desenvolvimento',
     descricao: 'Competências e possibilidades de expansão comportamental.',
     ordem: 110
+  },
+  {
+    secao: 'pdi',
+    campo: 'potencializacao_talentos',
+    titulo: 'Potencializacao de talentos',
+    descricao: 'Secao de potencializacao de talentos informada pelo report_data.',
+    ordem: 112
+  },
+  {
+    secao: 'pdi',
+    campo: 'potencializacao_talentos_estilo_base',
+    titulo: 'Estilo base da potencializacao',
+    descricao: 'Estilo base utilizado na leitura de potencializacao de talentos.',
+    ordem: 114
+  },
+  {
+    secao: 'pdi',
+    campo: 'potencializacao_talentos_descricao',
+    titulo: 'Descricao da potencializacao',
+    descricao: 'Texto descritivo da potencializacao de talentos.',
+    ordem: 116
+  },
+  {
+    secao: 'pdi',
+    campo: 'potencializacao_talentos_acoes',
+    titulo: 'Acoes de potencializacao',
+    descricao: 'Acoes praticas de potencializacao de talentos.',
+    ordem: 118
   },
   {
     secao: 'pdi',
