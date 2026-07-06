@@ -142,9 +142,11 @@ export default function AdminScreen({
   };
 
   const handleSaveReportParams = async () => {
+    const tipoUsuario = reportParamUserType;
     setSavingReportParams(true);
     try {
-      await salvarParametrosRelatorio(reportParamUserType, reportParams);
+      await salvarParametrosRelatorio(tipoUsuario, reportParams);
+      await fetchReportParams(tipoUsuario);
       triggerSuccess("Parametrização do relatório salva com sucesso.");
     } catch (err) {
       console.error(err);
@@ -637,13 +639,17 @@ export default function AdminScreen({
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-2">
-                  <div className="flex bg-gray-100 p-1 rounded-xl">
+                  <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
                     {(['usuario', 'admin'] as ReportUserType[]).map(type => (
                       <button
                         key={type}
                         onClick={() => setReportParamUserType(type)}
-                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase transition-all ${
-                          reportParamUserType === type ? 'bg-white text-[#112363] shadow-xs' : 'text-gray-500 hover:text-[#112363]'
+                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase border transition-all ${
+                          reportParamUserType === type
+                            ? type === 'usuario'
+                              ? 'bg-[#071A5F] text-white shadow-md border-[#071A5F]'
+                              : 'bg-[#D80E2A] text-white shadow-md border-[#D80E2A]'
+                            : 'bg-white text-[#071A5F] border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                         }`}
                       >
                         {type === 'usuario' ? 'Usuário' : 'Admin'}

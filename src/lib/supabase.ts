@@ -250,15 +250,53 @@ export function parseResultId(id: any): string | number {
 
 const REPORT_PARAMETER_TABLES = ['relatorio_parametrizacoes', 'parametrizacao_relatorio', 'relatorio_parametros'];
 
+function getReportParameterKey(row: Pick<ReportParameter, 'secao' | 'campo'>): string {
+  return `${row.secao}:${row.campo}`;
+}
+
+function getStoredReportParameterTimestamp(row: any): number {
+  const timestamp = Date.parse(row?.updated_at || row?.created_at || '');
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+}
+
+function isMissingReportParameterTableError(error: any): boolean {
+  const code = String(error?.code || '');
+  const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+
+  return (
+    code === '42P01' ||
+    code === 'PGRST205' ||
+    message.includes('could not find the table') ||
+    (message.includes('relation') && message.includes('does not exist'))
+  );
+}
+
+function isMissingReportParameterConflictError(error: any): boolean {
+  const code = String(error?.code || '');
+  const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+
+  return (
+    code === '42P10' ||
+    message.includes('no unique or exclusion constraint') ||
+    message.includes('there is no unique or exclusion constraint matching the on conflict specification')
+  );
+}
+
 function mergeReportParameters(tipoUsuario: ReportUserType, rows: any[] = []): ReportParameter[] {
   const defaults = getDefaultReportParameters(tipoUsuario);
   const rowMap = new Map<string, any>();
+
   rows.forEach(row => {
-    rowMap.set(`${row.secao}:${row.campo}`, row);
+    const key = getReportParameterKey(row);
+    const current = rowMap.get(key);
+
+    if (!current || getStoredReportParameterTimestamp(row) >= getStoredReportParameterTimestamp(current)) {
+      rowMap.set(key, row);
+    }
   });
 
   return defaults.map(item => {
-    const stored = rowMap.get(`${item.secao}:${item.campo}`);
+    const stored = rowMap.get(getReportParameterKey(item));
     return {
       ...item,
       ativo: stored?.ativo === undefined ? item.ativo : Boolean(stored.ativo),
@@ -270,19 +308,61 @@ function mergeReportParameters(tipoUsuario: ReportUserType, rows: any[] = []): R
 }
 
 export async function listarParametrosRelatorio(tipoUsuario: ReportUserType): Promise<ReportParameter[]> {
+  let foundExistingTable = false;
+
   for (const table of REPORT_PARAMETER_TABLES) {
     const { data, error } = await supabase
       .from(table)
       .select('*')
       .eq('tipo_usuario', tipoUsuario)
-      .order('ordem', { ascending: true });
+      .order('ordem', { ascending: true })
+      .order('updated_at', { ascending: false, nullsFirst: false });
 
     if (!error) {
-      return mergeReportParameters(tipoUsuario, data || []);
+      foundExistingTable = true;
+
+      if (data && data.length > 0) {
+        return mergeReportParameters(tipoUsuario, data);
+      }
+
+      continue;
+    }
+
+    if (!isMissingReportParameterTableError(error)) {
+      throw error;
     }
   }
 
-  return getDefaultReportParameters(tipoUsuario);
+  return foundExistingTable
+    ? mergeReportParameters(tipoUsuario, [])
+    : getDefaultReportParameters(tipoUsuario);
+}
+
+async function salvarParametrosRelatorioSemConstraint(table: string, payload: any[]): Promise<void> {
+  for (const item of payload) {
+    const { tipo_usuario, secao, campo, ...valuesToUpdate } = item;
+    const { data, error: updateError } = await supabase
+      .from(table)
+      .update(valuesToUpdate)
+      .eq('tipo_usuario', tipo_usuario)
+      .eq('secao', secao)
+      .eq('campo', campo)
+      .select('tipo_usuario');
+
+    if (updateError) {
+      throw updateError;
+    }
+
+    if (!data || data.length === 0) {
+      const { error: insertError } = await supabase
+        .from(table)
+        .insert(item);
+
+      if (insertError) {
+        throw insertError;
+      }
+    }
+  }
 }
 
 export async function salvarParametrosRelatorio(tipoUsuario: ReportUserType, parametros: ReportParameter[]): Promise<boolean> {
@@ -303,11 +383,23 @@ export async function salvarParametrosRelatorio(tipoUsuario: ReportUserType, par
       .upsert(payload, { onConflict: 'tipo_usuario,secao,campo' });
 
     if (!error) return true;
+
+    if (isMissingReportParameterConflictError(error)) {
+      console.warn(
+        `[REPORT-PARAMS] A tabela ${table} nao possui constraint unica em tipo_usuario, secao e campo. ` +
+        'Persistindo via update/insert; aplique a constraint unica para habilitar upsert nativo.'
+      );
+      await salvarParametrosRelatorioSemConstraint(table, payload);
+      return true;
+    }
+
+    if (!isMissingReportParameterTableError(error)) {
+      throw error;
+    }
   }
 
-  throw new Error('Não foi possível salvar a parametrização do relatório no Supabase.');
+  throw new Error('Nao foi possivel salvar a parametrizacao do relatorio no Supabase.');
 }
-
 function getDraftSessionToken(): string {
   const key = 'potenciar_questionario_session_token';
   let token = localStorage.getItem(key);
