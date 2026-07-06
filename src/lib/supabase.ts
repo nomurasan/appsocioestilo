@@ -249,6 +249,7 @@ export function parseResultId(id: any): string | number {
 }
 
 const REPORT_PARAMETER_TABLES = ['relatorio_parametrizacoes', 'parametrizacao_relatorio', 'relatorio_parametros'];
+const REPORT_PARAMETER_LOCAL_STORAGE_KEY = 'potenciar_report_parameters_v1';
 
 function getReportParameterKey(row: Pick<ReportParameter, 'secao' | 'campo'>): string {
   return `${row.secao}:${row.campo}`;
@@ -279,6 +280,55 @@ function isMissingReportParameterConflictError(error: any): boolean {
     code === '42P10' ||
     message.includes('no unique or exclusion constraint') ||
     message.includes('there is no unique or exclusion constraint matching the on conflict specification')
+  );
+}
+
+function isMissingColumnError(error: any, column: string): boolean {
+  const code = String(error?.code || '');
+  const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  const normalizedColumn = column.toLowerCase();
+
+  return (
+    code === '42703' ||
+    (message.includes('column') && message.includes(normalizedColumn) && message.includes('does not exist')) ||
+    message.includes(`'${normalizedColumn}' column`) ||
+    message.includes(`"${normalizedColumn}" column`)
+  );
+}
+
+function getLocalReportParameterStorage(): Record<ReportUserType, ReportParameter[]> {
+  if (typeof localStorage === 'undefined') {
+    return { usuario: [], admin: [] };
+  }
+
+  try {
+    const raw = localStorage.getItem(REPORT_PARAMETER_LOCAL_STORAGE_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+
+    return {
+      usuario: Array.isArray(parsed?.usuario) ? parsed.usuario : [],
+      admin: Array.isArray(parsed?.admin) ? parsed.admin : []
+    };
+  } catch (err) {
+    console.warn('[REPORT-PARAMS] Nao foi possivel ler parametros locais do relatorio:', err);
+    return { usuario: [], admin: [] };
+  }
+}
+
+function getLocalReportParameters(tipoUsuario: ReportUserType): ReportParameter[] {
+  return getLocalReportParameterStorage()[tipoUsuario] || [];
+}
+
+function saveLocalReportParameters(tipoUsuario: ReportUserType, parametros: ReportParameter[]): void {
+  if (typeof localStorage === 'undefined') return;
+
+  const current = getLocalReportParameterStorage();
+  localStorage.setItem(
+    REPORT_PARAMETER_LOCAL_STORAGE_KEY,
+    JSON.stringify({
+      ...current,
+      [tipoUsuario]: mergeReportParameters(tipoUsuario, parametros)
+    })
   );
 }
 
@@ -314,9 +364,7 @@ export async function listarParametrosRelatorio(tipoUsuario: ReportUserType): Pr
     const { data, error } = await supabase
       .from(table)
       .select('*')
-      .eq('tipo_usuario', tipoUsuario)
-      .order('ordem', { ascending: true })
-      .order('updated_at', { ascending: false, nullsFirst: false });
+      .eq('tipo_usuario', tipoUsuario);
 
     if (!error) {
       foundExistingTable = true;
@@ -333,9 +381,13 @@ export async function listarParametrosRelatorio(tipoUsuario: ReportUserType): Pr
     }
   }
 
-  return foundExistingTable
-    ? mergeReportParameters(tipoUsuario, [])
-    : getDefaultReportParameters(tipoUsuario);
+  const localParams = getLocalReportParameters(tipoUsuario);
+
+  return localParams.length > 0
+    ? mergeReportParameters(tipoUsuario, localParams)
+    : foundExistingTable
+      ? mergeReportParameters(tipoUsuario, [])
+      : getDefaultReportParameters(tipoUsuario);
 }
 
 async function salvarParametrosRelatorioSemConstraint(table: string, payload: any[]): Promise<void> {
@@ -366,7 +418,7 @@ async function salvarParametrosRelatorioSemConstraint(table: string, payload: an
 }
 
 export async function salvarParametrosRelatorio(tipoUsuario: ReportUserType, parametros: ReportParameter[]): Promise<boolean> {
-  const payload = mergeReportParameters(tipoUsuario, parametros).map(item => ({
+  const buildPayload = (includeUpdatedAt: boolean) => mergeReportParameters(tipoUsuario, parametros).map(item => ({
     tipo_usuario: tipoUsuario,
     secao: item.secao,
     campo: item.campo,
@@ -374,15 +426,33 @@ export async function salvarParametrosRelatorio(tipoUsuario: ReportUserType, par
     descricao: item.descricao,
     ativo: item.ativo,
     ordem: item.ordem || 0,
-    updated_at: new Date().toISOString()
+    ...(includeUpdatedAt ? { updated_at: new Date().toISOString() } : {})
   }));
 
   for (const table of REPORT_PARAMETER_TABLES) {
+    const payload = buildPayload(true);
     const { error } = await supabase
       .from(table)
       .upsert(payload, { onConflict: 'tipo_usuario,secao,campo' });
 
     if (!error) return true;
+
+    if (isMissingColumnError(error, 'updated_at')) {
+      const { error: retryError } = await supabase
+        .from(table)
+        .upsert(buildPayload(false), { onConflict: 'tipo_usuario,secao,campo' });
+
+      if (!retryError) return true;
+
+      if (isMissingReportParameterConflictError(retryError)) {
+        await salvarParametrosRelatorioSemConstraint(table, buildPayload(false));
+        return true;
+      }
+
+      if (!isMissingReportParameterTableError(retryError)) {
+        throw retryError;
+      }
+    }
 
     if (isMissingReportParameterConflictError(error)) {
       console.warn(
@@ -398,7 +468,12 @@ export async function salvarParametrosRelatorio(tipoUsuario: ReportUserType, par
     }
   }
 
-  throw new Error('Nao foi possivel salvar a parametrizacao do relatorio no Supabase.');
+  console.warn(
+    '[REPORT-PARAMS] Nenhuma tabela de parametrizacao encontrada no Supabase. ' +
+    'Salvando localmente neste navegador ate que public/relatorio_parametrizacoes.sql seja aplicado.'
+  );
+  saveLocalReportParameters(tipoUsuario, parametros);
+  return true;
 }
 function getDraftSessionToken(): string {
   const key = 'potenciar_questionario_session_token';
