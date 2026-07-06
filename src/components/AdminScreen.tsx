@@ -964,16 +964,22 @@ export default function AdminScreen({
                 <p className="text-xs text-gray-400">Nenhum colaborador encontrado correspondendo à busca ou filtro selecionado.</p>
               </div>
             ) : (
-              <div className="overflow-x-auto rounded-xl border border-gray-150" id="table-user-list">
-                <table className="min-w-full divide-y divide-gray-150 text-left">
+              <div className="overflow-hidden rounded-xl border border-gray-150" id="table-user-list">
+                <table className="w-full table-fixed divide-y divide-gray-150 text-left">
+                  <colgroup>
+                    <col className="w-[32%]" />
+                    <col className="w-[20%]" />
+                    <col className="w-[16%]" />
+                    <col className="w-[12%]" />
+                    <col className="w-[20%]" />
+                  </colgroup>
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-6 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider">Colaborador</th>
-                      <th scope="col" className="px-6 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider">E-mail</th>
-                      <th scope="col" className="px-6 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider">Empresa / Turma</th>
-                      <th scope="col" className="px-6 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider">Perfil Dominante</th>
-                      <th scope="col" className="px-6 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider">Função</th>
-                      <th scope="col" className="px-6 py-4 text-right text-[10px] font-extrabold text-[#112363] uppercase tracking-wider">Ações</th>
+                      <th scope="col" className="px-4 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Colaborador / E-mail</th>
+                      <th scope="col" className="px-4 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Empresa / Turma</th>
+                      <th scope="col" className="px-4 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Perfil Dominante</th>
+                      <th scope="col" className="px-4 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Função</th>
+                      <th scope="col" className="px-4 py-4 text-right text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-100">
@@ -986,21 +992,21 @@ export default function AdminScreen({
                       
                       return (
                         <tr key={user.uid} className="hover:bg-gray-50/50 transition-colors">
-                          {/* Name / Block */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-xs font-black text-[#112363] block">
-                              {user.nome}
-                            </span>
-                          </td>
-
-                          {/* Email */}
-                          <td className="px-6 py-4 whitespace-nowrap text-xs text-gray-600 font-medium font-mono">
-                            {user.email}
+                          {/* Name / Email */}
+                          <td className="px-4 py-4 align-top whitespace-normal">
+                            <div className="max-w-[220px] text-wrap break-words">
+                              <span className="text-xs font-black text-[#112363] block leading-snug">
+                                {user.nome}
+                              </span>
+                              <span className="mt-1 block text-[11px] text-gray-500 font-medium font-mono leading-snug break-all">
+                                {user.email}
+                              </span>
+                            </div>
                           </td>
 
                           {/* Company / Turma */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-xs font-bold text-gray-800 block">
+                          <td className="px-4 py-4 align-top whitespace-normal">
+                            <span className="text-xs font-bold text-gray-800 block break-words">
                               {user.empresa_nome}
                             </span>
                             <span className="text-[9px] text-[#D80E2A] font-semibold bg-red-50 px-1.5 py-0.5 rounded font-mono uppercase">
@@ -1009,8 +1015,8 @@ export default function AdminScreen({
                           </td>
 
                           {/* Dominant profile */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full border ${
+                          <td className="px-4 py-4 align-top whitespace-normal">
+                            <span className={`inline-flex max-w-full text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full border whitespace-normal break-words text-center leading-tight ${
                               userResult 
                                 ? 'bg-emerald-50 text-emerald-800 border-emerald-100' 
                                 : 'bg-gray-50 text-gray-500 border-gray-150'
@@ -1020,8 +1026,8 @@ export default function AdminScreen({
                           </td>
 
                           {/* Role Tag */}
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md ${
+                          <td className="px-4 py-4 align-top whitespace-normal">
+                            <span className={`inline-flex max-w-full text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md whitespace-normal break-words text-center leading-tight ${
                               isUserAdmin ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
                             }`}>
                               {isUserAdmin ? 'Administrador' : 'Colaborador'}
@@ -1029,17 +1035,17 @@ export default function AdminScreen({
                           </td>
 
                           {/* Quick action buttons & historical selector */}
-                          <td className="px-6 py-4 whitespace-nowrap text-right text-xs font-medium">
+                          <td className="px-4 py-4 align-top whitespace-normal text-right text-xs font-medium">
                             <div className="flex flex-col items-end gap-2">
-                              <div className="space-x-1.5 flex items-center">
+                              <div className="flex flex-wrap items-center justify-end gap-1.5">
                                 {userResult && onViewUserReport && (
                                   <button
                                     onClick={() => handleViewUserReportInternal(user, userResult)}
-                                    className="inline-flex items-center space-x-1 p-2 bg-[#112363]/5 hover:bg-[#112363]/10 text-[#112363] rounded-lg transition-colors cursor-pointer"
+                                    className="inline-flex items-center gap-1 p-2 bg-[#112363]/5 hover:bg-[#112363]/10 text-[#112363] rounded-lg transition-colors cursor-pointer"
                                     title="Visualizar Relatório de Socioestilo mais recente"
                                   >
                                     <Eye className="w-4 h-4" />
-                                    <span className="text-[10px] font-extrabold">Ver Último</span>
+                                    <span className="hidden lg:inline text-[10px] font-extrabold">Ver Último</span>
                                   </button>
                                 )}
 
@@ -1075,7 +1081,7 @@ export default function AdminScreen({
                                   <span className="text-[8px] text-gray-400 font-bold block mb-1">
                                     Histórico de Tentativas ({userAttempts.length}):
                                   </span>
-                                  <div className="flex flex-wrap gap-1.5 justify-end max-w-[250px]">
+                                  <div className="flex flex-wrap gap-1.5 justify-end max-w-full">
                                     {userAttempts.map((attempt, index) => {
                                       const attemptDate = new Date(attempt.data_conclusao).toLocaleDateString('pt-BR', {
                                         day: '2-digit',
