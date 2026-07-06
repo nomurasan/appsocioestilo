@@ -1099,7 +1099,7 @@ export default function DashboardScreen({
   // Allow choosing to view other teammate profiles in detail
   const [selectedMemberResult, setSelectedMemberResult] = useState<Resultado | null>(null);
 
-  const reportUserType: ReportUserType = usuario.role === 'admin' || usuario.email === 'nomura.eduardo@gmail.com' ? 'admin' : 'usuario';
+  const reportUserType: ReportUserType = usuario.role === 'admin' || usuario.email === 'nomura.eduardo@gmail.com' ? 'admin' : ((usuario.role || '').toLowerCase().includes('consult') ? 'consultor' : 'participante');
 
   useEffect(() => {
     let cancelled = false;
@@ -2300,6 +2300,45 @@ export default function DashboardScreen({
                             );
                           })()}
 
+                          <div className={`space-y-4 mt-4 ${!isAnyReportFieldVisible([['perfil', 'explicacao_socioestilo'], ['perfil', 'quatro_socioestilos']]) ? 'hidden' : ''}`}>
+                            <div className={`p-4 bg-[#112363]/5 rounded-xl border border-blue-100 text-xs leading-relaxed font-semibold text-slate-800 ${!isReportFieldVisible('perfil', 'explicacao_socioestilo') ? 'hidden' : ''}`}>
+                              <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider mb-2">2.1 O que e Socioestilo</h4>
+                              {reportData.narrativa.conhecimento_aplicado || reportData.metodologia.metodologia_potenciar_ativada}
+                            </div>
+
+                            <div className={`space-y-4 ${!isReportFieldVisible('perfil', 'quatro_socioestilos') ? 'hidden' : ''}`}>
+                              <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider">2.2 Conheca os quatro Socioestilos</h4>
+                              <div className="max-w-full overflow-hidden border border-slate-150 rounded-2xl bg-white shadow-3xs">
+                                <table className="w-full table-fixed divide-y divide-slate-150 text-xs text-slate-700">
+                                  <thead className="bg-[#112363] font-black text-white uppercase text-[9px] md:text-[10px] tracking-wider">
+                                    <tr>
+                                      <th className="px-3 md:px-5 py-2.5 md:py-3 text-left w-1/3 md:w-1/4">Socioestilo</th>
+                                      <th className="px-3 md:px-5 py-2.5 md:py-3 text-left">Foco de atuacao e fundamento comunicativo</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-150">
+                                    <tr className="hover:bg-slate-50/50">
+                                      <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-amber-700 uppercase tracking-wider bg-amber-50/10 text-[10px] md:text-xs">Assertivo</td>
+                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.assertivo}</td>
+                                    </tr>
+                                    <tr className="hover:bg-slate-50/50">
+                                      <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#D80E2A] uppercase tracking-wider bg-red-50/10 text-[10px] md:text-xs">Participativo</td>
+                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.participativo}</td>
+                                    </tr>
+                                    <tr className="hover:bg-slate-50/50">
+                                      <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-emerald-800 uppercase tracking-wider bg-emerald-50/10 text-[10px] md:text-xs">Integrador</td>
+                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.integrador || reportData.sobre_metodologia?.conservador_agregador}</td>
+                                    </tr>
+                                    <tr className="hover:bg-slate-50/50">
+                                      <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#112363] uppercase tracking-wider bg-slate-50/20 text-[10px] md:text-xs">Analitico</td>
+                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.analitico}</td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+
                           {/* Dinâmica dos Estilos Seção */}
                           <div className={`space-y-3 mt-4 ${!isReportFieldVisible('dinamica', 'dinamica_estilos') ? 'hidden' : ''}`}>
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-100">
@@ -2489,9 +2528,9 @@ export default function DashboardScreen({
                         <div className="space-y-4 w-full">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <Briefcase className="w-4 h-4 text-[#112363]" /> 06. Referencial Metodológico de Competências Potenciar
+                              <Briefcase className="w-4 h-4 text-[#112363]" /> 06. Fundamentacao Metodologica e 07. Sobre o Socioestilo
                             </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 06 do Participante</span>
+                            <span className="text-[10px] font-bold text-gray-400 italic">Pag. 06 do Participante</span>
                           </div>
 
                           <div className={`space-y-2 ${!isReportFieldVisible('metodologia', 'metodologia_potenciar') ? 'hidden' : ''}`}>

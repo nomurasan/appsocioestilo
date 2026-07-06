@@ -38,7 +38,7 @@ export default function AdminScreen({
   const [selectedCompanyId, setSelectedCompanyId] = useState<string | null>(null);
   const [searchUserQuery, setSearchUserQuery] = useState('');
   const [showReportParams, setShowReportParams] = useState(false);
-  const [reportParamUserType, setReportParamUserType] = useState<ReportUserType>('usuario');
+  const [reportParamUserType, setReportParamUserType] = useState<ReportUserType>('participante');
   const [reportParams, setReportParams] = useState<ReportParameter[]>([]);
   const [loadingReportParams, setLoadingReportParams] = useState(false);
   const [savingReportParams, setSavingReportParams] = useState(false);
@@ -640,7 +640,7 @@ export default function AdminScreen({
 
                 <div className="flex flex-col sm:flex-row gap-2">
                   <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-                    {(['usuario', 'admin'] as ReportUserType[]).map(type => (
+                    {(['participante', 'consultor', 'admin'] as ReportUserType[]).map(type => (
                       <button
                         key={type}
                         onClick={() => setReportParamUserType(type)}
