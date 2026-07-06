@@ -1046,7 +1046,7 @@ export async function excluirUsuario(uid: string): Promise<boolean> {
 export async function criarResultado(
   uid: string,
   idEmpresa: string,
-  param3: any, // Scores OR aiInsights (n8n payload)
+  param3: any, // Scores OR structured report payload
   param4?: any, // perfilDominante OR answers (Record)
   param5?: any, // aiInsights OR userNameOpt (string)
   param6?: any, // answers OR companyNameOpt (string)
@@ -1066,9 +1066,9 @@ export async function criarResultado(
   let finalAnswersDetailed: AnswerDetail[] | undefined = undefined;
 
   // Detect which signature overload has been used
-  const isPayloadFromN8n = param3 && (param3.report_data || param3.metadata || param3.questionnaire);
+  const isStructuredReportPayload = param3 && (param3.report_data || param3.metadata || param3.questionnaire);
 
-  if (isPayloadFromN8n) {
+  if (isStructuredReportPayload) {
     aiInsights = param3;
     answers = param4;
     userName = typeof param5 === 'string' ? param5 : '';
@@ -1277,8 +1277,8 @@ export async function criarResultado(
     score_integrador: rawPayload.db_record?.score_integrador ?? rawPayload.db_record?.score_conservador_agregador ?? scoreIntegrador,
     score_analitico: rawPayload.db_record?.score_analitico ?? scoreAnalitico,
     total_pontos: rawPayload.db_record?.total_pontos ?? (scoreAssertivo + scoreParticipativo + scoreIntegrador + scoreAnalitico),
-    raw_payload: rawPayload, // Stores full JSON returned by n8n
-    ai_insights: rawPayload, // Stores full JSON payload as requested to protect all report sections
+    raw_payload: rawPayload, // Stores full structured report JSON
+    ai_insights: rawPayload, // Stores full structured report payload as requested to protect all report sections
     data_conclusao: rawPayload.db_record?.data_conclusao || metadata.completedAt || cp.completedAt || null,
     generated_at: rawPayload.db_record?.generated_at || metadata.generatedAt || cp.generatedAt || null,
     answers: answers || {},
@@ -1441,67 +1441,6 @@ export async function buscarResultado(idResultado: string): Promise<Resultado | 
     }
   }
   return mapped;
-}
-
-function mapOrientadorRelatorioToResultado(item: any): Resultado | null {
-  if (!item) return null;
-
-  const scores = item.scores && typeof item.scores === 'object'
-    ? item.scores
-    : { Assertivo: 0, Participativo: 0, Integrador: 0, Analitico: 0 };
-
-  return {
-    id: String(item.resultado_id || item.id || ''),
-    id_resultado: String(item.resultado_id || item.id || ''),
-    id_usuario: String(item.usuario_id || ''),
-    nome_usuario: item.nome_participante || 'Usuario Desconhecido',
-    empresa_id: String(item.empresa_id || ''),
-    empresa_nome: item.empresa_nome || '',
-    scores,
-    perfil_dominante: item.perfil_dominante || '',
-    perfil_secundario: item.perfil_secundario || '',
-    perfil_menos_utilizado: item.perfil_menos_utilizado || '',
-    data_conclusao: item.generated_at || item.created_at || '',
-    generated_at: item.generated_at || item.created_at || '',
-    metadata: {
-      source: 'orientador_relatorios',
-      orientador_relatorio_id: item.id
-    }
-  };
-}
-
-export async function listarOrientadorRelatoriosUsuario(uid: string): Promise<Resultado[]> {
-  const mappedUid = mapFirebaseUidToUuid(uid);
-  const userFilters = Array.from(new Set([mappedUid, uid].filter(Boolean)))
-    .map(userId => `usuario_id.eq.${userId}`)
-    .join(',');
-
-  const { data, error } = await supabase
-    .from('orientador_relatorios')
-    .select('*')
-    .or(userFilters)
-    .order('generated_at', { ascending: false, nullsFirst: false });
-
-  if (error) {
-    console.warn(`[orientador_relatorios] Nao foi possivel consultar indice para ${mappedUid}:`, error.message);
-    return [];
-  }
-
-  return (data || []).map(mapOrientadorRelatorioToResultado).filter(Boolean) as Resultado[];
-}
-
-export async function listarOrientadorRelatorios(): Promise<Resultado[]> {
-  const { data, error } = await supabase
-    .from('orientador_relatorios')
-    .select('*')
-    .order('generated_at', { ascending: false, nullsFirst: false });
-
-  if (error) {
-    console.warn('[orientador_relatorios] Nao foi possivel listar indice de relatorios:', error.message);
-    return [];
-  }
-
-  return (data || []).map(mapOrientadorRelatorioToResultado).filter(Boolean) as Resultado[];
 }
 
 /**

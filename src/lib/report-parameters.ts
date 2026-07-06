@@ -131,13 +131,6 @@ export const REPORT_PARAMETER_CATALOG: CatalogItem[] = [
   },
   {
     secao: 'auditoria',
-    campo: 'base_conhecimento',
-    titulo: 'Base de conhecimento consultada',
-    descricao: 'Documentos e chunks recuperados pelo processo RAG.',
-    ordem: 180
-  },
-  {
-    secao: 'auditoria',
     campo: 'fundamentacao_teorica',
     titulo: 'Fundamentação teórica',
     descricao: 'Referenciais teóricos e contribuições metodológicas.',

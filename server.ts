@@ -2,13 +2,11 @@ import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import dotenv from "dotenv";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI } from "@google/genai";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "crypto";
 import helmet from "helmet";
 import cors from "cors";
 import compression from "compression";
-import { z } from "zod";
 
 dotenv.config();
 
@@ -30,7 +28,7 @@ function maskSecret(key: string | undefined | null): string {
   return `${str.substring(0, 4)}...${str.substring(str.length - 4)}`;
 }
 
-// Global Custom Rate Limiter in memory to prevent AI credits abuse
+// Global Custom Rate Limiter in memory to prevent requisições abuse
 interface RateLimitation {
   count: number;
   resetTime: number;
@@ -110,9 +108,6 @@ app.use(
           "https://securetoken.googleapis.com",
           "https://www.googleapis.com",
           "https://*.firebaseapp.com",
-          "https://api.openai.com",
-          "https://n8n-n8n.5wxq0l.easypanel.host",
-          "https://*.easypanel.host"
         ],
         frameSrc: [
           "'self'",
@@ -201,16 +196,6 @@ if (IS_PROD) {
     console.error("[CRITICAL ERROR] SUPABASE_SERVICE_ROLE_KEY é obrigatória e ausente em ambiente de Produção!");
     process.exit(1);
   }
-  
-  if (!process.env.GEMINI_API_KEY) {
-    console.error("[CRITICAL ERROR] GEMINI_API_KEY de produção é obrigatório para as inteligências de socioestilo.");
-    process.exit(1);
-  }
-
-  if (!process.env.N8N_WEBHOOK_URL || process.env.N8N_WEBHOOK_URL.trim().length === 0 || process.env.N8N_WEBHOOK_URL.startsWith("https://SEU_N8N")) {
-    console.error("[CRITICAL ERROR] N8N_WEBHOOK_URL é obrigatória em produção e não foi configurada corretamente no Easypanel.");
-    process.exit(1);
-  }
 }
 
 // Configuração segura do cliente Supabase para o Backend
@@ -225,211 +210,8 @@ const activeSupabaseKey = IS_PROD
 
 const supabase = createClient(activeSupabaseUrl, activeSupabaseKey);
 
-// Lazy-initialized Gemini Client to prevent server startup crashes
-let aiInstance: GoogleGenAI | null = null;
-function getGeminiClient(): GoogleGenAI {
-  if (!aiInstance) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY environment variable is required. Please check your Easypanel / ENV setup.");
-    }
-    aiInstance = new GoogleGenAI({
-      apiKey: apiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        }
-      }
-    });
-  }
-  return aiInstance;
-}
+// ENDPOINTS PROTEGIDOS POR RATE LIMITER E PAYLOAD SANITIZER
 
-/**
- * Generates an embedding vector for text query.
- */
-async function getEmbedding(text: string): Promise<number[]> {
-  const openAiKey = process.env.OPENAI_API_KEY;
-  if (openAiKey && !openAiKey.startsWith("SUA_OPENAI_API_KEY")) {
-    try {
-      console.log("[KNOWLEDGE] Gerando embedding de 1536 dimensões via OpenAI...");
-      const response = await fetch("https://api.openai.com/v1/embeddings", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${openAiKey}`
-        },
-        body: JSON.stringify({
-          model: "text-embedding-3-small",
-          input: text
-        })
-      });
-
-      if (response.ok) {
-        const json = await response.json();
-        return json.data[0].embedding;
-      } else {
-        const errText = await response.text();
-        console.warn(`[KNOWLEDGE] Chamada OpenAI retornou status de falha: ${errText}. Forçando fallback para Gemini.`);
-      }
-    } catch (err: any) {
-      console.warn(`[KNOWLEDGE] Erro ao recuperar embeddings da OpenAI, acionando Gemini:`, err?.message || err);
-    }
-  }
-
-  // Gemini Embedding Fallback (768 dimensions)
-  try {
-    console.log("[KNOWLEDGE] Gerando embedding de 768 dimensões via Gemini native...");
-    const client = getGeminiClient();
-    const res = await client.models.embedContent({
-      model: "gemini-embedding-2-preview",
-      contents: text
-    });
-    const values = (res as any).embedding?.values || (res as any).embeddings?.[0]?.values || (res as any).embeddings?.values;
-    if (values) {
-      return values;
-    }
-  } catch (err: any) {
-    console.error("[KNOWLEDGE] Erro no embedding do Gemini:", err?.message || err);
-  }
-
-  throw new Error("Não foi possível gerar vetores de embedding por OpenAI ou Gemini.");
-}
-
-/**
- * Searches the Supabase documents table using the custom 'match_documents' RPC function
- */
-async function searchKnowledgeBase(queryText: string, matchCount = 3): Promise<{ formattedText: string; chunks: Array<{ source: string; content: string }> }> {
-  try {
-    console.log(`[KNOWLEDGE] Pesquisando base de conhecimento para o termo sanitizado.`);
-    const embedding = await getEmbedding(queryText);
-    const rpcName = embedding.length === 768 ? "match_documents_gemini" : "match_documents";
-
-    console.log(`[KNOWLEDGE] Executando RPC no Supabase '${rpcName}' (Dimensões: ${embedding.length})...`);
-    let { data, error } = await supabase.rpc(rpcName, {
-      query_embedding: embedding,
-      match_threshold: 0.15,
-      match_count: matchCount
-    });
-
-    if (error && rpcName === "match_documents_gemini") {
-      const retryRes = await supabase.rpc("match_documents_v2", {
-        query_embedding: embedding,
-        match_threshold: 0.15,
-        match_count: matchCount
-      });
-      if (!retryRes.error) {
-        data = retryRes.data;
-        error = null;
-      }
-    }
-
-    if (error) {
-      console.log("[KNOWLEDGE] Fallback para pesquisa textual simples ativado devido à indisponibilidade de RPC PgVector.");
-      const words = queryText.split(/\s+/).filter(w => w.length > 3).slice(0, 4);
-      let queryBuilder = supabase.from("documents").select("*");
-      if (words.length > 0) {
-        queryBuilder = queryBuilder.or(words.map(w => `content.ilike.%${w}%`).join(","));
-      }
-      
-      const selectRes = await queryBuilder.limit(matchCount);
-      if (selectRes.error) {
-        return { formattedText: "", chunks: [] };
-      }
-      data = selectRes.data;
-    }
-
-    if (!data || !Array.isArray(data) || data.length === 0) {
-      return { formattedText: "", chunks: [] };
-    }
-
-    const chunks: Array<{ source: string; content: string }> = [];
-    const formattedText = data
-      .map((doc: any, idx: number) => {
-        const textStr = doc.content || doc.page_content || doc.text || JSON.stringify(doc);
-        let sourceInfo = "Livro Socioestilo.txt";
-        try {
-          if (doc.metadata) {
-            const meta = typeof doc.metadata === "string" ? JSON.parse(doc.metadata) : doc.metadata;
-            sourceInfo = meta.path || meta.source || meta.filename || meta.title || meta.name || sourceInfo;
-          } else {
-            sourceInfo = doc.path || doc.source || doc.filename || doc.title || doc.name || `doc_ref_${doc.id || idx + 1}`;
-          }
-          if (typeof sourceInfo === "string" && (sourceInfo.includes("/") || sourceInfo.includes("\\"))) {
-            sourceInfo = sourceInfo.split(/[/\\]/).pop() || sourceInfo;
-          }
-        } catch (e) {
-          // Silent log to prevent noise
-        }
-
-        chunks.push({ source: sourceInfo, content: textStr });
-        return `[Documento ${idx + 1} - Fonte: ${sourceInfo}]:\n${textStr}`;
-      })
-      .join("\n\n");
-
-    return { formattedText, chunks };
-  } catch (err: any) {
-    console.error(`[KNOWLEDGE] Falha insolúvel na pesquisa de documentos.`);
-    return { formattedText: "", chunks: [] };
-  }
-}
-
-// ESQUEMAS DE VALIDAÇÃO ZOD PARA ENTRADAS DE ENDPOINTS (ENTERPRISE PROTECTION)
-
-const knowledgeSearchSchema = z.object({
-  query: z.string().trim().min(1, "O parâmetro 'query' é obrigatório e não pode ser vazio."),
-  limit: z.number().int().positive().max(10).optional()
-});
-
-// Schema flexível para compatibilidade com n8n V21
-// Aceita payload do frontend e normaliza antes de enviar ao n8n
-const insightsSchema = z.object({
-  metadata: z.any().optional(),
-  questionnaire: z.any().optional(),
-  questionario: z.any().optional(),
-  answers: z.any().optional(),
-  respostas: z.any().optional()
-}).passthrough();
-
-const orientadorChatbotSchema = z.object({
-  usuario_id: z.string().trim().min(1, "usuario_id e obrigatorio."),
-  empresa_id: z.union([z.string(), z.number()]).nullable().optional(),
-  resultado_id: z.string().trim().min(1, "resultado_id e obrigatorio."),
-  conversa_id: z.string().nullable().optional(),
-  mensagem: z.string().trim().min(1, "mensagem e obrigatoria.")
-}).passthrough();
-
-// ENPOINTS PROTEGIDOS POR RATE LIMITER E PAYLOAD SANITIZER
-
-// Endpoint de busca vetorial manual com proteção de Rate Limit e Validação Zod
-app.post("/api/knowledge-search", apiRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const parseResult = knowledgeSearchSchema.safeParse(req.body);
-    if (!parseResult.success) {
-      return res.status(400).json({ 
-        error: "Dados de requisição inválidos de acordo com as políticas corporativas.",
-        details: parseResult.error.flatten().fieldErrors,
-        requestId: req.headers["x-request-id"]
-      });
-    }
-
-    const { query, limit } = parseResult.data;
-    const count = limit || 3;
-    const searchResult = await searchKnowledgeBase(query, count);
-    
-    return res.json({
-      query,
-      results: searchResult.formattedText,
-      chunks: searchResult.chunks,
-      dimension_hint: process.env.OPENAI_API_KEY ? "1536 (OpenAI)" : "768 (Gemini)",
-      status: "success"
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Rota proxy para envio dos questionários ao webhook do n8n com normalização flexível (V21 compatible)
 app.get("/api/resultados", apiRateLimiter, async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const { data, error } = await supabase.from("resultados").select("*");
@@ -501,185 +283,6 @@ app.delete("/api/resultados/:id", apiRateLimiter, async (req: Request, res: Resp
   }
 });
 
-app.post("/api/orientador/chatbot", apiRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const parseResult = orientadorChatbotSchema.safeParse(req.body);
-    if (!parseResult.success) {
-      return res.status(400).json({
-        success: false,
-        error: "Payload invalido para o Orientador SocioEstilo.",
-        details: parseResult.error.flatten().fieldErrors,
-        requestId: req.headers["x-request-id"]
-      });
-    }
-
-    const webhookUrl = process.env.N8N_CHATBOT_WEBHOOK_URL || process.env.VITE_N8N_CHATBOT_WEBHOOK_URL;
-    if (!webhookUrl || webhookUrl.trim().length === 0) {
-      console.error("[ORIENTADOR] N8N_CHATBOT_WEBHOOK_URL nao configurada no backend.");
-      return res.status(500).json({
-        success: false,
-        error: "Webhook do Orientador SocioEstilo nao configurado no servidor.",
-        requestId: req.headers["x-request-id"]
-      });
-    }
-
-    console.log("[ORIENTADOR] Enviando mensagem ao n8n:", {
-      usuario_id: parseResult.data.usuario_id,
-      empresa_id: parseResult.data.empresa_id,
-      resultado_id: parseResult.data.resultado_id,
-      conversa_id: parseResult.data.conversa_id || null,
-      webhook: maskSecret(webhookUrl)
-    });
-
-    const response = await fetch(webhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-        "X-Request-Id": String(req.headers["x-request-id"] || "")
-      },
-      body: JSON.stringify(parseResult.data)
-    });
-
-    const responseText = await response.text();
-    let payload: any = {};
-    try {
-      payload = responseText ? JSON.parse(responseText) : {};
-    } catch {
-      payload = { resposta: responseText };
-    }
-
-    if (!response.ok) {
-      console.error("[ORIENTADOR] n8n retornou erro:", response.status, responseText.slice(0, 500));
-      return res.status(response.status).json({
-        success: false,
-        error: "Nao foi possivel obter resposta do Orientador SocioEstilo neste momento.",
-        details: payload,
-        requestId: req.headers["x-request-id"]
-      });
-    }
-
-    return res.json(payload);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.post("/api/insights", apiRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    // Validação básica: não vazio
-    if (!req.body || typeof req.body !== 'object') {
-      return res.status(400).json({ 
-        error: "Payload inválido: esperado objeto JSON",
-        requestId: req.headers["x-request-id"]
-      });
-    }
-
-    console.log('[INSIGHTS] Payload keys:', Object.keys(req.body));
-
-    // Normalizar payload para formato esperado pelo n8n
-    const body = req.body;
-    const metadata = body.metadata || {};
-    
-    // Aceita questionnaire, questionario, answers ou respostas
-    const questionnaire = 
-      body.questionnaire || 
-      body.questionario || 
-      body.answers || 
-      body.respostas || 
-      [];
-
-    console.log('[INSIGHTS] Normalized payload keys - metadata:', typeof metadata, '| questionnaire:', typeof questionnaire);
-
-    // Validação básica de estrutura
-    if (!metadata || typeof metadata !== 'object') {
-      return res.status(400).json({ 
-        error: "Payload inválido: metadata ausente ou inválida",
-        receivedKeys: Object.keys(body),
-        requestId: req.headers["x-request-id"]
-      });
-    }
-
-    if (!questionnaire || (Array.isArray(questionnaire) && questionnaire.length === 0)) {
-      return res.status(400).json({ 
-        error: "Payload inválido: questionnaire/questionario ausente ou vazio",
-        receivedKeys: Object.keys(body),
-        requestId: req.headers["x-request-id"]
-      });
-    }
-
-    // Normalizar para enviar ao n8n
-    const normalizedPayload = {
-      metadata,
-      questionnaire: Array.isArray(questionnaire) ? questionnaire : [questionnaire]
-    };
-
-    const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL?.trim();
-    if (!n8nWebhookUrl || n8nWebhookUrl.length === 0 || n8nWebhookUrl.startsWith("https://SEU_N8N")) {
-      return res.status(500).json({
-        error: "N8N_WEBHOOK_URL não configurada no backend.",
-        requestId: req.headers["x-request-id"]
-      });
-    }
-
-    console.log("[INSIGHTS] Enviando payload normalizado ao webhook n8n");
-
-    const n8nResponse = await fetch(n8nWebhookUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify(normalizedPayload)
-    });
-
-    if (!n8nResponse.ok) {
-      throw new Error(`n8n webhook retornou HTTP ${n8nResponse.status}`);
-    }
-
-    const rawResponse = await n8nResponse.text();
-
-    let parsedData: any = null;
-    try {
-      parsedData = JSON.parse(rawResponse.trim());
-    } catch (e) {
-      const match = rawResponse.trim().match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-      if (match && match[1]) {
-        parsedData = JSON.parse(match[1].trim());
-      } else {
-        throw new Error("Resposta do n8n não é JSON válido");
-      }
-    }
-
-    console.log('[INSIGHTS] n8n response keys:', Object.keys(parsedData || {}));
-
-    // Normalizar resposta do n8n: aceita report_data, relatorio ou participantReport
-    const reportData = 
-      parsedData?.report_data || 
-      parsedData?.relatorio || 
-      parsedData?.participantReport;
-
-    if (!reportData) {
-      console.error('[INSIGHTS] n8n response missing expected report fields. Received keys:', Object.keys(parsedData || {}));
-      return res.status(502).json({
-        error: "n8n retornou resposta sem dados de relatório",
-        expectedFields: ["report_data", "relatorio", "participantReport"],
-        receivedKeys: Object.keys(parsedData || {}),
-        requestId: req.headers["x-request-id"]
-      });
-    }
-
-    console.log("[INSIGHTS] Sucesso: Relatório gerado pelo n8n");
-    
-    return res.json({
-      success: true,
-      report_data: reportData,
-      raw: parsedData
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
 // MIDDLEWARE GLOBAL DE TRATAMENTO DE ERROS DO EXPRESS COM SUPORTE SECURITIZADO E CORRELAÇÃO DE REQUEST ID
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   const requestId = req.headers["x-request-id"] as string || generateRequestId();
@@ -712,9 +315,6 @@ async function bootstrap() {
   console.log(`Link do Portal    : ${process.env.APP_URL || "Usando mapeamento interno"}`);
   console.log(`Supabase Target   : ${activeSupabaseUrl}`);
   console.log(`Chave Supabase    : ${maskSecret(activeSupabaseKey)}`);
-  console.log(`Chave Gemini      : ${maskSecret(process.env.GEMINI_API_KEY)}`);
-  console.log(`Chave OpenAI      : ${maskSecret(process.env.OPENAI_API_KEY)}`);
-  console.log(`Webhook n8n       : ${process.env.N8N_WEBHOOK_URL?.trim() ? "CONFIGURADA" : "NÃO CONFIGURADA"}`);
   console.log("=================================================================\n");
 
   if (process.env.NODE_ENV !== "production") {
@@ -739,4 +339,3 @@ async function bootstrap() {
 }
 
 bootstrap();
-

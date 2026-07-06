@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, buscarUsuario, buscarUsuarioPorEmail, listarResultadosUsuario, listarOrientadorRelatoriosUsuario, listarOrientadorRelatorios, listarResultados, atualizarUsuario, mapFirebaseUidToUuid, syncFirebaseUserWithSupabaseAuth } from './lib/supabase';
+import { supabase, buscarUsuario, buscarUsuarioPorEmail, listarResultadosUsuario, listarResultados, atualizarUsuario, mapFirebaseUidToUuid, syncFirebaseUserWithSupabaseAuth } from './lib/supabase';
 import { auth as fbAuth, signOut as fbSignOut } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Usuario, Resultado } from './types';
@@ -8,12 +8,11 @@ import { Usuario, Resultado } from './types';
 import Header from './components/Header';
 import AuthScreen from './components/AuthScreen';
 import OnboardingScreen from './components/OnboardingScreen';
-import ChatbotScreen from './components/ChatbotScreen';
-import OrientadorSocioEstiloScreen from './components/OrientadorSocioEstiloScreen';
+import QuestionnaireScreen from './components/QuestionnaireScreen';
 import DashboardScreen from './components/DashboardScreen';
 import MenuScreen from './components/MenuScreen';
 import AdminScreen from './components/AdminScreen';
-import { RefreshCw, LayoutDashboard, Home } from 'lucide-react';
+import { RefreshCw, LayoutDashboard } from 'lucide-react';
 
 export default function App() {
   const [currentUser, setCurrentUser] = useState<{ uid: string; email: string } | null>(null);
@@ -21,7 +20,7 @@ export default function App() {
   const [myResult, setMyResult] = useState<Resultado | null>(null);
 
   const [loading, setLoading] = useState(true);
-  const [step, setStep] = useState<'loading' | 'auth' | 'onboarding' | 'menu' | 'chatbot' | 'orientador' | 'dashboard' | 'admin'>('loading');
+  const [step, setStep] = useState<'loading' | 'auth' | 'onboarding' | 'menu' | 'questionnaire' | 'dashboard' | 'admin'>('loading');
   const [adminViewUser, setAdminViewUser] = useState<{ user: Usuario; result: Resultado } | null>(null);
   const [adminSelectedCompany, setAdminSelectedCompany] = useState<{ id: string; nome: string } | null>(null);
 
@@ -72,12 +71,9 @@ export default function App() {
     }
 
     try {
-      const [allResults, allIndexedReports] = await Promise.all([
-        listarResultados().catch(() => []),
-        listarOrientadorRelatorios().catch(() => [])
-      ]);
+      const allResults = await listarResultados().catch(() => []);
       const normalizedProfileName = profile.nome.trim().toLowerCase();
-      const allAvailableReports = [...allResults, ...allIndexedReports];
+      const allAvailableReports = allResults;
       const uniqueAvailableReports = Array.from(
         new Map(allAvailableReports.map(result => [result.id_resultado || result.id || `${result.id_usuario}-${result.data_conclusao}`, result])).values()
       );
@@ -270,15 +266,15 @@ export default function App() {
     setStep('menu');
   };
 
-  // Chatbot test completed
-  const handleChatbotFinished = (result: Resultado) => {
+  // Questionnaire completed
+  const handleQuestionnaireFinished = (result: Resultado) => {
     setMyResult(result);
     setStep('dashboard'); // Redirect immediately to view new results
   };
 
   // Optional: let user re-take test by updating step safely
   const handleRetakeTest = () => {
-    setStep('chatbot');
+    setStep('questionnaire');
   };
 
   const [activeDashboardTab, setActiveDashboardTab] = useState<'individual' | 'team'>('individual');
@@ -332,12 +328,6 @@ export default function App() {
           setAdminSelectedCompany(null);
           setStep('admin');
         }}
-        hasReport={Boolean(myResult)}
-        onGoToOrientador={() => {
-          setAdminViewUser(null);
-          setAdminSelectedCompany(null);
-          setStep('orientador');
-        }}
       />
 
       {/* Main Body Layout */}
@@ -373,41 +363,21 @@ export default function App() {
           />
         )}
 
-        {step === 'chatbot' && userProfile && (
+        {step === 'questionnaire' && userProfile && (
           <div className="w-full max-w-4xl mx-auto flex flex-col space-y-4">
             <div className="px-4 w-full flex justify-start">
               <button
                 onClick={() => setStep('menu')}
                 className="flex items-center space-x-1.5 bg-white border border-gray-200 text-xxs font-bold text-[#112363] px-3.5 py-2 rounded-xl shadow-2xs hover:border-[#112363] active:scale-98 transition-all cursor-pointer animate-fade-in"
-                id="btn-chatbot-back-menu"
+                id="btn-questionnaire-back-menu"
               >
                 <span>&larr; Sair e Salvar</span>
               </button>
             </div>
-            <ChatbotScreen
+            <QuestionnaireScreen
               usuario={userProfile}
-              onFinish={handleChatbotFinished}
+              onFinish={handleQuestionnaireFinished}
               onGoBack={() => setStep('menu')}
-            />
-          </div>
-        )}
-
-        {step === 'orientador' && userProfile && (
-          <div className="w-full flex flex-col space-y-4">
-            <div className="max-w-6xl mx-auto px-4 w-full flex justify-start">
-              <button
-                onClick={() => setStep('menu')}
-                className="flex items-center space-x-1.5 bg-white border border-gray-200 text-xxs font-bold text-[#112363] px-3.5 py-2 rounded-xl shadow-2xs hover:border-[#112363] active:scale-98 transition-all cursor-pointer animate-fade-in"
-                id="btn-orientador-back-menu"
-              >
-                <span>&larr; Painel Principal</span>
-              </button>
-            </div>
-            <OrientadorSocioEstiloScreen
-              usuario={userProfile}
-              initialResult={myResult}
-              onGoBack={() => setStep('menu')}
-              onStartQuestionnaire={() => setStep('chatbot')}
             />
           </div>
         )}

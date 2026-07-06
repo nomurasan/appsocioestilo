@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { MessageSquare, BarChart3, ChevronRight, Lock, CheckCircle2, Clock, Play, Shield, X, Sparkles, HelpCircle, ChevronLeft, Bot } from 'lucide-react';
+import { ClipboardList, BarChart3, ChevronRight, Lock, CheckCircle2, Clock, Play, Shield, X, ChevronLeft } from 'lucide-react';
 import { Usuario, Resultado } from '../types';
 
 interface MenuScreenProps {
   usuario: Usuario;
   myResult: Resultado | null;
   isAdmin?: boolean;
-  onSelectStep: (step: 'chatbot' | 'orientador' | 'dashboard') => void;
+  onSelectStep: (step: 'questionnaire' | 'dashboard') => void;
   onGoToAdmin?: () => void;
 }
 
@@ -99,18 +99,18 @@ export default function MenuScreen({ usuario, myResult, isAdmin, onSelectStep, o
       {/* Grid of Large Option Buttons */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6" id="menu-options-grid">
         
-        {/* Card 1: Responder Form / Chatbot */}
+        {/* Card 1: Responder Questionario */}
         <button
-          onClick={() => onSelectStep('chatbot')}
+          onClick={() => onSelectStep('questionnaire')}
           className="flex flex-col text-left p-8 bg-white border-2 border-transparent hover:border-[#112363] rounded-2xl shadow-sm hover:shadow-md transition-all duration-200 group relative overflow-hidden cursor-pointer w-full focus:outline-none focus:ring-2 focus:ring-[#112363]/20"
-          id="btn-menu-chatbot"
+          id="btn-menu-questionnaire"
         >
           {/* Subtle design element */}
           <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full translation-x-8 -translate-y-8 opacity-40 group-hover:scale-110 transition-all duration-300 pointer-events-none" />
 
           {/* Icon Badge */}
           <div className="w-14 h-14 bg-[#112363]/5 group-hover:bg-[#112363]/10 text-[#112363] rounded-2xl flex items-center justify-center transition-all mb-6">
-            <MessageSquare className="w-7 h-7" />
+            <ClipboardList className="w-7 h-7" />
           </div>
 
           <h3 className="text-lg font-bold text-[#112363] flex items-center">
@@ -146,58 +146,7 @@ export default function MenuScreen({ usuario, myResult, isAdmin, onSelectStep, o
           </div>
         </button>
 
-        {/* Card 2: Orientador SocioEstilo */}
-        <button
-          onClick={() => myResult && onSelectStep('orientador')}
-          disabled={!myResult}
-          className={`flex flex-col text-left p-8 bg-white border-2 border-transparent rounded-2xl transition-all duration-200 group relative overflow-hidden w-full focus:outline-none focus:ring-2 ${
-            myResult
-              ? 'hover:border-[#112363] shadow-sm hover:shadow-md cursor-pointer focus:ring-[#112363]/20'
-              : 'opacity-70 bg-gray-50/50 border-gray-100 cursor-not-allowed shadow-none'
-          }`}
-          id="btn-menu-orientador"
-          title={myResult ? 'Conversar com o Orientador SocioEstilo' : 'Disponivel apos a geracao do seu relatorio.'}
-        >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gray-50 rounded-full translation-x-8 -translate-y-8 opacity-40 group-hover:scale-110 transition-all duration-300 pointer-events-none" />
-
-          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center transition-all mb-6 ${
-            myResult
-              ? 'bg-[#112363]/5 group-hover:bg-[#112363]/10 text-[#112363]'
-              : 'bg-gray-100 text-gray-400'
-          }`}>
-            {myResult ? <Bot className="w-7 h-7" /> : <Lock className="w-6 h-6" />}
-          </div>
-
-          <h3 className="text-lg font-bold text-[#112363] flex items-center">
-            <span>Conversar com o Orientador SocioEstilo</span>
-            {myResult && (
-              <ChevronRight className="w-4 h-4 ml-1.5 text-[#112363]/40 group-hover:translate-x-1 transition-transform" />
-            )}
-          </h3>
-
-          <p className="text-gray-500 text-xs leading-relaxed mt-2 flex-grow">
-            Tire duvidas sobre seu relatorio, compreenda seus estilos e receba orientacoes para seu desenvolvimento.
-          </p>
-
-          <div className="mt-8 pt-4 border-t border-gray-100 flex items-center justify-between w-full">
-            <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-              Status do Orientador
-            </span>
-            {myResult ? (
-              <span className="inline-flex items-center space-x-1 bg-green-50 text-green-800 text-xxs font-bold px-3 py-1 rounded-full border border-green-100">
-                <CheckCircle2 className="w-3.5 h-3.5" />
-                <span>Disponivel</span>
-              </span>
-            ) : (
-              <span className="inline-flex items-center space-x-1 bg-gray-100 text-gray-500 text-xxs font-bold px-3 py-1 rounded-full border border-gray-200">
-                <Lock className="w-3 h-3" />
-                <span>Apos gerar relatorio</span>
-              </span>
-            )}
-          </div>
-        </button>
-
-        {/* Card 3: Resultados e Diagnóstico */}
+        {/* Card 2: Resultados e Diagnóstico */}
         <button
           onClick={() => myResult && onSelectStep('dashboard')}
           disabled={!myResult}

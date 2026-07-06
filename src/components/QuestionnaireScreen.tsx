@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, ChevronRight, Check, Bot, Home, X, CheckCircle2 } from 'lucide-react';
 import { QUESTIONS as STATIC_QUESTIONS } from '../data/questions';
-import { Usuario, Scores, Resultado, AnswerDetail, STYLE_NAMES, Question } from '../types';
-import { generateSocioestiloInsights } from '../lib/openai';
+import { Usuario, Scores, Resultado, Question } from '../types';
 import {
   abandonarRascunhoQuestionario,
   buscarRascunhoQuestionario,
@@ -12,9 +11,8 @@ import {
   salvarRascunhoQuestionario,
   atualizarUsuario
 } from '../lib/supabase';
-import { normalizeReportResponse } from '../lib/report-normalization';
 
-interface ChatbotScreenProps {
+interface QuestionnaireScreenProps {
   usuario: Usuario;
   onFinish: (result: Resultado) => void;
   onGoBack?: () => void;
@@ -28,7 +26,7 @@ interface ChatMessage {
   questionIndex?: number;
 }
 
-export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotScreenProps) {
+export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: QuestionnaireScreenProps) {
   // Initialize States directly from localStorage to ensure robust persistence and avoid double question mounts
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState<number>(() => {
     try {
@@ -477,13 +475,215 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
     }
   };
 
-  const saveResults = async (finalScores: Scores, finalMessagesList: ChatMessage[], currentAnswers: Record<string, string | string[]>) => {
+  const STYLE_KEY_BY_OPTION_STYLE: Record<string, keyof Scores> = {
+    Direto: 'Assertivo',
+    Assertivo: 'Assertivo',
+    Expressivo: 'Participativo',
+    Participativo: 'Participativo',
+    Amavel: 'Integrador',
+    Amável: 'Integrador',
+    Integrador: 'Integrador',
+    Analitico: 'Analitico',
+    Analítico: 'Analitico'
+  };
+
+  const STYLE_LABELS: Record<keyof Scores, string> = {
+    Assertivo: 'Assertivo',
+    Participativo: 'Participativo',
+    Integrador: 'Integrador',
+    Analitico: 'Analítico'
+  };
+
+  const STYLE_DESCRIPTIONS: Record<keyof Scores, { descricao: string; forcas: string[]; desenvolvimento: string[]; recomendacoes: string[] }> = {
+    Assertivo: {
+      descricao: 'Perfil orientado a decisão, velocidade, execução e foco objetivo em resultados.',
+      forcas: ['Direcionamento claro para metas', 'Agilidade para resolver problemas', 'Energia de execução e tomada de decisão'],
+      desenvolvimento: ['Equilibrar velocidade com escuta ativa', 'Dar mais espaço para contribuições do grupo', 'Comunicar decisões com contexto suficiente'],
+      recomendacoes: ['Antes de decidir, valide impactos humanos e operacionais.', 'Use checkpoints curtos para alinhar pessoas sem perder ritmo.', 'Convide perspectivas diferentes para qualificar decisões rápidas.']
+    },
+    Participativo: {
+      descricao: 'Perfil comunicativo, entusiasmado, criativo e mobilizador de conexões.',
+      forcas: ['Facilidade para engajar pessoas', 'Criatividade para propor alternativas', 'Otimismo e comunicação envolvente'],
+      desenvolvimento: ['Sustentar foco até a conclusão', 'Organizar prioridades em etapas claras', 'Transformar ideias em compromissos acompanháveis'],
+      recomendacoes: ['Registre próximos passos logo após boas ideias.', 'Defina critérios objetivos para priorizar iniciativas.', 'Combine entusiasmo com cadência de execução.']
+    },
+    Integrador: {
+      descricao: 'Perfil cooperativo, acolhedor, estável e atento à harmonia dos relacionamentos.',
+      forcas: ['Construção de confiança', 'Escuta cuidadosa e empatia', 'Atenção ao clima e à colaboração'],
+      desenvolvimento: ['Exercitar posicionamento assertivo', 'Lidar com conflitos de forma mais direta', 'Evitar assumir responsabilidades que pertencem a outros'],
+      recomendacoes: ['Explicite limites e expectativas com antecedência.', 'Trate divergências cedo, com objetividade e respeito.', 'Use sua escuta para mediar decisões sem adiar conclusões.']
+    },
+    Analitico: {
+      descricao: 'Perfil analítico, criterioso, organizado e orientado por qualidade, dados e consistência.',
+      forcas: ['Rigor na análise de informações', 'Organização e atenção a detalhes', 'Busca por precisão e qualidade'],
+      desenvolvimento: ['Evitar excesso de análise antes da ação', 'Aumentar flexibilidade diante de mudanças', 'Comunicar sínteses de forma mais simples'],
+      recomendacoes: ['Defina o nível de informação suficiente para decidir.', 'Teste hipóteses em ciclos curtos.', 'Traduza análises em recomendações práticas e objetivas.']
+    }
+  };
+
+  const getSortedStyleEntries = (scoreMap: Scores) =>
+    (Object.keys(scoreMap) as Array<keyof Scores>)
+      .map(style => ({ style, label: STYLE_LABELS[style], score: scoreMap[style] || 0 }))
+      .sort((a, b) => b.score - a.score);
+
+  const calculateScoresFromAnswers = (currentAnswers: Record<string, string | string[]>): Scores => {
+    const calculated: Scores = { Assertivo: 0, Participativo: 0, Integrador: 0, Analitico: 0 };
+
+    questions.forEach(question => {
+      const rawAnswer = currentAnswers[question.id.toString()];
+      const selectedAnswers = Array.isArray(rawAnswer) ? rawAnswer : (rawAnswer ? [rawAnswer] : []);
+
+      selectedAnswers.forEach(answerText => {
+        const option = question.options.find(opt => opt.text === answerText) as any;
+        const styleKey = STYLE_KEY_BY_OPTION_STYLE[String(option?.style || '')];
+        const points = Number(option?.points ?? 1) || 0;
+
+        if (styleKey) {
+          calculated[styleKey] += points;
+        }
+      });
+    });
+
+    return calculated;
+  };
+
+  const buildAnswerMemory = (currentAnswers: Record<string, string | string[]>) => {
+    return questions.flatMap(question => {
+      const rawAnswer = currentAnswers[question.id.toString()];
+      const selectedAnswers = Array.isArray(rawAnswer) ? rawAnswer : (rawAnswer ? [rawAnswer] : []);
+
+      return selectedAnswers.map(answerText => {
+        const option = question.options.find(opt => opt.text === answerText) as any;
+        const styleKey = STYLE_KEY_BY_OPTION_STYLE[String(option?.style || '')];
+        const points = Number(option?.points ?? 1) || 0;
+
+        return {
+          questionId: question.id,
+          question: question.text,
+          answer: answerText,
+          socioStyle: styleKey ? STYLE_LABELS[styleKey] : 'Não identificado',
+          points
+        };
+      });
+    });
+  };
+
+  const buildLocalReportPayload = (
+    basePayload: any,
+    currentAnswers: Record<string, string | string[]>,
+    calculatedScores: Scores
+  ) => {
+    const sorted = getSortedStyleEntries(calculatedScores);
+    const totalPoints = sorted.reduce((sum, item) => sum + item.score, 0);
+    const dominant = sorted[0];
+    const secondary = sorted[1];
+    const third = sorted[2];
+    const lowest = sorted[3];
+    const dominantKey = dominant?.style || 'Assertivo';
+    const dominantProfile = dominant?.label || 'Assertivo';
+    const secondaryProfile = secondary?.label || '';
+    const dominantInfo = STYLE_DESCRIPTIONS[dominantKey];
+    const answerMemory = buildAnswerMemory(currentAnswers);
+    const generatedAt = new Date().toISOString();
+
+    const ranking = sorted.map(item => ({
+      estilo: item.label,
+      style: item.label,
+      pontuacao: item.score,
+      score: item.score,
+      percentual: totalPoints > 0 ? Math.round((item.score / totalPoints) * 100) : 0
+    }));
+
+    const summary = `${usuario.nome} apresenta predominância do perfil ${dominantProfile}${secondaryProfile ? `, com apoio do perfil ${secondaryProfile}` : ''}. O resultado foi calculado a partir das respostas do questionário SocioEstilo, considerando a pontuação associada a cada alternativa selecionada. O perfil indica ${dominantInfo.descricao.toLowerCase()} O relatório deve ser lido como um mapa de tendências comportamentais para apoiar autoconhecimento, comunicação e desenvolvimento profissional.`;
+
+    return {
+      success: true,
+      metadata: {
+        ...basePayload.metadata,
+        generatedAt,
+        processingMode: 'rules'
+      },
+      assessment: {
+        scores: calculatedScores,
+        ranking,
+        totalPoints,
+        dominantProfile,
+        secondaryProfile,
+        thirdProfile: third?.label || '',
+        lowestProfile: lowest?.label || ''
+      },
+      report_data: {
+        identificacao: {
+          nome: usuario.nome,
+          empresa: usuario.empresa_nome,
+          user_id: usuario.uid,
+          empresa_id: usuario.empresa_id,
+          data_conclusao: generatedAt,
+          generated_at: generatedAt
+        },
+        resultado: {
+          scores: calculatedScores,
+          total_pontos: totalPoints,
+          perfil_dominante: dominantProfile,
+          perfil_secundario: secondaryProfile,
+          perfil_terciario: third?.label || '',
+          perfil_menos_utilizado: lowest?.label || '',
+          ranking_estilos: ranking
+        },
+        narrativa: {
+          parecer_executivo: summary,
+          oportunidades: dominantInfo.recomendacoes,
+          desafios: dominantInfo.desenvolvimento,
+          conselho_alta_performance: dominantInfo.recomendacoes.join(' ')
+        },
+        parecer_executivo: summary,
+        oportunidades_alavancas: dominantInfo.recomendacoes,
+        pontos_criticos_desafios: dominantInfo.desenvolvimento,
+        conselho_alta_performance: dominantInfo.recomendacoes.join(' '),
+        analise_comportamental: {
+          estilo_identificado: dominantProfile,
+          descricao: dominantInfo.descricao,
+          pontos_fortes_talentos: dominantInfo.forcas,
+          pontos_desenvolvimento: dominantInfo.desenvolvimento
+        },
+        metodologia_potenciar_ativada: 'A metodologia SocioEstilo Potenciar foi aplicada por regra de pontuação linear, somando os pontos associados às alternativas selecionadas no questionário.',
+        sobre_metodologia: {
+          assertivo: STYLE_DESCRIPTIONS.Assertivo.descricao,
+          participativo: STYLE_DESCRIPTIONS.Participativo.descricao,
+          integrador: STYLE_DESCRIPTIONS.Integrador.descricao,
+          analitico: STYLE_DESCRIPTIONS.Analitico.descricao,
+          texto_final: 'Os quatro estilos representam tendências comportamentais complementares e devem ser interpretados de forma integrada.'
+        },
+        evidencias_observadas: answerMemory.slice(0, 8).map(item => `${item.question} Resposta: ${item.answer}`),
+        potencial_desenvolvimento: dominantInfo.desenvolvimento,
+        recomendacoes_praticas: dominantInfo.recomendacoes,
+        memoria_respostas: answerMemory,
+        memoria_calculo: {
+          regra: 'Soma linear dos pontos associados às alternativas escolhidas.',
+          total_pontos: totalPoints,
+          ranking
+        },
+        auditoria: {
+          workflow_version: 'local-rules-v1',
+          prompt_version: 'nao_aplicavel',
+          modelo_llm: 'nao_aplicavel',
+          fontes_consultadas: ['Questionário SocioEstilo', 'Gabarito de pontuação local'],
+          divergencias_scores: false,
+          erro_parse_ia: 'nao_aplicavel'
+        }
+      },
+      respostasQuestionario: currentAnswers,
+      questionnaire: basePayload.questionnaire
+    };
+  };
+
+  const saveResults = async (_finalScores: Scores, finalMessagesList: ChatMessage[], currentAnswers: Record<string, string | string[]>) => {
     setIsTyping(true);
 
     const analysisMsg: ChatMessage = {
       id: 'finishing-loader-1',
       sender: 'bot',
-      text: 'Excelente! Concluímos as perguntas. Enviando suas respostas para processamento...'
+      text: 'Excelente! Concluímos as perguntas. Calculando seu perfil SocioEstilo pelas regras da metodologia...'
     };
 
     let updatedMessages = [...finalMessagesList, analysisMsg];
@@ -491,23 +691,14 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
 
     await delay(1200);
 
-    const consultingMsg: ChatMessage = {
-      id: 'finishing-loader-2',
-      sender: 'bot',
-      text: 'Acionando o processamento do Socioestilo no n8n para calcular seus perfis, talentos, oportunidades e recomendações personalizadas...'
-    };
+    const calculatedScores = calculateScoresFromAnswers(currentAnswers);
+    setScores(calculatedScores);
 
-    updatedMessages = [...updatedMessages, consultingMsg];
-    setMessages(updatedMessages);
-    setIsTyping(true);
-
-    // Format expected of payload (Rules 5, 6, 7, 8, 9)
     const formattedAnswers = questions
-      .filter(q => q.id !== 14) // Exclude Q14
       .map(q => {
         const rawAns = currentAnswers[q.id.toString()];
-        const selectedList: string[] = Array.isArray(rawAns) 
-          ? rawAns 
+        const selectedList: string[] = Array.isArray(rawAns)
+          ? rawAns
           : (rawAns ? [rawAns] : []);
 
         const selectedAnswers = selectedList.map(ansText => {
@@ -533,57 +724,37 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
         companyId: isNaN(Number(usuario.empresa_id)) ? usuario.empresa_id : Number(usuario.empresa_id),
         companyName: usuario.empresa_nome,
         completedAt: new Date().toISOString(),
-        version: "google-studio-coleta-simples"
+        version: 'local-rules-v1'
       },
       questionnaire: {
         answers: formattedAnswers
       }
     };
 
-    let aiInsights: any = null;
+    const reportPayload = buildLocalReportPayload(payload, currentAnswers, calculatedScores);
+    const dominantStyle = reportPayload.report_data.resultado.perfil_dominante || '';
+    const localNormalized = {
+      summary: reportPayload.report_data.narrativa.parecer_executivo,
+      assessment: reportPayload.assessment
+    };
+
+    setNormalizedResponse(localNormalized);
+    setReportSummary(localNormalized.summary);
+
     try {
-      aiInsights = await generateSocioestiloInsights(payload);
-    } catch (e) {
-      console.error("Erro ao gerar insights", e);
-    }
-
-    // Rule 15: If n8n returns an error, display failure and DO NOT local-fallback report
-    if (!aiInsights || !aiInsights.report_data) {
-      setIsTyping(false);
-      const errorMsg: ChatMessage = {
-        id: 'error-msg',
-        sender: 'bot',
-        text: 'Falha na geração do relatório. Ocorreu um erro de comunicação ou processamento no n8n (não foi possível retornar a propriedade "report_data"). Por favor, tente novamente.'
-      };
-      setMessages([...updatedMessages, errorMsg]);
-      return;
-    }
-
-    // Normalize the response to extract summary and metadata
-    const normalized = normalizeReportResponse(aiInsights);
-    setNormalizedResponse(normalized);
-    setReportSummary(normalized.summary);
-
-    // Now, save to database
-    try {
-      // Create Result in Supabase, passing our new n8n payload containing report_data
       await criarResultado(
         usuario.uid,
         usuario.empresa_id,
-        aiInsights,
+        reportPayload,
         currentAnswers,
         usuario.nome,
         usuario.empresa_nome
       );
     } catch (dbErr) {
-      console.log("[OFFLINE RESILIENCE] Cloud write pending:", dbErr);
+      console.log('[OFFLINE RESILIENCE] Cloud write pending:', dbErr);
     }
 
-    // Extract dominant style from n8n report_data.resultado
-    const dominantStyle = aiInsights.report_data.resultado?.perfil_dominante || '';
-
     try {
-      // 2. Update user profile to include the dominant style in Supabase
       if (dominantStyle) {
         await atualizarUsuario(
           usuario.uid,
@@ -595,11 +766,10 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
         );
       }
     } catch (dbErr) {
-      console.log("[OFFLINE RESILIENCE] Perfil do usuário atualizado localmente para:", dominantStyle, dbErr);
+      console.log('[OFFLINE RESILIENCE] Perfil do usuário atualizado localmente para:', dominantStyle, dbErr);
     }
 
     try {
-      // CLEAR temporary progress on complete
       await persistDraft(questions.length, currentAnswers, 'CONCLUIDO');
       localStorage.removeItem(`potenciar_progress_${usuario.uid}`);
 
@@ -608,33 +778,30 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
         nome_usuario: usuario.nome,
         empresa_id: usuario.empresa_id,
         empresa_nome: usuario.empresa_nome,
-        scores: aiInsights.report_data.resultado?.scores || { Assertivo: 0, Participativo: 0, Integrador: 0, Analitico: 0 },
+        scores: calculatedScores,
         perfil_dominante: dominantStyle,
         data_conclusao: new Date().toISOString(),
-        ai_insights: aiInsights,
+        ai_insights: reportPayload,
+        raw_payload: reportPayload,
         answers: currentAnswers
       };
 
-      // Save a local copy of the result for resilient client-side viewing
       localStorage.setItem(`potenciar_result_${usuario.uid}`, JSON.stringify(resultPayload));
 
       setIsTyping(false);
-
-      // Show success modal instead of redirecting immediately
       setSavedResultPayload(resultPayload);
       setShowSuccessModal(true);
 
       const finishMsg: ChatMessage = {
         id: 'finish-announcement',
         sender: 'bot',
-        text: 'Relatório estruturado com sucesso! Seus insights estão prontos para visualização.'
+        text: 'Relatório estruturado com sucesso! Seu resultado está pronto para visualização.'
       };
       setMessages(prev => [...prev, finishMsg]);
     } catch (err) {
-      console.error("Erro limpando e redirecionando", err);
+      console.error('Erro limpando e redirecionando', err);
     }
   };
-
   const progressPercent = questions.length > 0 ? Math.round((currentQuestionIndex / questions.length) * 100) : 0;
   const activeQ = questions[currentQuestionIndex];
   const activeMaxChoices = activeQ?.maxChoices || 5;
@@ -697,7 +864,7 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
   }
 
   return (
-    <div className="flex flex-col h-[740px] max-h-[85vh] min-h-[580px] max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden" id="chatbot-container">
+    <div className="flex flex-col h-[740px] max-h-[85vh] min-h-[580px] max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden" id="questionnaire-container">
       
       {/* Dynamic Progress indicator */}
       <div className="bg-gray-50 border-b border-gray-100 p-4 shrink-0 flex items-center justify-between" id="chat-progress">
@@ -706,7 +873,7 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
             Sua Conexão Comportamental
           </h3>
           <p className="text-xxs text-gray-400 mt-0.5" id="progress-text">
-            Socioestilo Chatbot &bull; {testCompleted ? 'Finalizando' : !started ? 'Apresentação' : `Questão ${currentQuestionIndex + 1} de ${questions.length}`}
+            Questionário SocioEstilo &bull; {testCompleted ? 'Finalizando' : !started ? 'Apresentação' : `Questão ${currentQuestionIndex + 1} de ${questions.length}`}
           </p>
         </div>
         <div className="flex items-center space-x-3.5">
@@ -811,7 +978,7 @@ export default function ChatbotScreen({ usuario, onFinish, onGoBack }: ChatbotSc
                       <div className="space-y-1">
                         <h4 className="font-bold text-sm text-[#112363]">Seu Diagnóstico de Socioestilo está pronto!</h4>
                         <p className="text-xs text-gray-500 leading-relaxed">
-                          Nossa Inteligência Artificial especialista em Socioestilo concluiu a análise do seu perfil comportamental, de acordo com a metodologia <strong>Socioestilo Potenciar</strong>. Seus insights, oportunidades e desafios já estão disponíveis de forma dinâmica.
+                          A análise do seu perfil comportamental foi concluída de acordo com as regras da metodologia <strong>Socioestilo Potenciar</strong>. Seu resultado já está disponível para consulta.
                         </p>
                         <p className="text-xs text-gray-400 font-medium">
                           &bull; Uma devolutiva detalhada com um especialista executivo será enviada em breve para consolidar seu plano corporativo.
