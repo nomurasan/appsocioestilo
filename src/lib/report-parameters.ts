@@ -1,6 +1,6 @@
 import { ReportParameter, ReportUserType } from '../types';
 
-type CatalogItem = Omit<ReportParameter, 'tipo_usuario' | 'ativo'>;
+type CatalogItem = Omit<ReportParameter, 'tipo_usuario' | 'ativo'> & { ativo?: boolean };
 
 export const REPORT_PARAMETER_CATALOG: CatalogItem[] = [
   {
@@ -131,6 +131,14 @@ export const REPORT_PARAMETER_CATALOG: CatalogItem[] = [
   },
   {
     secao: 'auditoria',
+    campo: 'base_conhecimento',
+    titulo: 'Base de conhecimento consultada',
+    descricao: 'Documentos e chunks recuperados na validacao.',
+    ordem: 180,
+    ativo: false
+  },
+  {
+    secao: 'auditoria',
     campo: 'fundamentacao_teorica',
     titulo: 'Fundamentação teórica',
     descricao: 'Referenciais teóricos e contribuições metodológicas.',
@@ -161,6 +169,6 @@ export function getDefaultReportParameters(tipoUsuario: ReportUserType): ReportP
   return REPORT_PARAMETER_CATALOG.map(item => ({
     ...item,
     tipo_usuario: tipoUsuario,
-    ativo: true
+    ativo: item.ativo ?? true
   }));
 }
