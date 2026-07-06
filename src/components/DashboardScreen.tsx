@@ -556,54 +556,6 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     return String(val);
   };
 
-  const hasOwnReportField = (field: string) => Object.prototype.hasOwnProperty.call(report_data || {}, field);
-  const rawPotencializacaoTalentos = report_data?.potencializacao_talentos;
-  const hasPotencializacaoTalentos = hasOwnReportField('potencializacao_talentos') &&
-    rawPotencializacaoTalentos !== undefined &&
-    rawPotencializacaoTalentos !== null &&
-    rawPotencializacaoTalentos !== '' &&
-    !(Array.isArray(rawPotencializacaoTalentos) && rawPotencializacaoTalentos.length === 0);
-  const potencializacaoTalentosObj = rawPotencializacaoTalentos && typeof rawPotencializacaoTalentos === 'object' && !Array.isArray(rawPotencializacaoTalentos)
-    ? rawPotencializacaoTalentos
-    : {};
-  const potencializacaoTalentos = hasPotencializacaoTalentos
-    ? {
-        titulo: safeStringVal(
-          typeof rawPotencializacaoTalentos === 'string'
-            ? rawPotencializacaoTalentos
-            : potencializacaoTalentosObj.titulo || potencializacaoTalentosObj.title || 'Potencializacao de Talentos'
-        ),
-        estilo_base: safeStringVal(
-          report_data.potencializacao_talentos_estilo_base ||
-          potencializacaoTalentosObj.estilo_base ||
-          potencializacaoTalentosObj.estiloBase ||
-          potencializacaoTalentosObj.estilo ||
-          ''
-        ),
-        descricao: safeDescVal(
-          report_data.potencializacao_talentos_descricao ||
-          potencializacaoTalentosObj.descricao ||
-          potencializacaoTalentosObj.description ||
-          potencializacaoTalentosObj.texto ||
-          (typeof rawPotencializacaoTalentos === 'string' ? rawPotencializacaoTalentos : '')
-        ),
-        acoes: cleanArrayItems(
-          report_data.potencializacao_talentos_acoes ||
-          potencializacaoTalentosObj.acoes ||
-          potencializacaoTalentosObj.actions ||
-          potencializacaoTalentosObj.recomendacoes ||
-          potencializacaoTalentosObj.itens
-        )
-      }
-    : null;
-  const comparativoEstilosInterpretacao = safeDescVal(
-    report_data.comparativo_estilos_interpretacao ||
-    report_data.metodologia?.comparativo_estilos_interpretacao ||
-    report_data.sobre_metodologia?.comparativo_estilos_interpretacao ||
-    report_data.campos?.comparativo_estilos_interpretacao ||
-    ''
-  );
-
   const finalReportData: any = {
     identificacao: {
       nome: report_data.identificacao?.nome || userName,
@@ -731,8 +683,6 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       analitico: safeDescVal(report_data.sobre_metodologia?.analitico || report_data.metodologia?.analitico || "Perfil Analítico (Analítico): Rigor científico focado na mitigação de riscos, precisão em dados e planejamento estruturado."),
       texto_final: safeDescVal(report_data.sobre_metodologia?.texto_final || report_data.metodologia?.texto_final || "O equilíbrio dinâmico dessas quatro lentes metodológicas ampara planos de desenvolvimento individuais e de equipe.")
     },
-    potencializacao_talentos: potencializacaoTalentos,
-    comparativo_estilos_interpretacao: comparativoEstilosInterpretacao,
     dinamica_dos_estilos: {
       lado_luz: safeDinamicaVal(report_data.dinamica_dos_estilos?.lado_luz || report_data.dinamica_dos_estilos?.ladoLuz || backupDinamica.lado_luz),
       lado_sombra: safeDinamicaVal(report_data.dinamica_dos_estilos?.lado_sombra || report_data.dinamica_dos_estilos?.ladoSombra || backupDinamica.lado_sombra),
@@ -1013,11 +963,6 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     dinamica_estilo_a_desenvolver: finalReportData.dinamica_dos_estilos.estilo_a_desenvolver,
     evidencias_observadas_texto: finalReportData.evidencias_observadas.join("\n"),
     potencial_desenvolvimento_texto: finalReportData.potencial_desenvolvimento.join("\n"),
-    potencializacao_talentos: finalReportData.potencializacao_talentos?.titulo || '',
-    potencializacao_talentos_estilo_base: finalReportData.potencializacao_talentos?.estilo_base || '',
-    potencializacao_talentos_descricao: finalReportData.potencializacao_talentos?.descricao || '',
-    potencializacao_talentos_acoes: finalReportData.potencializacao_talentos?.acoes?.join("\n") || '',
-    comparativo_estilos_interpretacao: finalReportData.comparativo_estilos_interpretacao || '',
     recomendacoes_praticas_texto: finalReportData.recomendacoes_praticas.join("\n"),
     memoria_calculo_por_questao_json: report_data?.campos?.memoria_calculo_por_questao_json || report_data?.memoria_calculo_por_questao_json || "",
     memoria_calculo_respostas_json: report_data?.campos?.memoria_calculo_respostas_json || report_data?.memoria_calculo_respostas_json || ""
@@ -1932,37 +1877,6 @@ export default function DashboardScreen({
                 );
               };
 
-              const renderComparativeStylesTable = () => (
-                <div className="max-w-full overflow-hidden border border-slate-150 rounded-2xl bg-white shadow-3xs">
-                  <table className="w-full table-fixed divide-y divide-slate-150 text-xs text-slate-700">
-                    <thead className="bg-[#112363] font-black text-white uppercase text-[9px] md:text-[10px] tracking-wider">
-                      <tr>
-                        <th className="px-3 md:px-5 py-2.5 md:py-3 text-left w-1/3 md:w-1/4">Socioestilo</th>
-                        <th className="px-3 md:px-5 py-2.5 md:py-3 text-left">Foco de Atuacao e Fundamento Comunicativo</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-150">
-                      <tr className="hover:bg-slate-50/50">
-                        <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-amber-700 uppercase tracking-wider bg-amber-50/10 text-[10px] md:text-xs">Assertivo</td>
-                        <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.assertivo}</td>
-                      </tr>
-                      <tr className="hover:bg-slate-50/50">
-                        <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#D80E2A] uppercase tracking-wider bg-red-50/10 text-[10px] md:text-xs">Participativo</td>
-                        <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.participativo}</td>
-                      </tr>
-                      <tr className="hover:bg-slate-50/50">
-                        <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-emerald-800 uppercase tracking-wider bg-emerald-50/10 text-[10px] md:text-xs">Integrador</td>
-                        <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.integrador || reportData.sobre_metodologia?.conservador_agregador}</td>
-                      </tr>
-                      <tr className="hover:bg-slate-50/50">
-                        <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#112363] uppercase tracking-wider bg-slate-50/20 text-[10px] md:text-xs">Analitico</td>
-                        <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.analitico}</td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              );
-
               const renderEvidenceItem = (ev: string, idx: number) => {
                 try {
                   const cleanedEv = ev.trim();
@@ -2140,7 +2054,7 @@ export default function DashboardScreen({
                       </div>
 
                       {/* Page 3: DISTRIBUIÇÃO DOS ESTILOS & RANKING (Seção 4 & Seção 5) */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['metricas', 'radar_estilos'], ['metricas', 'ranking_estilos'], ['metricas', 'comparativo_estilos_interpretacao'], ['metodologia', 'tabela_socioestilos'], ['dinamica', 'dinamica_estilos']]) ? 'hidden' : ''}`} id="p-page-3">
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['metricas', 'radar_estilos'], ['metricas', 'ranking_estilos'], ['dinamica', 'dinamica_estilos']]) ? 'hidden' : ''}`} id="p-page-3">
                         <div className="space-y-4 w-full font-sans">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
@@ -2280,18 +2194,6 @@ export default function DashboardScreen({
                                 </div>
                               );
                             })()}
-                          </div>
-
-                          <div className={`space-y-3 mt-4 ${!isAnyReportFieldVisible([['metodologia', 'tabela_socioestilos'], ['metricas', 'comparativo_estilos_interpretacao']]) ? 'hidden' : ''}`}>
-                            <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider">2.1 Tabela Comparativa de Atuacao e Foco Operacional</h4>
-                            <div className={`${!isReportFieldVisible('metodologia', 'tabela_socioestilos') ? 'hidden' : ''}`}>
-                              {renderComparativeStylesTable()}
-                            </div>
-                            {reportData.comparativo_estilos_interpretacao && (
-                              <div className={`p-3 bg-[#112363]/5 rounded-xl border border-blue-100 text-[11px] leading-relaxed font-semibold text-slate-800 whitespace-pre-line ${!isReportFieldVisible('metricas', 'comparativo_estilos_interpretacao') ? 'hidden' : ''}`}>
-                                {reportData.comparativo_estilos_interpretacao}
-                              </div>
-                            )}
                           </div>
 
                            {(() => {
@@ -2531,7 +2433,7 @@ export default function DashboardScreen({
                       </div>
 
                       {/* Page 5: POTENCIAL DE DESENVOLVIMENTO & RECOMENDAÇÕES PRÁTICAS (Blocos 7 & 8) */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['pdi', 'potencial_desenvolvimento'], ['pdi', 'potencializacao_talentos'], ['pdi', 'recomendacoes_praticas'], ['pdi', 'conselho_alta_performance']]) ? 'hidden' : ''}`} id="p-page-5">
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['pdi', 'potencial_desenvolvimento'], ['pdi', 'recomendacoes_praticas'], ['pdi', 'conselho_alta_performance']]) ? 'hidden' : ''}`} id="p-page-5">
                         <div className="space-y-4 w-full font-sans">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
@@ -2555,39 +2457,9 @@ export default function DashboardScreen({
                               </div>
                             </div>
 
-                            {reportData.potencializacao_talentos && isReportFieldVisible('pdi', 'potencializacao_talentos') && (
-                              <div className="md:col-span-2 space-y-4 p-4 bg-emerald-50/20 rounded-xl border border-emerald-100/70 shadow-3xs">
-                                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 border-b border-emerald-100 pb-2">
-                                  <h4 className="text-xs font-black text-emerald-700 uppercase tracking-wider flex items-center gap-1.5">
-                                    <Lightbulb className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 5.2 Potencializacao de Talentos
-                                  </h4>
-                                  {reportData.potencializacao_talentos.estilo_base && (
-                                    <span className={`text-[9px] font-black uppercase tracking-widest text-emerald-800 bg-white px-2 py-1 rounded border border-emerald-100 ${!isReportFieldVisible('pdi', 'potencializacao_talentos_estilo_base') ? 'hidden' : ''}`}>
-                                      Base: {reportData.potencializacao_talentos.estilo_base}
-                                    </span>
-                                  )}
-                                </div>
-                                {reportData.potencializacao_talentos.descricao && (
-                                  <p className={`text-xs text-slate-800 leading-relaxed font-semibold whitespace-pre-line ${!isReportFieldVisible('pdi', 'potencializacao_talentos_descricao') ? 'hidden' : ''}`}>
-                                    {reportData.potencializacao_talentos.descricao}
-                                  </p>
-                                )}
-                                {reportData.potencializacao_talentos.acoes?.length > 0 && (
-                                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-3 ${!isReportFieldVisible('pdi', 'potencializacao_talentos_acoes') ? 'hidden' : ''}`}>
-                                    {reportData.potencializacao_talentos.acoes.map((acao: string, idx: number) => (
-                                      <div key={idx} className="p-3 bg-white rounded-xl border border-emerald-100 flex items-start space-x-2.5 shadow-3xs">
-                                        <span className="text-emerald-600 font-extrabold shrink-0 mt-0.5">{idx + 1}.</span>
-                                        <span className="text-slate-755 font-semibold text-xs leading-relaxed">{acao}</span>
-                                      </div>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
                             <div className={`space-y-4 ${!isReportFieldVisible('pdi', 'recomendacoes_praticas') ? 'hidden' : ''}`}>
                               <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">
-                                <CheckCircle2 className="w-4.5 h-4.5 text-[#112363] shrink-0" /> 5.3 Recomendações Táticas para Sucesso e Alta Performance
+                                <CheckCircle2 className="w-4.5 h-4.5 text-[#112363] shrink-0" /> 5.2 Recomendações Táticas para Sucesso e Alta Performance
                               </h4>
                               <div className="space-y-2.5">
                                 {reportData.recomendacoes_praticas.map((rec: string, idx: number) => (
@@ -2602,7 +2474,7 @@ export default function DashboardScreen({
 
                           <div className={`p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-4 ${!isReportFieldVisible('pdi', 'conselho_alta_performance') ? 'hidden' : ''}`}>
                             <span className="absolute top-0 right-0 py-1 px-2.5 bg-amber-100 text-amber-800 font-black rounded-bl-lg text-[8px] uppercase tracking-wider">Diretiva de Otimização</span>
-                            <h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">5.4 Conselho Estratégico de Alta Performance</h4>
+                            <h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">5.3 Conselho Estratégico de Alta Performance</h4>
                             <p className="text-xs text-slate-850 leading-relaxed font-semibold italic">
                               "{reportData.narrativa.conselho_alta_performance}"
                             </p>
@@ -2613,7 +2485,7 @@ export default function DashboardScreen({
                       </div>
 
                       {/* Page 6: METODOLOGIA POTENCIAR & MATRIZ (Seção 12 & Seção 13) */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isReportFieldVisible('metodologia', 'metodologia_potenciar') ? 'hidden' : ''}`} id="p-page-6">
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['metodologia', 'metodologia_potenciar'], ['metodologia', 'tabela_socioestilos']]) ? 'hidden' : ''}`} id="p-page-6">
                         <div className="space-y-4 w-full">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
@@ -2626,6 +2498,38 @@ export default function DashboardScreen({
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">6.1 Alinhamento Científico da Metodologia dos Socioestilos</h4>
                             <div className="p-4 bg-[#112363]/5 rounded-xl border border-blue-100 text-xs leading-relaxed font-semibold text-slate-800">
                               {reportData.metodologia.metodologia_potenciar_ativada}
+                            </div>
+                          </div>
+
+                          <div className={`space-y-4 ${!isReportFieldVisible('metodologia', 'tabela_socioestilos') ? 'hidden' : ''}`}>
+                            <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">6.2 Tabela Comparativa de Atuação e Foco Operacional</h4>
+                            <div className="max-w-full overflow-hidden border border-slate-150 rounded-2xl bg-white shadow-3xs">
+                              <table className="w-full table-fixed divide-y divide-slate-150 text-xs text-slate-700">
+                                <thead className="bg-[#112363] font-black text-white uppercase text-[9px] md:text-[10px] tracking-wider">
+                                  <tr>
+                                    <th className="px-3 md:px-5 py-2.5 md:py-3 text-left w-1/3 md:w-1/4">Socioestilo</th>
+                                    <th className="px-3 md:px-5 py-2.5 md:py-3 text-left">Foco de Atuação e Fundamento Comunicativo</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-150">
+                                  <tr className="hover:bg-slate-50/50">
+                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-amber-700 uppercase tracking-wider bg-amber-50/10 text-[10px] md:text-xs">Assertivo</td>
+                                    <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.assertivo}</td>
+                                  </tr>
+                                  <tr className="hover:bg-slate-50/50">
+                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#D80E2A] uppercase tracking-wider bg-red-50/10 text-[10px] md:text-xs">Participativo</td>
+                                    <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.participativo}</td>
+                                  </tr>
+                                  <tr className="hover:bg-slate-50/50">
+                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-emerald-800 uppercase tracking-wider bg-emerald-50/10 text-[10px] md:text-xs">Integrador</td>
+                                    <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.integrador || reportData.sobre_metodologia?.conservador_agregador}</td>
+                                  </tr>
+                                  <tr className="hover:bg-slate-50/50">
+                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#112363] uppercase tracking-wider bg-slate-50/20 text-[10px] md:text-xs">Analítico</td>
+                                    <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.analitico}</td>
+                                  </tr>
+                                </tbody>
+                              </table>
                             </div>
                           </div>
 

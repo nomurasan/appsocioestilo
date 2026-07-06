@@ -248,7 +248,7 @@ export function parseResultId(id: any): string | number {
   return isNaN(parsed) ? strId : parsed;
 }
 
-const REPORT_PARAMETER_TABLES = ['relatorio_parametros_indicadores', 'relatorio_parametrizacoes', 'parametrizacao_relatorio', 'relatorio_parametros'];
+const REPORT_PARAMETER_TABLES = ['relatorio_parametrizacoes', 'parametrizacao_relatorio', 'relatorio_parametros'];
 const REPORT_PARAMETER_LOCAL_STORAGE_KEY = 'potenciar_report_parameters_v1';
 
 function getReportParameterKey(row: Pick<ReportParameter, 'secao' | 'campo'>): string {
