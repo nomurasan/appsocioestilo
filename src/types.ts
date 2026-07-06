@@ -99,7 +99,7 @@ export interface Resultado {
   q13_resposta?: string;
 }
 
-export type ReportUserType = 'admin' | 'usuario';
+export type ReportUserType = 'admin' | 'consultor' | 'participante' | 'usuario';
 
 export interface ReportParameter {
   tipo_usuario: ReportUserType;

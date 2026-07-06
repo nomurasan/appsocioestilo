@@ -298,7 +298,7 @@ function isMissingColumnError(error: any, column: string): boolean {
 
 function getLocalReportParameterStorage(): Record<ReportUserType, ReportParameter[]> {
   if (typeof localStorage === 'undefined') {
-    return { usuario: [], admin: [] };
+    return { usuario: [], participante: [], consultor: [], admin: [] };
   }
 
   try {
@@ -307,11 +307,13 @@ function getLocalReportParameterStorage(): Record<ReportUserType, ReportParamete
 
     return {
       usuario: Array.isArray(parsed?.usuario) ? parsed.usuario : [],
+      participante: Array.isArray(parsed?.participante) ? parsed.participante : (Array.isArray(parsed?.usuario) ? parsed.usuario : []),
+      consultor: Array.isArray(parsed?.consultor) ? parsed.consultor : [],
       admin: Array.isArray(parsed?.admin) ? parsed.admin : []
     };
   } catch (err) {
     console.warn('[REPORT-PARAMS] Nao foi possivel ler parametros locais do relatorio:', err);
-    return { usuario: [], admin: [] };
+    return { usuario: [], participante: [], consultor: [], admin: [] };
   }
 }
 
