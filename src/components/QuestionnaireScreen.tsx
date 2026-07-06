@@ -677,13 +677,119 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
     };
   };
 
+  const callN8nReportWebhook = async (payloadToSend: any) => {
+    const response = await fetch('/api/socioestilo/analisar', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json'
+      },
+      body: JSON.stringify(payloadToSend)
+    });
+
+    const rawText = await response.text();
+    let parsed: any = {};
+    try {
+      parsed = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      parsed = { raw_response: rawText };
+    }
+
+    if (!response.ok) {
+      throw new Error(parsed?.error || parsed?.message || `Falha ao acionar n8n (${response.status})`);
+    }
+
+    return parsed;
+  };
+
+  const mergeN8nReportPayload = (localPayload: any, n8nPayload: any) => {
+    const parsed = n8nPayload?.data || n8nPayload || {};
+    const reportDataFromN8n = parsed.report_data || {};
+    const relatorio = parsed.relatorio || {};
+    const aiInsights = parsed.ai_insights || {};
+    const contexto = parsed.contextoQuestionario || {};
+
+    const merged: any = {
+      ...localPayload,
+      ...parsed,
+      success: parsed.success ?? true,
+      metadata: {
+        ...localPayload.metadata,
+        ...(parsed.metadata || {}),
+        processingMode: 'n8n'
+      },
+      assessment: {
+        ...localPayload.assessment,
+        ...(parsed.assessment || {})
+      },
+      report_data: {
+        ...localPayload.report_data,
+        ...reportDataFromN8n
+      },
+      n8n_response: parsed
+    };
+
+    if (!parsed.report_data) {
+      merged.report_data.resultado = {
+        ...localPayload.report_data.resultado,
+        ...(relatorio.resultado || {})
+      };
+
+      merged.report_data.narrativa = {
+        ...localPayload.report_data.narrativa,
+        parecer_executivo: relatorio.parecer_executivo || aiInsights.resumo || localPayload.report_data.narrativa.parecer_executivo,
+        oportunidades: relatorio.oportunidades_alavancas || aiInsights.oportunidades || localPayload.report_data.narrativa.oportunidades,
+        desafios: relatorio.pontos_criticos_desafios || aiInsights.desafios || localPayload.report_data.narrativa.desafios,
+        conselho_alta_performance: relatorio.conselho_alta_performance || aiInsights.insights || localPayload.report_data.narrativa.conselho_alta_performance,
+        conhecimento_aplicado: aiInsights.conhecimento_aplicado || localPayload.report_data.narrativa.conhecimento_aplicado
+      };
+
+      merged.report_data.analise_comportamental = {
+        ...localPayload.report_data.analise_comportamental,
+        ...(relatorio.analise_comportamental || {})
+      };
+
+      merged.report_data.metodologia = {
+        ...localPayload.report_data.metodologia,
+        metodologia_potenciar_ativada:
+          relatorio.metodologia_potenciar_ativada ||
+          localPayload.report_data.metodologia?.metodologia_potenciar_ativada
+      };
+
+      merged.report_data.sobre_metodologia = {
+        ...localPayload.report_data.sobre_metodologia,
+        ...(relatorio.sobre_metodologia || {})
+      };
+
+      merged.report_data.parecer_executivo = merged.report_data.narrativa.parecer_executivo;
+      merged.report_data.oportunidades_alavancas = merged.report_data.narrativa.oportunidades;
+      merged.report_data.pontos_criticos_desafios = merged.report_data.narrativa.desafios;
+      merged.report_data.conselho_alta_performance = merged.report_data.narrativa.conselho_alta_performance;
+      merged.report_data.fontes_consultadas = parsed.fontes_consultadas || localPayload.report_data.fontes_consultadas || [];
+      merged.report_data.auditoria = {
+        ...localPayload.report_data.auditoria,
+        ...(parsed.auditoria || {}),
+        workflow_version: parsed.workflow_version || parsed.auditoria?.workflow_version || 'n8n',
+        prompt_version: parsed.prompt_version || parsed.auditoria?.prompt_version || localPayload.report_data.auditoria?.prompt_version,
+        modelo_llm: parsed.modelo_llm || parsed.auditoria?.modelo_llm || localPayload.report_data.auditoria?.modelo_llm,
+        erro_parse_ia: parsed.erro_parse_ia || parsed.auditoria?.erro_parse_ia || localPayload.report_data.auditoria?.erro_parse_ia
+      };
+    }
+
+    if (contexto.respostasDetalhadas && !merged.report_data.memoria_respostas?.length) {
+      merged.report_data.memoria_respostas = contexto.respostasDetalhadas;
+    }
+
+    return merged;
+  };
+
   const saveResults = async (_finalScores: Scores, finalMessagesList: ChatMessage[], currentAnswers: Record<string, string | string[]>) => {
     setIsTyping(true);
 
     const analysisMsg: ChatMessage = {
       id: 'finishing-loader-1',
       sender: 'bot',
-      text: 'Excelente! Concluímos as perguntas. Calculando seu perfil SocioEstilo pelas regras da metodologia...'
+      text: 'Excelente! Concluímos as perguntas. Enviando suas respostas para gerar o relatorio SocioEstilo...'
     };
 
     let updatedMessages = [...finalMessagesList, analysisMsg];
@@ -717,21 +823,57 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
         };
       });
 
+    const completedAt = new Date().toISOString();
     const payload = {
       metadata: {
         userId: usuario.uid,
         userName: usuario.nome,
         companyId: isNaN(Number(usuario.empresa_id)) ? usuario.empresa_id : Number(usuario.empresa_id),
         companyName: usuario.empresa_nome,
-        completedAt: new Date().toISOString(),
-        version: 'local-rules-v1'
+        completedAt,
+        version: 'n8n-v1'
       },
       questionnaire: {
         answers: formattedAnswers
       }
     };
 
-    const reportPayload = buildLocalReportPayload(payload, currentAnswers, calculatedScores);
+    const localReportPayload = buildLocalReportPayload(payload, currentAnswers, calculatedScores);
+    let reportPayload = localReportPayload;
+
+    try {
+      const n8nScores = {
+        Assertivo: calculatedScores.Assertivo,
+        Participativo: calculatedScores.Participativo,
+        Integrador: calculatedScores.Integrador,
+        'Anal�tico': calculatedScores.Analitico
+      };
+
+      const n8nPayload = {
+        userId: usuario.uid,
+        usuario_id: usuario.uid,
+        userName: usuario.nome,
+        nome: usuario.nome,
+        companyId: payload.metadata.companyId,
+        empresa_id: payload.metadata.companyId,
+        companyName: usuario.empresa_nome,
+        empresa: usuario.empresa_nome,
+        completedAt,
+        data_conclusao: completedAt,
+        scores: n8nScores,
+        answers: currentAnswers,
+        respostas: currentAnswers,
+        questionnaire: payload.questionnaire,
+        metadata: payload.metadata
+      };
+
+      const n8nResponse = await callN8nReportWebhook(n8nPayload);
+      reportPayload = mergeN8nReportPayload(localReportPayload, n8nResponse);
+      console.log('[N8N SOCIOESTILO] Workflow acionado com sucesso.');
+    } catch (n8nErr) {
+      console.warn('[N8N SOCIOESTILO] Falha ao acionar workflow. Usando fallback local:', n8nErr);
+    }
+
     const dominantStyle = reportPayload.report_data.resultado.perfil_dominante || '';
     const localNormalized = {
       summary: reportPayload.report_data.narrativa.parecer_executivo,

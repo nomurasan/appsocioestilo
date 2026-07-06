@@ -18,14 +18,6 @@ export type ReportSummary = {
   scores: Scores;
 };
 
-type N8nOrientadorResponse = {
-  success?: boolean;
-  resposta?: string;
-  answer?: string;
-  message?: string;
-  conversa_id?: string | null;
-  fontes?: any[];
-};
 
 const DEFAULT_SCORES: Scores = {
   Assertivo: 0,
@@ -84,65 +76,11 @@ export function getReportSummary(relatorio: Resultado, usuario: Usuario): Report
   };
 }
 
-export async function enviarMensagemOrientador(params: {
+export async function enviarMensagemOrientador(_params: {
   usuario: Usuario;
   relatorio: Resultado;
   conversaId: string | null;
   mensagem: string;
 }): Promise<{ resposta: string; conversaId: string | null; fontes: any[] }> {
-  const env = (import.meta as any).env || {};
-  const directWebhookUrl = env.VITE_N8N_CHATBOT_WEBHOOK_URL;
-  const proxyUrl = '/api/orientador/chatbot';
-  const requestUrl = proxyUrl || directWebhookUrl;
-
-  if (!requestUrl) {
-    throw new Error('Webhook do Orientador SocioEstilo nao configurado.');
-  }
-
-  const payloadToSend = {
-    usuario_id: params.usuario.uid,
-    empresa_id: Number.isNaN(Number(params.usuario.empresa_id))
-      ? params.usuario.empresa_id
-      : Number(params.usuario.empresa_id),
-    resultado_id: getReportId(params.relatorio),
-    conversa_id: params.conversaId,
-    mensagem: params.mensagem
-  };
-
-  let response = await fetch(requestUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json'
-    },
-    body: JSON.stringify(payloadToSend)
-  });
-
-  if (response.status === 404 && directWebhookUrl) {
-    response = await fetch(directWebhookUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Accept: 'application/json'
-      },
-      body: JSON.stringify(payloadToSend)
-    });
-  }
-
-  if (!response.ok) {
-    throw new Error(`Falha no webhook do Orientador SocioEstilo: ${response.status}`);
-  }
-
-  const payload: N8nOrientadorResponse = await response.json();
-  const resposta = payload.resposta || payload.answer || payload.message || '';
-
-  if (!resposta) {
-    throw new Error('Resposta vazia do Orientador SocioEstilo.');
-  }
-
-  return {
-    resposta,
-    conversaId: payload.conversa_id || params.conversaId,
-    fontes: Array.isArray(payload.fontes) ? payload.fontes : []
-  };
+  throw new Error('Orientador SocioEstilo desativado. A integracao com o chatbot n8n foi removida.');
 }

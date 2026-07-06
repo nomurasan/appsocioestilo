@@ -283,6 +283,64 @@ app.delete("/api/resultados/:id", apiRateLimiter, async (req: Request, res: Resp
   }
 });
 
+
+app.post("/api/socioestilo/analisar", apiRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const webhookUrl = process.env.N8N_WEBHOOK_URL || process.env.N8N_SOCIOESTILO_WEBHOOK_URL || "";
+
+    if (!webhookUrl) {
+      return res.status(503).json({
+        error: "Webhook n8n de analise do SocioEstilo nao configurado.",
+        details: "Configure N8N_WEBHOOK_URL ou N8N_SOCIOESTILO_WEBHOOK_URL no backend."
+      });
+    }
+
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 120000);
+
+    let webhookResponse: globalThis.Response;
+    try {
+      webhookResponse = await fetch(webhookUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json"
+        },
+        body: JSON.stringify(req.body || {}),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeout);
+    }
+
+    const rawText = await webhookResponse.text();
+    let payload: any = {};
+    try {
+      payload = rawText ? JSON.parse(rawText) : {};
+    } catch {
+      payload = { raw_response: rawText };
+    }
+
+    if (!webhookResponse.ok) {
+      console.error(`[N8N SOCIOESTILO] Webhook retornou status ${webhookResponse.status}:`, rawText.slice(0, 500));
+      return res.status(webhookResponse.status).json({
+        error: "Falha no webhook n8n de analise do SocioEstilo.",
+        status: webhookResponse.status,
+        details: payload
+      });
+    }
+
+    return res.json(payload);
+  } catch (err: any) {
+    if (err?.name === "AbortError") {
+      return res.status(504).json({
+        error: "Timeout ao acionar webhook n8n de analise do SocioEstilo."
+      });
+    }
+    next(err);
+  }
+});
+
 // MIDDLEWARE GLOBAL DE TRATAMENTO DE ERROS DO EXPRESS COM SUPORTE SECURITIZADO E CORRELAÇÃO DE REQUEST ID
 app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   const requestId = req.headers["x-request-id"] as string || generateRequestId();
