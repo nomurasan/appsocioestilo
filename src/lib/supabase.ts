@@ -489,7 +489,8 @@ function getDraftSessionToken(): string {
 export async function listarQuestionMapping(): Promise<Question[]> {
   const { data, error } = await supabase
     .from('question_mapping')
-    .select('*')
+    .select('question_id, question, mode, max_choices, answer_order, answer, socio_style, points, active, question_order')
+    .order('question_order', { ascending: true })
     .order('question_id', { ascending: true })
     .order('answer_order', { ascending: true });
 
@@ -501,16 +502,18 @@ export async function listarQuestionMapping(): Promise<Question[]> {
   const questionsById = new Map<number, Question>();
 
   (data || []).forEach((row: any) => {
-    const questionId = Number(row.question_id ?? row.questionId ?? row.id_question);
+    if (String(row.active).toLowerCase() === 'false') return;
+
+    const questionId = Number(row.question_id);
     if (!Number.isFinite(questionId) || questionId <= 0) return;
 
-    const questionText = String(row.question ?? row.question_text ?? '').trim();
-    const answerText = String(row.answer ?? row.answer_text ?? row.option_text ?? '').trim();
+    const questionText = String(row.question ?? '').trim();
+    const answerText = String(row.answer ?? '').trim();
     if (!questionText || !answerText) return;
 
     const rawMode = String(row.mode || '').trim().toLowerCase();
     const mode: Question['mode'] = rawMode === 'multi' ? 'multi' : 'single';
-    const maxChoices = Number(row.max_choices ?? row.maxChoices);
+    const maxChoices = Number(row.max_choices);
 
     if (!questionsById.has(questionId)) {
       questionsById.set(questionId, {
@@ -526,9 +529,9 @@ export async function listarQuestionMapping(): Promise<Question[]> {
     if (!question.options.some(option => option.text === answerText)) {
       question.options.push({
         text: answerText,
-        ...(row.style ? { style: row.style } : {}),
+        ...(row.socio_style ? { style: row.socio_style } : {}),
         ...(row.points !== undefined ? { points: Number(row.points) } : {})
-      } as any);
+      });
     }
   });
 

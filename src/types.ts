@@ -134,6 +134,8 @@ export interface AnswerDetail {
 
 export interface Option {
   text: string;
+  style?: string;
+  points?: number;
 }
 
 export interface Question {
