@@ -556,6 +556,25 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     return String(val);
   };
 
+  const cleanObjectArray = (value: any): any[] => {
+    if (!value) return [];
+    if (typeof value === 'string') {
+      return value.split(/\n+/).map(item => item.trim()).filter(Boolean).map(texto => ({ texto }));
+    }
+    if (!Array.isArray(value)) {
+      if (typeof value === 'object') {
+        return Object.values(value).some(Boolean) ? [value] : [];
+      }
+      return [];
+    }
+    return value.map(item => {
+      if (!item) return null;
+      if (typeof item === 'string') return { texto: item.trim() };
+      if (typeof item === 'object') return item;
+      return { texto: String(item) };
+    }).filter(item => item && Object.values(item).some(Boolean));
+  };
+
   const finalReportData: any = {
     identificacao: {
       nome: report_data.identificacao?.nome || userName,
@@ -849,6 +868,45 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       report_data.evidencias_observadas || 
       report_data.evidencias
     ) : backupEvidencias,
+    potencializacao_talentos: {
+      estilo_base: safeStringVal(
+        report_data.potencializacao_talentos?.estilo_base
+        || report_data.potencializacao_talentos_estilo_base
+        || report_data.potencializacao_talentos?.estilo
+        || finalDom
+      ),
+      talento_identificado: safeStringVal(
+        report_data.potencializacao_talentos?.talento_identificado
+        || report_data.potencializacao_talentos?.descricao
+        || report_data.potencializacao_talentos_descricao
+        || report_data.potencializacao_talentos?.talento
+      ),
+      valor_gerado: safeStringVal(
+        report_data.potencializacao_talentos?.valor_gerado
+        || report_data.potencializacao_talentos?.valor
+      ),
+      contextos_ideais: cleanArrayItems(
+        report_data.potencializacao_talentos?.contextos_ideais
+        || report_data.potencializacao_talentos?.contextos
+      ),
+      estrategias_potencializacao: cleanArrayItems(
+        report_data.potencializacao_talentos?.estrategias_potencializacao
+        || report_data.potencializacao_talentos?.acoes
+        || report_data.potencializacao_talentos_acoes
+      ),
+      ponto_equilibrio: safeStringVal(
+        report_data.potencializacao_talentos?.ponto_equilibrio
+        || report_data.potencializacao_talentos?.cuidado
+      ),
+      descricao_legada: safeStringVal(
+        report_data.potencializacao_talentos?.descricao
+        || report_data.potencializacao_talentos_descricao
+      ),
+      acoes_legadas: cleanArrayItems(
+        report_data.potencializacao_talentos?.acoes
+        || report_data.potencializacao_talentos_acoes
+      )
+    },
     potencial_desenvolvimento: cleanArrayItems(
       report_data.potencial_desenvolvimento || 
       report_data.potencial ||
@@ -871,6 +929,12 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       report_data.narrativa?.oportunidades ||
       report_data.oportunidades
     ) : backupRecomendacoes,
+    pdi: {
+      objetivos_prioritarios: cleanObjectArray(report_data.pdi?.objetivos_prioritarios),
+      plano_acao: cleanObjectArray(report_data.pdi?.plano_acao),
+      indicadores_evolucao: cleanObjectArray(report_data.pdi?.indicadores_evolucao),
+      compromisso_desenvolvimento: safeStringVal(report_data.pdi?.compromisso_desenvolvimento)
+    },
     questionario: {
       respostas: (() => {
         // ÚNICA FONTE: memoria_respostas do n8n workflow
@@ -1871,7 +1935,7 @@ export default function DashboardScreen({
                         ID: {(reportData.identificacao?.relatorio_uuid || "UUID-9").substring(0, 8).toUpperCase()}
                       </span>
                       <span className="text-slate-300">|</span>
-                      <span className="text-[#112363] font-black">Pág. {String(pageNumber).padStart(2, "0")} / 08</span>
+                      <span className="text-[#112363] font-black">Pag. {String(pageNumber).padStart(2, "0")} / 07</span>
                     </div>
                   </div>
                 );
@@ -2471,113 +2535,67 @@ export default function DashboardScreen({
                         {renderFooter(4)}
                       </div>
 
-                      {/* Page 5: POTENCIAL DE DESENVOLVIMENTO & RECOMENDAÇÕES PRÁTICAS (Blocos 7 & 8) */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['pdi', 'potencial_desenvolvimento'], ['pdi', 'recomendacoes_praticas'], ['pdi', 'conselho_alta_performance']]) ? 'hidden' : ''}`} id="p-page-5">
+                      {/* Page 5: POTENCIALIZACAO, RECOMENDACOES E PDI */}
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['perfil', 'potencializacao_talentos'], ['recomendacoes', 'recomendacoes_praticas'], ['pdi', 'objetivos_prioritarios'], ['pdi', 'plano_acao'], ['pdi', 'indicadores_evolucao'], ['pdi', 'compromisso_desenvolvimento'], ['pdi', 'potencial_desenvolvimento'], ['pdi', 'conselho_alta_performance']]) ? 'hidden' : ''}`} id="p-page-5">
                         <div className="space-y-4 w-full font-sans">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <BookOpen className="w-4 h-4 text-emerald-500" /> 05. Plano de Desenvolvimento Individual (PDI) & Diretrizes Práticas
+                              <BookOpen className="w-4 h-4 text-emerald-500" /> 04. Recomendacoes Praticas e 05. Plano de Desenvolvimento Individual
                             </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 05 do Participante</span>
+                            <span className="text-[10px] font-bold text-gray-400 italic">Pag. 05 do Participante</span>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 w-full text-xs animate-fade-in">
-                            <div className={`space-y-4 ${!isReportFieldVisible('pdi', 'potencial_desenvolvimento') ? 'hidden' : ''}`}>
-                              <h4 className="text-xs font-black text-emerald-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-emerald-100">
-                                <TrendingUp className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 5.1 Potenciais de Expansão e Competências a Desenvolver
-                              </h4>
-                              <div className="space-y-2.5">
-                                {reportData.potencial_desenvolvimento.map((pot: string, idx: number) => (
-                                  <div key={idx} className="p-3 bg-emerald-50/10 rounded-xl border border-emerald-100/40 flex items-start space-x-2.5 shadow-3xs">
-                                    <span className="text-emerald-500 font-extrabold shrink-0 mt-0.5 font-mono">✓</span>
-                                    <span className="text-slate-755 font-semibold text-xs leading-relaxed">{pot}</span>
-                                  </div>
-                                ))}
+                          {isReportFieldVisible('perfil', 'potencializacao_talentos') && (() => {
+                            const potencia = reportData.potencializacao_talentos || {};
+                            const hasPotencia = Boolean(potencia.talento_identificado || potencia.valor_gerado || potencia.contextos_ideais?.length || potencia.estrategias_potencializacao?.length || potencia.ponto_equilibrio || potencia.descricao_legada || potencia.acoes_legadas?.length);
+                            if (!hasPotencia) return null;
+                            const talentoIdentificado = potencia.talento_identificado || potencia.descricao_legada;
+                            const estrategias = (potencia.estrategias_potencializacao?.length ? potencia.estrategias_potencializacao : potencia.acoes_legadas) || [];
+                            return (
+                              <div className="space-y-4">
+                                <h4 className="text-xs font-black text-emerald-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-emerald-100">
+                                  <TrendingUp className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 2.5 Como potencializar seus talentos
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                  {talentoIdentificado && <div className="p-4 bg-emerald-50/20 rounded-xl border border-emerald-100/60 shadow-3xs"><span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 block mb-1">Talento identificado</span><p className="text-slate-800 font-semibold leading-relaxed">{talentoIdentificado}</p></div>}
+                                  {potencia.valor_gerado && <div className="p-4 bg-slate-50 rounded-xl border border-slate-150 shadow-3xs"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block mb-1">Valor gerado</span><p className="text-slate-800 font-semibold leading-relaxed">{potencia.valor_gerado}</p></div>}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                  {potencia.contextos_ideais?.length > 0 && <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Contextos em que esse talento gera mais valor</span><ul className="space-y-2">{potencia.contextos_ideais.map((item: string, idx: number) => (<li key={idx} className="flex items-start gap-2 text-slate-755 font-semibold"><span className="text-emerald-500 mt-0.5">?</span><span>{item}</span></li>))}</ul></div>}
+                                  {estrategias?.length > 0 && <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Estrategias de potencializacao</span><ul className="space-y-2">{estrategias.map((item: string, idx: number) => (<li key={idx} className="flex items-start gap-2 text-slate-755 font-semibold"><span className="text-[#112363] mt-0.5">?</span><span>{item}</span></li>))}</ul></div>}
+                                </div>
+                                {potencia.ponto_equilibrio && <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs"><span className="text-[9px] font-black uppercase tracking-widest text-amber-700 block mb-1">Ponto de equilibrio</span><p className="text-slate-800 font-semibold leading-relaxed">{potencia.ponto_equilibrio}</p></div>}
                               </div>
-                            </div>
+                            );
+                          })()}
 
-                            <div className={`space-y-4 ${!isReportFieldVisible('pdi', 'recomendacoes_praticas') ? 'hidden' : ''}`}>
-                              <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">
-                                <CheckCircle2 className="w-4.5 h-4.5 text-[#112363] shrink-0" /> 5.2 Recomendações Táticas para Sucesso e Alta Performance
-                              </h4>
-                              <div className="space-y-2.5">
-                                {reportData.recomendacoes_praticas.map((rec: string, idx: number) => (
-                                  <div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start space-x-2.5 shadow-3xs">
-                                    <span className="text-[#112363] font-bold shrink-0 mt-0.5">→</span>
-                                    <span className="text-slate-755 font-semibold text-xs leading-relaxed">{rec}</span>
-                                  </div>
-                                ))}
+                          <div className={`space-y-4 ${!isReportFieldVisible('recomendacoes', 'recomendacoes_praticas') ? 'hidden' : ''}`}>
+                            <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">
+                              <CheckCircle2 className="w-4.5 h-4.5 text-[#112363] shrink-0" /> 04. Recomendacoes praticas
+                            </h4>
+                            {reportData.recomendacoes_praticas.length > 0 && <div className="space-y-2.5">{reportData.recomendacoes_praticas.map((rec: string, idx: number) => (<div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start space-x-2.5 shadow-3xs"><span className="text-[#112363] font-bold shrink-0 mt-0.5">-&gt;</span><span className="text-slate-755 font-semibold text-xs leading-relaxed">{rec}</span></div>))}</div>}
+                          </div>
+
+                          {(() => {
+                            const pdi = reportData.pdi || {};
+                            const hasStructuredPdi = Boolean(pdi.objetivos_prioritarios?.length || pdi.plano_acao?.length || pdi.indicadores_evolucao?.length || pdi.compromisso_desenvolvimento);
+                            const hasLegacyPdi = Boolean(reportData.potencial_desenvolvimento?.length || reportData.narrativa.conselho_alta_performance);
+                            if (!hasStructuredPdi && !hasLegacyPdi) return null;
+                            return (
+                              <div className="space-y-4">
+                                <h4 className="text-xs font-black text-emerald-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-emerald-100"><BookOpen className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 05. Plano de Desenvolvimento Individual - PDI</h4>
+                                {isReportFieldVisible('pdi', 'objetivos_prioritarios') && pdi.objetivos_prioritarios?.length > 0 && <div className="space-y-2"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">5.1 Objetivos prioritarios</span><div className="grid grid-cols-1 md:grid-cols-2 gap-3">{pdi.objetivos_prioritarios.map((item: any, idx: number) => (<div key={idx} className="p-3 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-1.5"><strong className="text-xs text-[#112363] font-black block">{item.objetivo || item.texto || item.title || `Objetivo ${idx + 1}`}</strong>{(item.beneficio_esperado || item.beneficio || item.resultado || item.descricao) && <p className="text-[11px] text-slate-700 font-semibold leading-relaxed">{item.beneficio_esperado || item.beneficio || item.resultado || item.descricao}</p>}</div>))}</div></div>}
+                                {isReportFieldVisible('pdi', 'plano_acao') && pdi.plano_acao?.length > 0 && <div className="space-y-2 max-w-full overflow-hidden"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">5.2 Plano de acao</span><div className="border border-slate-150 rounded-2xl overflow-hidden bg-white shadow-3xs"><table className="w-full text-left text-[11px]"><thead className="bg-slate-50 text-slate-600 uppercase tracking-wider text-[9px] font-black"><tr><th className="px-3 py-2">Acao</th><th className="px-3 py-2">Frequencia</th><th className="px-3 py-2">Indicador</th><th className="px-3 py-2">Prazo</th></tr></thead><tbody className="divide-y divide-slate-100">{pdi.plano_acao.map((item: any, idx: number) => (<tr key={idx}><td className="px-3 py-2 font-semibold text-slate-800">{item.acao || item.texto || '-'}</td><td className="px-3 py-2 text-slate-700 font-medium">{item.frequencia || item.periodicidade || '-'}</td><td className="px-3 py-2 text-slate-700 font-medium">{item.indicador || item.medida || '-'}</td><td className="px-3 py-2 text-slate-700 font-medium">{item.prazo_sugerido || item.prazo || '-'}</td></tr>))}</tbody></table></div></div>}
+                                {isReportFieldVisible('pdi', 'indicadores_evolucao') && pdi.indicadores_evolucao?.length > 0 && <div className="space-y-2"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">5.3 Indicadores de evolucao</span><ul className="space-y-2">{pdi.indicadores_evolucao.map((item: any, idx: number) => (<li key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-755 font-semibold text-xs leading-relaxed">{item.indicador || item.pergunta || item.texto || item.reflexao || '-'}</li>))}</ul></div>}
+                                {isReportFieldVisible('pdi', 'compromisso_desenvolvimento') && pdi.compromisso_desenvolvimento && <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-1"><span className="absolute top-0 right-0 py-1 px-2.5 bg-amber-100 text-amber-800 font-black rounded-bl-lg text-[8px] uppercase tracking-wider">Compromisso</span><h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">5.4 Compromisso de desenvolvimento</h4><p className="text-xs text-slate-850 leading-relaxed font-semibold italic">"{pdi.compromisso_desenvolvimento}"</p></div>}
+                                {!hasStructuredPdi && isReportFieldVisible('pdi', 'potencial_desenvolvimento') && reportData.potencial_desenvolvimento?.length > 0 && <div className="space-y-2"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Compatibilidade com relatorios anteriores</span><div className="space-y-2.5">{reportData.potencial_desenvolvimento.map((pot: string, idx: number) => (<div key={idx} className="p-3 bg-emerald-50/10 rounded-xl border border-emerald-100/40 flex items-start space-x-2.5 shadow-3xs"><span className="text-emerald-500 font-extrabold shrink-0 mt-0.5 font-mono">+</span><span className="text-slate-755 font-semibold text-xs leading-relaxed">{pot}</span></div>))}</div></div>}
+                                {!hasStructuredPdi && isReportFieldVisible('pdi', 'conselho_alta_performance') && reportData.narrativa.conselho_alta_performance && <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-1"><span className="absolute top-0 right-0 py-1 px-2.5 bg-amber-100 text-amber-800 font-black rounded-bl-lg text-[8px] uppercase tracking-wider">Diretiva</span><h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">Conselho de alta performance</h4><p className="text-xs text-slate-850 leading-relaxed font-semibold italic">"{reportData.narrativa.conselho_alta_performance}"</p></div>}
                               </div>
-                            </div>
-                          </div>
-
-                          <div className={`p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-4 ${!isReportFieldVisible('pdi', 'conselho_alta_performance') ? 'hidden' : ''}`}>
-                            <span className="absolute top-0 right-0 py-1 px-2.5 bg-amber-100 text-amber-800 font-black rounded-bl-lg text-[8px] uppercase tracking-wider">Diretiva de Otimização</span>
-                            <h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">5.3 Conselho Estratégico de Alta Performance</h4>
-                            <p className="text-xs text-slate-850 leading-relaxed font-semibold italic">
-                              "{reportData.narrativa.conselho_alta_performance}"
-                            </p>
-                          </div>
+                            );
+                          })()}
                         </div>
 
                         {renderFooter(5)}
-                      </div>
-
-                      {/* Page 6: METODOLOGIA POTENCIAR & MATRIZ (Seção 12 & Seção 13) */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['metodologia', 'metodologia_potenciar'], ['metodologia', 'tabela_socioestilos']]) ? 'hidden' : ''}`} id="p-page-6">
-                        <div className="space-y-4 w-full">
-                          <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
-                            <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <Briefcase className="w-4 h-4 text-[#112363]" /> 06. Fundamentacao Metodologica e 07. Sobre o Socioestilo
-                            </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">Pag. 06 do Participante</span>
-                          </div>
-
-                          <div className={`space-y-2 ${!isReportFieldVisible('metodologia', 'metodologia_potenciar') ? 'hidden' : ''}`}>
-                            <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">6.1 Alinhamento Científico da Metodologia dos Socioestilos</h4>
-                            <div className="p-4 bg-[#112363]/5 rounded-xl border border-blue-100 text-xs leading-relaxed font-semibold text-slate-800">
-                              {reportData.metodologia.metodologia_potenciar_ativada}
-                            </div>
-                          </div>
-
-                          <div className={`space-y-4 ${!isReportFieldVisible('metodologia', 'tabela_socioestilos') ? 'hidden' : ''}`}>
-                            <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">6.2 Tabela Comparativa de Atuação e Foco Operacional</h4>
-                            <div className="max-w-full overflow-hidden border border-slate-150 rounded-2xl bg-white shadow-3xs">
-                              <table className="w-full table-fixed divide-y divide-slate-150 text-xs text-slate-700">
-                                <thead className="bg-[#112363] font-black text-white uppercase text-[9px] md:text-[10px] tracking-wider">
-                                  <tr>
-                                    <th className="px-3 md:px-5 py-2.5 md:py-3 text-left w-1/3 md:w-1/4">Socioestilo</th>
-                                    <th className="px-3 md:px-5 py-2.5 md:py-3 text-left">Foco de Atuação e Fundamento Comunicativo</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-slate-150">
-                                  <tr className="hover:bg-slate-50/50">
-                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-amber-700 uppercase tracking-wider bg-amber-50/10 text-[10px] md:text-xs">Assertivo</td>
-                                    <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.assertivo}</td>
-                                  </tr>
-                                  <tr className="hover:bg-slate-50/50">
-                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#D80E2A] uppercase tracking-wider bg-red-50/10 text-[10px] md:text-xs">Participativo</td>
-                                    <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.participativo}</td>
-                                  </tr>
-                                  <tr className="hover:bg-slate-50/50">
-                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-emerald-800 uppercase tracking-wider bg-emerald-50/10 text-[10px] md:text-xs">Integrador</td>
-                                    <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.integrador || reportData.sobre_metodologia?.conservador_agregador}</td>
-                                  </tr>
-                                  <tr className="hover:bg-slate-50/50">
-                                    <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#112363] uppercase tracking-wider bg-slate-50/20 text-[10px] md:text-xs">Analítico</td>
-                                    <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.analitico}</td>
-                                  </tr>
-                                </tbody>
-                              </table>
-                            </div>
-                          </div>
-
-                          <div className={`text-slate-500 italic text-[11px] font-semibold text-center leading-relaxed max-w-2xl mx-auto pt-2 border-t border-slate-100 ${!isReportFieldVisible('metodologia', 'metodologia_potenciar') ? 'hidden' : ''}`}>
-                            "{reportData.sobre_metodologia?.texto_final || ""}"
-                          </div>
-                        </div>
-
-                        {renderFooter(6)}
                       </div>
 
                       {/* Page 7: MEMÓRIA DO QUESTIONÁRIO & MEMÓRIA DE CÁLCULO (Seção 15 & Seção 16) */}
@@ -2587,7 +2605,7 @@ export default function DashboardScreen({
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
                               <FileText className="w-4 h-4 text-[#112363]" /> 07. Memória de Cálculo e Respostas do Questionário
                             </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 07 do Participante</span>
+                            <span className="text-[10px] font-bold text-gray-400 italic">PáP??g. 06 do Participante</span>
                           </div>
 
                           <div className="space-y-4">
@@ -2636,7 +2654,7 @@ export default function DashboardScreen({
                           </div>
                         </div>
 
-                        {renderFooter(7)}
+                        {renderFooter(6)}
                       </div>
 
                       {/* Page 8: AUDITORIA DO WORKFLOW n8n (Seção 17 / Admin View / Confidencial Lock) */}
@@ -2646,7 +2664,7 @@ export default function DashboardScreen({
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
                               <Bot className="w-4 h-4 text-[#112363]" /> 08. Registro de Auditoria e Conformidade Técnica
                             </h3>
-                            <span className="text-[10px] font-bold text-gray-400">Pág. 08 / Auditoria</span>
+                            <span className="text-[10px] font-bold text-gray-400">PáP??g. 07 / Auditoria</span>
                           </div>
 
                           {/* 4. Processing Timeline Progress Flow */}
@@ -2922,7 +2940,7 @@ export default function DashboardScreen({
                           </div>
                         </div>
 
-                        {renderFooter(8)}
+                        {renderFooter(6)}
                       </div>
 
                   </div>

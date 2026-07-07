@@ -646,13 +646,15 @@ export default function AdminScreen({
                         onClick={() => setReportParamUserType(type)}
                         className={`px-4 py-2 rounded-lg text-xs font-black uppercase border transition-all ${
                           reportParamUserType === type
-                            ? type === 'usuario'
-                              ? 'bg-[#071A5F] text-white shadow-md border-[#071A5F]'
-                              : 'bg-[#D80E2A] text-white shadow-md border-[#D80E2A]'
+                            ? type === 'admin'
+                              ? 'bg-[#D80E2A] text-white shadow-md border-[#D80E2A]'
+                              : type === 'consultor'
+                                ? 'bg-amber-500 text-white shadow-md border-amber-500'
+                                : 'bg-[#071A5F] text-white shadow-md border-[#071A5F]'
                             : 'bg-white text-[#071A5F] border-gray-200 hover:bg-gray-50 hover:border-gray-300'
                         }`}
                       >
-                        {type === 'usuario' ? 'Usuário' : 'Admin'}
+                        {type === 'participante' ? 'Participante' : type === 'consultor' ? 'Consultor' : 'Admin'}
                       </button>
                     ))}
                   </div>
