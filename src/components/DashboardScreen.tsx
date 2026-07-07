@@ -2757,7 +2757,25 @@ export default function DashboardScreen({
                         {renderFooter(5)}
                       </div>
 
-                      {/* Page 7: MEMÓRIA DO QUESTIONÁRIO & MEMÓRIA DE CÁLCULO (Seção 15 & Seção 16) */}
+                                            {/* Page 6: SOBRE A METODOLOGIA */}
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isReportFieldVisible('metodologia', 'metodologia_potenciar') ? 'hidden' : ''}`} id="p-page-6">
+                        <div className="space-y-4 w-full font-sans">
+                          <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
+                            <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-[#112363]" /> 06. Sobre a Metodologia
+                            </h3>
+                            <span className="text-[10px] font-bold text-gray-400 italic">Pag. 06 do Participante</span>
+                          </div>
+
+                          <div className="p-5 bg-[#112363]/5 rounded-2xl border border-blue-100 text-sm leading-relaxed font-semibold text-slate-800">
+                            {reportData.metodologia?.metodologia_potenciar_ativada}
+                          </div>
+                        </div>
+
+                        {renderFooter(6)}
+                      </div>
+
+{/* Page 7: MEMÓRIA DO QUESTIONÁRIO & MEMÓRIA DE CÁLCULO (Seção 15 & Seção 16) */}
                       <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isReportFieldVisible('memoria', 'respostas_questionario') ? 'hidden' : ''}`} id="p-page-7">
                         <div className="space-y-4 w-full">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
