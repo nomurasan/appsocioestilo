@@ -1100,20 +1100,27 @@ export async function listarUsuarios(): Promise<Usuario[]> {
  */
 export async function buscarUsuario(uid: string): Promise<Usuario | null> {
   const trimmedUid = String(uid || '').trim();
+  if (!trimmedUid) return null;
+
   const mappedUid = mapFirebaseUidToUuid(trimmedUid);
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const candidateUids = Array.from(new Set([
+    mappedUid,
+    ...(uuidRegex.test(trimmedUid) ? [trimmedUid] : [])
+  ].filter(Boolean)));
 
-  // First try the UID exactly as provided, then try the deterministic mapped Firebase UID.
-  let { data, error } = await supabase.from('usuarios').select('*').eq('uid', trimmedUid).maybeSingle();
-  if (error) {
-    handleSupabaseError(error, OperationType.GET, `buscar_usuario: ${trimmedUid}`);
-  }
+  let data: any = null;
 
-  if (!data && mappedUid !== trimmedUid) {
-    const result = await supabase.from('usuarios').select('*').eq('uid', mappedUid).maybeSingle();
-    data = result.data;
-    error = result.error;
-    if (error) {
-      handleSupabaseError(error, OperationType.GET, `buscar_usuario: ${mappedUid}`);
+  for (const candidateUid of candidateUids) {
+    const result = await supabase.from('usuarios').select('*').eq('uid', candidateUid).maybeSingle();
+
+    if (result.error) {
+      handleSupabaseError(result.error, OperationType.GET, `buscar_usuario: ${candidateUid}`);
+    }
+
+    if (result.data) {
+      data = result.data;
+      break;
     }
   }
 
