@@ -26,8 +26,8 @@ export const REPORT_PARAMETER_CATALOG: CatalogItem[] = [
   { secao: 'pdi', campo: 'compromisso_desenvolvimento', titulo: 'Compromisso de desenvolvimento', descricao: 'Texto final do participante ou texto gerado pela IA.', ordem: 210 },
   { secao: 'pdi', campo: 'potencial_desenvolvimento', titulo: 'Potencial de desenvolvimento legado', descricao: 'Compatibilidade com relatorios antigos.', ordem: 220 },
   { secao: 'pdi', campo: 'conselho_alta_performance', titulo: 'Conselho de alta performance', descricao: 'Sintese final de orientacao estrategica individual.', ordem: 230 },
-  { secao: 'metodologia', campo: 'metodologia_potenciar', titulo: 'Fundamentacao metodologica', descricao: 'Texto de referencia metodologica usado no relatorio.', ordem: 240 },
-  { secao: 'metodologia', campo: 'tabela_socioestilos', titulo: 'Sobre o Socioestilo', descricao: 'Tabela com foco de atuacao e fundamentos comunicativos.', ordem: 250 },
+  { secao: 'metodologia', campo: 'metodologia_potenciar', titulo: 'Sobre a metodologia', descricao: 'Texto breve de encerramento para o relatorio do participante.', ordem: 240 },
+  { secao: 'metodologia', campo: 'tabela_socioestilos', titulo: 'Tabela comparativa tecnica', descricao: 'Tabela com foco de atuacao e fundamentos comunicativos para uso tecnico.', ordem: 250, participanteAtivo: false },
   { secao: 'memoria', campo: 'respostas_questionario', titulo: 'Memoria do questionario', descricao: 'Rastreabilidade das respostas e memoria de calculo.', ordem: 260, participanteAtivo: false },
   { secao: 'auditoria', campo: 'timeline_processamento', titulo: 'Linha do tempo de processamento', descricao: 'Registro tecnico das etapas de coleta, scoring, IA e emissao.', ordem: 270, participanteAtivo: false },
   { secao: 'auditoria', campo: 'metadados_integracao', titulo: 'Metadados de integracao', descricao: 'Workflow, prompt, modelo, divergencias e dados tecnicos.', ordem: 280, participanteAtivo: false },
@@ -46,7 +46,7 @@ export const REPORT_SECTION_TITLES: Record<string, string> = {
   diagnostico: 'Leitura comportamental',
   recomendacoes: 'Recomendacoes praticas',
   pdi: 'Plano de desenvolvimento',
-  metodologia: 'Fundamentacao e Socioestilo',
+  metodologia: 'Sobre a metodologia',
   memoria: 'Memoria do questionario',
   auditoria: 'Auditoria e conformidade'
 };

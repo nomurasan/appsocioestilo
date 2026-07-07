@@ -480,21 +480,55 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
   const backupPotencial = defaultPotencialMap[finalDom] || defaultPotencialMap["Assertivo"];
   const backupRecomendacoes = defaultRecomendacoesMap[finalDom] || defaultRecomendacoesMap["Assertivo"];
 
+  const reportDataParticipantReport = parseJsonIfNeeded(
+    report_data?.participant_report
+    || report_data?.participantReport
+    || {}
+  ) || {};
+
+  const camposData = parseJsonIfNeeded(report_data?.campos || {}) || {};
+  const camposPotencializacaoTalentos = parseJsonIfNeeded(
+    camposData?.potencializacao_talentos_json
+    || {}
+  ) || {};
+  const camposPdi = parseJsonIfNeeded(
+    camposData?.pdi_json
+    || {}
+  ) || {};
+
+  const resolvedParticipantVisibilityConfig = parseJsonIfNeeded(
+    reportDataParticipantReport?.visibility_config
+    || report_data?.visibility_config
+    || relatorioV26?.visibility_config
+    || activeResult?.visibility_config
+    || activeResult?.raw_payload?.visibility_config
+    || {}
+  ) || {};
+
   const resolvedPotencializacaoTalentos = parseJsonIfNeeded(
-    participantReportV26?.potencializacao_talentos
+    reportDataParticipantReport?.potencializacao_talentos
+    || reportDataParticipantReport?.potencializar_talentos
+    || participantReportV26?.potencializacao_talentos
+    || participantReportV26?.potencializar_talentos
+    || report_data?.potencializacao_talentos
+    || report_data?.potencializar_talentos
     || relatorioV26?.potencializacao_talentos
+    || relatorioV26?.potencializar_talentos
     || developmentReportV26?.potencializacao_talentos
+    || developmentReportV26?.potencializar_talentos
     || columnPotencializacaoTalentos
-    || report_data.potencializacao_talentos
+    || camposPotencializacaoTalentos
     || {}
   ) || {};
 
   const resolvedPdi = parseJsonIfNeeded(
-    participantReportV26?.pdi
-    || developmentReportV26?.pdi
+    reportDataParticipantReport?.pdi
+    || participantReportV26?.pdi
+    || report_data?.pdi
     || relatorioV26?.pdi
+    || developmentReportV26?.pdi
     || columnPdi
-    || report_data.pdi
+    || camposPdi
     || {}
   ) || {};
 
@@ -757,7 +791,7 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       ) : backupDetails.growth
     },
     metodologia: {
-      metodologia_potenciar_ativada: report_data.metodologia?.metodologia_potenciar_ativada || report_data.metodologia_potenciar_ativada || activeResult?.relatorio?.metodologia_potenciar_ativada || "A Metodologia Potenciar de Socioestilos investiga as intersecções entre estilo de comunicação, cooperação interpessoal e adaptabilidade operacional."
+      metodologia_potenciar_ativada: report_data.metodologia?.metodologia_potenciar_ativada || report_data.metodologia_potenciar_ativada || activeResult?.relatorio?.metodologia_potenciar_ativada || "Este relatorio foi elaborado com base na metodologia SocioEstilo Potenciar, que utiliza um questionario estruturado para identificar tendencias comportamentais predominantes e apoiar processos de autoconhecimento, desenvolvimento profissional e planejamento de acoes. Os resultados devem ser interpretados como uma ferramenta de desenvolvimento, e nao como um diagnostico definitivo."
     },
     sobre_metodologia: {
       assertivo: safeDescVal(report_data.sobre_metodologia?.assertivo || report_data.metodologia?.assertivo || "Perfil Assertivo (Direto): Pragmatismo operacional, tomada de decisões rápida, eficiência técnica e determinação."),
@@ -936,34 +970,43 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     potencializacao_talentos: {
       estilo_base: safeStringVal(
         resolvedPotencializacaoTalentos?.estilo_base
+        || camposData?.potencializacao_talentos_estilo
         || report_data.potencializacao_talentos_estilo_base
         || resolvedPotencializacaoTalentos?.estilo
         || finalDom
       ),
       talento_identificado: safeStringVal(
         resolvedPotencializacaoTalentos?.talento_identificado
+        || camposData?.potencializacao_talentos_talento_identificado
         || resolvedPotencializacaoTalentos?.descricao
         || report_data.potencializacao_talentos_descricao
         || resolvedPotencializacaoTalentos?.talento
       ),
       valor_gerado: safeStringVal(
         resolvedPotencializacaoTalentos?.valor_gerado
+        || camposData?.potencializacao_talentos_valor_gerado
         || resolvedPotencializacaoTalentos?.valor
       ),
       contextos_ideais: cleanArrayItems(
         resolvedPotencializacaoTalentos?.contextos_ideais
+        || camposData?.potencializacao_talentos_contextos_ideais_texto
         || resolvedPotencializacaoTalentos?.contextos
       ),
       estrategias_potencializacao: cleanArrayItems(
         resolvedPotencializacaoTalentos?.estrategias_potencializacao
+        || camposData?.potencializacao_talentos_estrategias_texto
         || resolvedPotencializacaoTalentos?.acoes
         || report_data.potencializacao_talentos_acoes
       ),
       ponto_equilibrio: safeStringVal(
         resolvedPotencializacaoTalentos?.ponto_equilibrio
+        || camposData?.potencializacao_talentos_ponto_equilibrio
         || resolvedPotencializacaoTalentos?.cuidado
       ),
-      texto: safeStringVal(resolvedPotencializacaoTalentos?.texto),
+      texto: safeStringVal(
+        resolvedPotencializacaoTalentos?.texto
+        || camposData?.potencializacao_talentos_texto
+      ),
       descricao_legada: safeStringVal(
         resolvedPotencializacaoTalentos?.descricao
         || report_data.potencializacao_talentos_descricao
@@ -996,13 +1039,28 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       report_data.oportunidades
     ) : backupRecomendacoes,
     pdi: {
-      objetivos_prioritarios: cleanObjectArray(resolvedPdi?.objetivos_prioritarios),
-      plano_acao: cleanObjectArray(resolvedPdi?.plano_acao),
-      indicadores_evolucao: cleanObjectArray(resolvedPdi?.indicadores_evolucao),
-      compromisso_desenvolvimento: safeStringVal(resolvedPdi?.compromisso_desenvolvimento),
-      texto: safeStringVal(resolvedPdi?.texto)
+      objetivos_prioritarios: cleanObjectArray(
+        resolvedPdi?.objetivos_prioritarios
+        || camposData?.pdi_objetivos_texto
+      ),
+      plano_acao: cleanObjectArray(
+        resolvedPdi?.plano_acao
+        || camposData?.pdi_plano_acao_texto
+      ),
+      indicadores_evolucao: cleanObjectArray(
+        resolvedPdi?.indicadores_evolucao
+        || camposData?.pdi_indicadores_texto
+      ),
+      compromisso_desenvolvimento: safeStringVal(
+        resolvedPdi?.compromisso_desenvolvimento
+        || camposData?.pdi_compromisso
+      ),
+      texto: safeStringVal(
+        resolvedPdi?.texto
+        || camposData?.pdi_texto
+      )
     },
-    visibility_config: resolvedVisibilityConfig,
+    visibility_config: resolvedParticipantVisibilityConfig,
     questionario: {
       respostas: (() => {
         // ÚNICA FONTE: memoria_respostas do n8n workflow
@@ -1253,7 +1311,7 @@ export default function DashboardScreen({
     const param = reportParameters.find(item => item.secao === secao && item.campo === campo);
     const paramVisible = param?.ativo ?? true;
 
-    const visibilityConfig = parseJsonIfNeeded(normalizedPayload?.report_data?.visibility_config || {}) || {};
+    const visibilityConfig = parseJsonIfNeeded(reportData?.visibility_config || {}) || {};
     const profile = reportUserType === 'usuario' ? 'participante' : reportUserType;
     const visibilityKey = (() => {
       if (secao === 'perfil' && campo === 'potencializacao_talentos') return 'potencializacao_talentos';
@@ -2035,7 +2093,7 @@ export default function DashboardScreen({
                         ID: {(reportData.identificacao?.relatorio_uuid || "UUID-9").substring(0, 8).toUpperCase()}
                       </span>
                       <span className="text-slate-300">|</span>
-                      <span className="text-[#112363] font-black">Pag. {String(pageNumber).padStart(2, "0")} / 07</span>
+                      <span className="text-[#112363] font-black">Pag. {String(pageNumber).padStart(2, "0")} / {(reportUserType === "participante" || reportUserType === "usuario") ? "06" : "08"}</span>
                     </div>
                   </div>
                 );
@@ -2472,7 +2530,7 @@ export default function DashboardScreen({
                             const estrategias = (potencia.estrategias_potencializacao?.length ? potencia.estrategias_potencializacao : potencia.acoes_legadas) || [];
                             return (
                               <div className="space-y-4 mt-4">
-                                <h4 className="text-[11px] font-black text-emerald-700 uppercase tracking-wider">2.5 Como potencializar seus talentos</h4>
+                                <h4 className="text-[11px] font-black text-emerald-700 uppercase tracking-wider">03. Como potencializar seus talentos</h4>
                                 <p className="text-[11px] text-slate-600 font-semibold leading-relaxed">A partir do seu perfil predominante, esta secao apresenta caminhos para ampliar aquilo que voce ja faz bem.</p>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                                   {talentoIdentificado && <div className="p-4 bg-emerald-50/20 rounded-xl border border-emerald-100/60 shadow-3xs"><span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 block mb-1">Talento identificado</span><p className="text-slate-800 font-semibold leading-relaxed">{talentoIdentificado}</p></div>}
@@ -2664,7 +2722,7 @@ export default function DashboardScreen({
                         <div className="space-y-4 w-full font-sans">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <BookOpen className="w-4 h-4 text-emerald-500" /> 04. Recomendacoes Praticas e 05. Plano de Desenvolvimento Individual
+                              <BookOpen className="w-4 h-4 text-emerald-500" /> 05. Plano de Desenvolvimento Individual e Recomendacoes Praticas
                             </h3>
                             <span className="text-[10px] font-bold text-gray-400 italic">Pag. 05 do Participante</span>
                           </div>
@@ -2672,7 +2730,7 @@ export default function DashboardScreen({
 
                           <div className={`space-y-4 ${!isReportFieldVisible('recomendacoes', 'recomendacoes_praticas') ? 'hidden' : ''}`}>
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">
-                              <CheckCircle2 className="w-4.5 h-4.5 text-[#112363] shrink-0" /> 04. Recomendacoes praticas
+                              <CheckCircle2 className="w-4.5 h-4.5 text-[#112363] shrink-0" /> Recomendacoes praticas de aplicacao
                             </h4>
                             {reportData.recomendacoes_praticas.length > 0 && <div className="space-y-2.5">{reportData.recomendacoes_praticas.map((rec: string, idx: number) => (<div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start space-x-2.5 shadow-3xs"><span className="text-[#112363] font-bold shrink-0 mt-0.5">-&gt;</span><span className="text-slate-755 font-semibold text-xs leading-relaxed">{rec}</span></div>))}</div>}
                           </div>
