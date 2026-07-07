@@ -125,6 +125,53 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     normPayload = { ...aiInsightsObj, ...normPayload };
   }
 
+  const participantReportV26 = parseJsonIfNeeded(
+    normPayload?.participant_report
+    || normPayload?.participantReport
+    || activeResult?.participant_report
+    || activeResult?.participantReport
+    || activeResult?.raw_payload?.participant_report
+    || activeResult?.raw_payload?.participantReport
+    || {}
+  ) || {};
+
+  const developmentReportV26 = parseJsonIfNeeded(
+    normPayload?.development_report
+    || normPayload?.developmentReport
+    || activeResult?.development_report
+    || activeResult?.developmentReport
+    || activeResult?.raw_payload?.development_report
+    || activeResult?.raw_payload?.developmentReport
+    || {}
+  ) || {};
+
+  const relatorioV26 = parseJsonIfNeeded(
+    normPayload?.relatorio
+    || activeResult?.relatorio
+    || activeResult?.raw_payload?.relatorio
+    || {}
+  ) || {};
+
+  const columnPotencializacaoTalentos = parseJsonIfNeeded(
+    activeResult?.potencializacao_talentos
+    || activeResult?.raw_payload?.potencializacao_talentos
+    || {}
+  ) || {};
+
+  const columnPdi = parseJsonIfNeeded(
+    activeResult?.pdi
+    || activeResult?.raw_payload?.pdi
+    || {}
+  ) || {};
+
+  const resolvedVisibilityConfig = parseJsonIfNeeded(
+    participantReportV26?.visibility_config
+    || relatorioV26?.visibility_config
+    || activeResult?.visibility_config
+    || activeResult?.raw_payload?.visibility_config
+    || {}
+  ) || {};
+
   // 2. Locate report_data using strict priority from the new canonical n8n structure
   // Priority 1: rawPayload.report_data (primary source from current webhook response)
   // Priority 2: activeResult.report_data (previously saved report_data)
@@ -432,6 +479,24 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
   const backupEvidencias = defaultEvidenciasMap[finalDom] || defaultEvidenciasMap["Assertivo"];
   const backupPotencial = defaultPotencialMap[finalDom] || defaultPotencialMap["Assertivo"];
   const backupRecomendacoes = defaultRecomendacoesMap[finalDom] || defaultRecomendacoesMap["Assertivo"];
+
+  const resolvedPotencializacaoTalentos = parseJsonIfNeeded(
+    participantReportV26?.potencializacao_talentos
+    || relatorioV26?.potencializacao_talentos
+    || developmentReportV26?.potencializacao_talentos
+    || columnPotencializacaoTalentos
+    || report_data.potencializacao_talentos
+    || {}
+  ) || {};
+
+  const resolvedPdi = parseJsonIfNeeded(
+    participantReportV26?.pdi
+    || developmentReportV26?.pdi
+    || relatorioV26?.pdi
+    || columnPdi
+    || report_data.pdi
+    || {}
+  ) || {};
 
   const cleanArrayItems = (arr: any): string[] => {
     if (!arr) return [];
@@ -870,40 +935,41 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     ) : backupEvidencias,
     potencializacao_talentos: {
       estilo_base: safeStringVal(
-        report_data.potencializacao_talentos?.estilo_base
+        resolvedPotencializacaoTalentos?.estilo_base
         || report_data.potencializacao_talentos_estilo_base
-        || report_data.potencializacao_talentos?.estilo
+        || resolvedPotencializacaoTalentos?.estilo
         || finalDom
       ),
       talento_identificado: safeStringVal(
-        report_data.potencializacao_talentos?.talento_identificado
-        || report_data.potencializacao_talentos?.descricao
+        resolvedPotencializacaoTalentos?.talento_identificado
+        || resolvedPotencializacaoTalentos?.descricao
         || report_data.potencializacao_talentos_descricao
-        || report_data.potencializacao_talentos?.talento
+        || resolvedPotencializacaoTalentos?.talento
       ),
       valor_gerado: safeStringVal(
-        report_data.potencializacao_talentos?.valor_gerado
-        || report_data.potencializacao_talentos?.valor
+        resolvedPotencializacaoTalentos?.valor_gerado
+        || resolvedPotencializacaoTalentos?.valor
       ),
       contextos_ideais: cleanArrayItems(
-        report_data.potencializacao_talentos?.contextos_ideais
-        || report_data.potencializacao_talentos?.contextos
+        resolvedPotencializacaoTalentos?.contextos_ideais
+        || resolvedPotencializacaoTalentos?.contextos
       ),
       estrategias_potencializacao: cleanArrayItems(
-        report_data.potencializacao_talentos?.estrategias_potencializacao
-        || report_data.potencializacao_talentos?.acoes
+        resolvedPotencializacaoTalentos?.estrategias_potencializacao
+        || resolvedPotencializacaoTalentos?.acoes
         || report_data.potencializacao_talentos_acoes
       ),
       ponto_equilibrio: safeStringVal(
-        report_data.potencializacao_talentos?.ponto_equilibrio
-        || report_data.potencializacao_talentos?.cuidado
+        resolvedPotencializacaoTalentos?.ponto_equilibrio
+        || resolvedPotencializacaoTalentos?.cuidado
       ),
+      texto: safeStringVal(resolvedPotencializacaoTalentos?.texto),
       descricao_legada: safeStringVal(
-        report_data.potencializacao_talentos?.descricao
+        resolvedPotencializacaoTalentos?.descricao
         || report_data.potencializacao_talentos_descricao
       ),
       acoes_legadas: cleanArrayItems(
-        report_data.potencializacao_talentos?.acoes
+        resolvedPotencializacaoTalentos?.acoes
         || report_data.potencializacao_talentos_acoes
       )
     },
@@ -930,11 +996,13 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       report_data.oportunidades
     ) : backupRecomendacoes,
     pdi: {
-      objetivos_prioritarios: cleanObjectArray(report_data.pdi?.objetivos_prioritarios),
-      plano_acao: cleanObjectArray(report_data.pdi?.plano_acao),
-      indicadores_evolucao: cleanObjectArray(report_data.pdi?.indicadores_evolucao),
-      compromisso_desenvolvimento: safeStringVal(report_data.pdi?.compromisso_desenvolvimento)
+      objetivos_prioritarios: cleanObjectArray(resolvedPdi?.objetivos_prioritarios),
+      plano_acao: cleanObjectArray(resolvedPdi?.plano_acao),
+      indicadores_evolucao: cleanObjectArray(resolvedPdi?.indicadores_evolucao),
+      compromisso_desenvolvimento: safeStringVal(resolvedPdi?.compromisso_desenvolvimento),
+      texto: safeStringVal(resolvedPdi?.texto)
     },
+    visibility_config: resolvedVisibilityConfig,
     questionario: {
       respostas: (() => {
         // ÚNICA FONTE: memoria_respostas do n8n workflow
@@ -1183,7 +1251,39 @@ export default function DashboardScreen({
 
   const isReportFieldVisible = (secao: string, campo: string) => {
     const param = reportParameters.find(item => item.secao === secao && item.campo === campo);
-    return param?.ativo ?? true;
+    const paramVisible = param?.ativo ?? true;
+
+    const visibilityConfig = parseJsonIfNeeded(normalizedPayload?.report_data?.visibility_config || {}) || {};
+    const profile = reportUserType === 'usuario' ? 'participante' : reportUserType;
+    const visibilityKey = (() => {
+      if (secao === 'perfil' && campo === 'potencializacao_talentos') return 'potencializacao_talentos';
+      if (secao === 'pdi') return 'pdi';
+      if (secao === 'memoria') return 'memoria_calculo';
+      if (secao === 'auditoria' && campo === 'base_conhecimento') return 'chunks_recuperados';
+      if (secao === 'auditoria' && campo === 'trilha_rag') return 'chunks_recuperados';
+      if (secao === 'auditoria' && campo === 'json_bruto') return 'json_bruto';
+      if (secao === 'auditoria') return 'auditoria_tecnica';
+      return campo;
+    })();
+
+    if (profile === 'participante' && ['auditoria_tecnica', 'memoria_calculo', 'respostas_detalhadas', 'chunks_recuperados', 'prompt_utilizado', 'json_bruto'].includes(visibilityKey)) {
+      return false;
+    }
+
+    const entry = visibilityConfig?.[visibilityKey] ?? visibilityConfig?.[campo] ?? visibilityConfig?.[secao];
+    if (typeof entry === 'boolean') return paramVisible && entry;
+
+    if (entry && typeof entry === 'object') {
+      const profileFlag = entry['mostrar_' + profile];
+      const aliasFlag = profile === 'participante' ? entry.mostrar_usuario : undefined;
+      const directFlag = entry[profile];
+      if (typeof profileFlag === 'boolean') return paramVisible && profileFlag;
+      if (typeof aliasFlag === 'boolean') return paramVisible && aliasFlag;
+      if (typeof directFlag === 'boolean') return paramVisible && directFlag;
+      if (entry.ativo === false) return false;
+    }
+
+    return paramVisible;
   };
 
   const isAnyReportFieldVisible = (pairs: Array<[string, string]>) => {
@@ -2364,6 +2464,30 @@ export default function DashboardScreen({
                             );
                           })()}
 
+                          {isReportFieldVisible('perfil', 'potencializacao_talentos') && (() => {
+                            const potencia = reportData.potencializacao_talentos || {};
+                            const hasPotencia = Boolean(potencia.talento_identificado || potencia.valor_gerado || potencia.contextos_ideais?.length || potencia.estrategias_potencializacao?.length || potencia.ponto_equilibrio || potencia.descricao_legada || potencia.acoes_legadas?.length || potencia.texto);
+                            if (!hasPotencia) return null;
+                            const talentoIdentificado = potencia.talento_identificado || potencia.descricao_legada;
+                            const estrategias = (potencia.estrategias_potencializacao?.length ? potencia.estrategias_potencializacao : potencia.acoes_legadas) || [];
+                            return (
+                              <div className="space-y-4 mt-4">
+                                <h4 className="text-[11px] font-black text-emerald-700 uppercase tracking-wider">2.5 Como potencializar seus talentos</h4>
+                                <p className="text-[11px] text-slate-600 font-semibold leading-relaxed">A partir do seu perfil predominante, esta secao apresenta caminhos para ampliar aquilo que voce ja faz bem.</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                  {talentoIdentificado && <div className="p-4 bg-emerald-50/20 rounded-xl border border-emerald-100/60 shadow-3xs"><span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 block mb-1">Talento identificado</span><p className="text-slate-800 font-semibold leading-relaxed">{talentoIdentificado}</p></div>}
+                                  {potencia.valor_gerado && <div className="p-4 bg-slate-50 rounded-xl border border-slate-150 shadow-3xs"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block mb-1">Valor gerado</span><p className="text-slate-800 font-semibold leading-relaxed">{potencia.valor_gerado}</p></div>}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                  {potencia.contextos_ideais?.length > 0 && <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Onde esse talento gera mais valor</span><ul className="space-y-2">{potencia.contextos_ideais.map((item: string, idx: number) => (<li key={idx} className="flex items-start gap-2 text-slate-755 font-semibold"><span className="text-emerald-500 mt-0.5">+</span><span>{item}</span></li>))}</ul></div>}
+                                  {estrategias?.length > 0 && <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Estrategias de potencializacao</span><ul className="space-y-2">{estrategias.map((item: string, idx: number) => (<li key={idx} className="flex items-start gap-2 text-slate-755 font-semibold"><span className="text-[#112363] mt-0.5">+</span><span>{item}</span></li>))}</ul></div>}
+                                </div>
+                                {potencia.ponto_equilibrio && <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs"><span className="text-[9px] font-black uppercase tracking-widest text-amber-700 block mb-1">Ponto de equilibrio</span><p className="text-slate-800 font-semibold leading-relaxed">{potencia.ponto_equilibrio}</p></div>}
+                                {!talentoIdentificado && !potencia.valor_gerado && !potencia.contextos_ideais?.length && !estrategias?.length && !potencia.ponto_equilibrio && potencia.texto && <div className="p-4 bg-emerald-50/20 rounded-xl border border-emerald-100/60 shadow-3xs"><p className="text-slate-800 font-semibold leading-relaxed">{potencia.texto}</p></div>}
+                              </div>
+                            );
+                          })()}
+
                           <div className={`space-y-4 mt-4 ${!isAnyReportFieldVisible([['perfil', 'explicacao_socioestilo'], ['perfil', 'quatro_socioestilos']]) ? 'hidden' : ''}`}>
                             <div className={`p-4 bg-[#112363]/5 rounded-xl border border-blue-100 text-xs leading-relaxed font-semibold text-slate-800 ${!isReportFieldVisible('perfil', 'explicacao_socioestilo') ? 'hidden' : ''}`}>
                               <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider mb-2">2.1 O que e Socioestilo</h4>
@@ -2545,29 +2669,6 @@ export default function DashboardScreen({
                             <span className="text-[10px] font-bold text-gray-400 italic">Pag. 05 do Participante</span>
                           </div>
 
-                          {isReportFieldVisible('perfil', 'potencializacao_talentos') && (() => {
-                            const potencia = reportData.potencializacao_talentos || {};
-                            const hasPotencia = Boolean(potencia.talento_identificado || potencia.valor_gerado || potencia.contextos_ideais?.length || potencia.estrategias_potencializacao?.length || potencia.ponto_equilibrio || potencia.descricao_legada || potencia.acoes_legadas?.length);
-                            if (!hasPotencia) return null;
-                            const talentoIdentificado = potencia.talento_identificado || potencia.descricao_legada;
-                            const estrategias = (potencia.estrategias_potencializacao?.length ? potencia.estrategias_potencializacao : potencia.acoes_legadas) || [];
-                            return (
-                              <div className="space-y-4">
-                                <h4 className="text-xs font-black text-emerald-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-emerald-100">
-                                  <TrendingUp className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 2.5 Como potencializar seus talentos
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                                  {talentoIdentificado && <div className="p-4 bg-emerald-50/20 rounded-xl border border-emerald-100/60 shadow-3xs"><span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 block mb-1">Talento identificado</span><p className="text-slate-800 font-semibold leading-relaxed">{talentoIdentificado}</p></div>}
-                                  {potencia.valor_gerado && <div className="p-4 bg-slate-50 rounded-xl border border-slate-150 shadow-3xs"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block mb-1">Valor gerado</span><p className="text-slate-800 font-semibold leading-relaxed">{potencia.valor_gerado}</p></div>}
-                                </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                                  {potencia.contextos_ideais?.length > 0 && <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Contextos em que esse talento gera mais valor</span><ul className="space-y-2">{potencia.contextos_ideais.map((item: string, idx: number) => (<li key={idx} className="flex items-start gap-2 text-slate-755 font-semibold"><span className="text-emerald-500 mt-0.5">?</span><span>{item}</span></li>))}</ul></div>}
-                                  {estrategias?.length > 0 && <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Estrategias de potencializacao</span><ul className="space-y-2">{estrategias.map((item: string, idx: number) => (<li key={idx} className="flex items-start gap-2 text-slate-755 font-semibold"><span className="text-[#112363] mt-0.5">?</span><span>{item}</span></li>))}</ul></div>}
-                                </div>
-                                {potencia.ponto_equilibrio && <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs"><span className="text-[9px] font-black uppercase tracking-widest text-amber-700 block mb-1">Ponto de equilibrio</span><p className="text-slate-800 font-semibold leading-relaxed">{potencia.ponto_equilibrio}</p></div>}
-                              </div>
-                            );
-                          })()}
 
                           <div className={`space-y-4 ${!isReportFieldVisible('recomendacoes', 'recomendacoes_praticas') ? 'hidden' : ''}`}>
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">
@@ -2605,7 +2706,7 @@ export default function DashboardScreen({
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
                               <FileText className="w-4 h-4 text-[#112363]" /> 07. Memória de Cálculo e Respostas do Questionário
                             </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">PáP??g. 06 do Participante</span>
+                            <span className="text-[10px] font-bold text-gray-400 italic">P�g. 06 do Participante</span>
                           </div>
 
                           <div className="space-y-4">
