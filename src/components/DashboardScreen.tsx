@@ -1311,7 +1311,7 @@ export default function DashboardScreen({
     const param = reportParameters.find(item => item.secao === secao && item.campo === campo);
     const paramVisible = param?.ativo ?? true;
 
-    const visibilityConfig = parseJsonIfNeeded(reportData?.visibility_config || {}) || {};
+    const visibilityConfig = parseJsonIfNeeded(normalizedPayload?.report_data?.visibility_config || normalizedPayload?.visibility_config || {}) || {};
     const profile = reportUserType === 'usuario' ? 'participante' : reportUserType;
     const visibilityKey = (() => {
       if (secao === 'perfil' && campo === 'potencializacao_talentos') return 'potencializacao_talentos';
