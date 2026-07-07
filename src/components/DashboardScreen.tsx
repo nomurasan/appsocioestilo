@@ -28,7 +28,7 @@ import {
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Usuario, Resultado, Scores, STYLE_NAMES, ReportParameter, ReportUserType } from '../types';
-import { PROFILE_DETAILS, QUESTIONS } from '../data/questions';
+import { PROFILE_DETAILS } from '../data/profile-details';
 import { listarParametrosRelatorio, listarResultados } from '../lib/supabase';
 
 type ChunkAuditItem = {
@@ -552,6 +552,12 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
   // DO NOT USE for the memory responses table - use report_data.memoria_respostas instead!
   // This is maintained only to calculate answersCount metric in assessment.
   const answersObj = activeResult?.answers || activeResult?.respostas_questionario || normPayload?.respostasQuestionario || normPayload?.respostas_questionario || {};
+  const detailedAnswersSource = activeResult?.respostas_detalhadas || activeResult?.answers_detailed || normPayload?.contextoQuestionario?.respostasDetalhadas || [];
+  const detailedAnswersById = new Map<number, any>(
+    (Array.isArray(detailedAnswersSource) ? detailedAnswersSource : [])
+      .map((item: any) => [Number(item.question_id || item.questionId), item] as [number, any])
+      .filter(([questionId]) => Number.isFinite(questionId))
+  );
   const processedRespostas: any[] = [];
   try {
     const styleToPortName: Record<string, string> = {
@@ -568,8 +574,9 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
 
     Object.entries(answersObj).forEach(([qIdStr, selectedVal]) => {
       const qId = Number(qIdStr);
-      const questionObj = QUESTIONS.find((q: any) => q.id === qId);
-      if (questionObj) {
+      const detailedQuestion = detailedAnswersById.get(qId);
+      const questionText = detailedQuestion?.question_text || detailedQuestion?.question || `Questao ${qId}`;
+      {
         let answerTxt = '';
         if (Array.isArray(selectedVal)) {
           answerTxt = selectedVal.join(", ");
@@ -579,27 +586,6 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
 
         let stylesList = "Geral";
         let pontuacaoAtribuida = 0;
-        if (questionObj.options) {
-          const matchedOptions = questionObj.options.filter(opt => {
-            if (Array.isArray(selectedVal)) {
-              return selectedVal.some(val => 
-                String(val).toLowerCase().trim() === opt.text.toLowerCase().trim() ||
-                String(val).trim() === opt.text.trim()
-              );
-            }
-            return opt.text.toLowerCase().trim() === String(selectedVal).toLowerCase().trim() ||
-                   opt.text.trim() === String(selectedVal).trim();
-          });
-
-          matchedOptions.forEach(opt => {
-            pontuacaoAtribuida += (opt as any).points || 0;
-          });
-
-          const associatedStyles = matchedOptions.map(opt => styleToPortName[(opt as any).style] || (opt as any).style);
-          if (associatedStyles.length > 0) {
-            stylesList = Array.from(new Set(associatedStyles)).join(", ");
-          }
-        }
 
         // Safe fallback in case no options matched directly
         if (pontuacaoAtribuida === 0 && selectedVal) {
@@ -612,7 +598,7 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
         }
 
         processedRespostas.push({
-          pergunta: `${questionObj.id}. ${questionObj.text}`,
+          pergunta: questionText.startsWith('Quest') ? questionText : `${qId}. ${questionText}`,
           resposta_escolhida: answerTxt || "Não respondida",
           estilo_associado: stylesList,
           pontuacao_atribuida: pontuacaoAtribuida
@@ -1458,10 +1444,9 @@ export default function DashboardScreen({
     try {
       Object.entries(answers).forEach(([key, val]) => {
         const qId = Number(key);
-        const questionObj = QUESTIONS.find((q: any) => q.id === qId);
         detailed.push({
           question_id: qId,
-          question_text: questionObj ? questionObj.text : `Questão ${qId}`,
+          question_text: `Questao ${qId}`,
           user_answer: val
         });
       });

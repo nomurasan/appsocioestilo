@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { User, ChevronRight, Check, Bot, Home, X, CheckCircle2 } from 'lucide-react';
-import { QUESTIONS as STATIC_QUESTIONS } from '../data/questions';
 import { Usuario, Scores, Resultado, Question } from '../types';
 import {
   abandonarRascunhoQuestionario,
@@ -122,7 +121,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
   const [remoteDraft, setRemoteDraft] = useState<any>(null);
   const [showDraftRecovery, setShowDraftRecovery] = useState(false);
   const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [questions, setQuestions] = useState<Question[]>(STATIC_QUESTIONS);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [questionMappingLoading, setQuestionMappingLoading] = useState(true);
 
   const messageFeedRef = useRef<HTMLDivElement>(null);
@@ -203,13 +202,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
       setQuestionMappingLoading(true);
       const mappedQuestions = await listarQuestionMapping();
       if (cancelled) return;
-
-      if (mappedQuestions.length > 0) {
-        setQuestions(mappedQuestions);
-      } else {
-        console.warn('[question_mapping] Usando perguntas locais como fallback.');
-        setQuestions(STATIC_QUESTIONS);
-      }
+      setQuestions(mappedQuestions);
 
       setQuestionMappingLoading(false);
     };
@@ -846,7 +839,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
         Assertivo: calculatedScores.Assertivo,
         Participativo: calculatedScores.Participativo,
         Integrador: calculatedScores.Integrador,
-        'Analítico': calculatedScores.Analitico
+        'Analitico': calculatedScores.Analitico
       };
 
       const n8nPayload = {
@@ -953,6 +946,28 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
       <div className="flex flex-col h-[420px] max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 items-center justify-center space-y-3">
         <Bot className="w-8 h-8 text-[#112363] animate-pulse" />
         <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Verificando questionÃ¡rio em andamento...</p>
+      </div>
+    );
+  }
+
+  if (questions.length === 0) {
+    return (
+      <div className="flex flex-col h-[420px] max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 items-center justify-center space-y-4 p-8 text-center">
+        <Bot className="w-8 h-8 text-[#112363]" />
+        <div className="space-y-2">
+          <h3 className="text-sm font-black text-[#112363]">Questionario indisponivel</h3>
+          <p className="text-xs text-gray-500 max-w-md">
+            Nao foi possivel carregar as perguntas da tabela question_mapping. Verifique a parametrizacao no Supabase e tente novamente.
+          </p>
+        </div>
+        {onGoBack && (
+          <button
+            onClick={onGoBack}
+            className="px-4 py-2 rounded-xl bg-[#112363] text-white text-xs font-bold"
+          >
+            Voltar
+          </button>
+        )}
       </div>
     );
   }

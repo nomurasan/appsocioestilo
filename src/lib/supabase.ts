@@ -1,6 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
 import { Usuario, Resultado, Empresa, Scores, AnswerDetail, ReportParameter, ReportUserType, QuestionarioRascunho, Question } from '../types';
-import { QUESTIONS } from '../data/questions';
 import { getDefaultReportParameters } from './report-parameters';
 
 const env = (import.meta as any).env || {};
@@ -490,7 +489,7 @@ function getDraftSessionToken(): string {
 export async function listarQuestionMapping(): Promise<Question[]> {
   const { data, error } = await supabase
     .from('question_mapping')
-    .select('*')
+    .select('question_id, question, answer, mode, answer_order, max_choices, style, points')
     .order('question_id', { ascending: true })
     .order('answer_order', { ascending: true });
 
@@ -505,7 +504,7 @@ export async function listarQuestionMapping(): Promise<Question[]> {
     const questionId = Number(row.question_id ?? row.questionId ?? row.id_question);
     if (!Number.isFinite(questionId) || questionId <= 0) return;
 
-    const questionText = String(row.question ?? row.question_text ?? '').trim();
+    const questionText = String(row.question ?? '').trim();
     const answerText = String(row.answer ?? row.answer_text ?? row.option_text ?? '').trim();
     if (!questionText || !answerText) return;
 
@@ -525,7 +524,11 @@ export async function listarQuestionMapping(): Promise<Question[]> {
 
     const question = questionsById.get(questionId)!;
     if (!question.options.some(option => option.text === answerText)) {
-      question.options.push({ text: answerText });
+      question.options.push({
+        text: answerText,
+        ...(row.style ? { style: row.style } : {}),
+        ...(row.points !== undefined ? { points: Number(row.points) } : {})
+      } as any);
     }
   });
 
@@ -596,7 +599,7 @@ export async function salvarRascunhoQuestionario(usuario: Usuario, parcial: Part
   return false;
 }
 
-export async function concluirRascunhoQuestionario(usuario: Usuario, respostas: Record<string, string | string[]>, totalPerguntas = QUESTIONS.length): Promise<boolean> {
+export async function concluirRascunhoQuestionario(usuario: Usuario, respostas: Record<string, string | string[]>, totalPerguntas = Object.keys(respostas || {}).length): Promise<boolean> {
   return salvarRascunhoQuestionario(usuario, {
     respostas,
     etapa_atual: totalPerguntas,
@@ -694,10 +697,9 @@ function computeDetailedAnswers(answers?: Record<string, string | string[]>) {
   try {
     Object.entries(answers).forEach(([key, val]) => {
       const qId = Number(key);
-      const questionObj = QUESTIONS.find(q => q.id === qId);
       detailed.push({
         question_id: qId,
-        question_text: questionObj ? questionObj.text : `Questão ${qId}`,
+        question_text: `Questao ${qId}`,
         user_answer: val
       });
     });
