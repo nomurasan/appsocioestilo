@@ -233,6 +233,54 @@ app.get("/api/resultados", apiRateLimiter, async (_req: Request, res: Response, 
   }
 });
 
+
+app.get("/api/question-mapping", apiRateLimiter, async (_req: Request, res: Response, next: NextFunction) => {
+  try {
+    const runQuery = async (withQuestionOrder: boolean, withAnswerOrder: boolean) => {
+      let query = supabase
+        .from("question_mapping")
+        .select("*")
+        .order("question_id", { ascending: true });
+
+      if (withQuestionOrder) {
+        query = query.order("question_order", { ascending: true });
+      }
+      if (withAnswerOrder) {
+        query = query.order("answer_order", { ascending: true });
+      }
+
+      return query;
+    };
+
+    let response = await runQuery(true, true);
+
+    if (response.error) {
+      console.warn("[QUESTION_MAPPING] Falha ao ordenar por question_order/answer_order. Tentando ordenacao basica:", response.error.message);
+      response = await runQuery(false, true);
+    }
+
+    if (response.error) {
+      console.warn("[QUESTION_MAPPING] Falha ao ordenar por answer_order. Tentando apenas question_id:", response.error.message);
+      response = await runQuery(false, false);
+    }
+
+    if (response.error) {
+      console.error("[QUESTION_MAPPING] Falha ao listar via backend:", response.error.message);
+      return res.status(500).json({
+        error: "Nao foi possivel carregar question_mapping.",
+        details: response.error.message
+      });
+    }
+
+    return res.json({
+      data: response.data || [],
+      count: response.data?.length || 0
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
 app.delete("/api/resultados/:id", apiRateLimiter, async (req: Request, res: Response, next: NextFunction) => {
   try {
     const id = String(req.params.id || '').trim();

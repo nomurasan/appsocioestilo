@@ -486,41 +486,31 @@ function getDraftSessionToken(): string {
   return token;
 }
 
-export async function listarQuestionMapping(): Promise<Question[]> {
-  const runQuery = async (withQuestionOrder: boolean, withAnswerOrder: boolean) => {
-    let query = supabase
-      .from('question_mapping')
-      .select('*')
-      .order('question_id', { ascending: true });
+async function fetchBackendQuestionMappingRows(): Promise<any[]> {
+  if (typeof fetch !== 'function') return [];
 
-    if (withQuestionOrder) {
-      query = query.order('question_order', { ascending: true });
+  try {
+    const response = await fetch('/api/question-mapping', {
+      method: 'GET',
+      headers: { Accept: 'application/json' }
+    });
+
+    const payload = await response.json().catch(() => ({}));
+
+    if (!response.ok) {
+      console.warn('[question_mapping] Backend fallback retornou erro:', payload?.details || payload?.error || response.status);
+      return [];
     }
-    if (withAnswerOrder) {
-      query = query.order('answer_order', { ascending: true });
-    }
 
-    return query;
-  };
-
-  let response = await runQuery(true, true);
-
-  if (response.error) {
-    console.warn('[question_mapping] Falha ao ordenar por question_order/answer_order. Tentando ordenacao basica:', response.error.message);
-    response = await runQuery(false, true);
-  }
-
-  if (response.error) {
-    console.warn('[question_mapping] Falha ao ordenar por answer_order. Tentando apenas question_id:', response.error.message);
-    response = await runQuery(false, false);
-  }
-
-  if (response.error) {
-    console.warn('[question_mapping] Nao foi possivel carregar perguntas da tabela:', response.error.message);
+    return Array.isArray(payload?.data) ? payload.data : [];
+  } catch (err) {
+    console.warn('[question_mapping] Backend fallback falhou:', err);
     return [];
   }
+}
 
-  const rows = (response.data || [])
+function mapQuestionMappingRows(rowsInput: any[] = []): Question[] {
+  const rows = rowsInput
     .slice()
     .sort((a: any, b: any) => {
       const aq = Number(a.question_order ?? a.question_id ?? 0);
@@ -577,6 +567,47 @@ export async function listarQuestionMapping(): Promise<Question[]> {
   }
 
   return questions;
+}
+
+export async function listarQuestionMapping(): Promise<Question[]> {
+  const runQuery = async (withQuestionOrder: boolean, withAnswerOrder: boolean) => {
+    let query = supabase
+      .from('question_mapping')
+      .select('*')
+      .order('question_id', { ascending: true });
+
+    if (withQuestionOrder) {
+      query = query.order('question_order', { ascending: true });
+    }
+    if (withAnswerOrder) {
+      query = query.order('answer_order', { ascending: true });
+    }
+
+    return query;
+  };
+
+  let response = await runQuery(true, true);
+
+  if (response.error) {
+    console.warn('[question_mapping] Falha ao ordenar por question_order/answer_order. Tentando ordenacao basica:', response.error.message);
+    response = await runQuery(false, true);
+  }
+
+  if (response.error) {
+    console.warn('[question_mapping] Falha ao ordenar por answer_order. Tentando apenas question_id:', response.error.message);
+    response = await runQuery(false, false);
+  }
+
+  if (!response.error) {
+    const mapped = mapQuestionMappingRows(response.data || []);
+    if (mapped.length > 0) return mapped;
+    console.warn('[question_mapping] Consulta direta retornou sem perguntas validas. Tentando backend fallback.');
+  } else {
+    console.warn('[question_mapping] Consulta direta falhou. Tentando backend fallback:', response.error.message);
+  }
+
+  const backendRows = await fetchBackendQuestionMappingRows();
+  return mapQuestionMappingRows(backendRows);
 }
 
 export async function buscarRascunhoQuestionario(usuario: Usuario): Promise<QuestionarioRascunho | null> {
