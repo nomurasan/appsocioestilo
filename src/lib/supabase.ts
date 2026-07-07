@@ -489,7 +489,7 @@ function getDraftSessionToken(): string {
 export async function listarQuestionMapping(): Promise<Question[]> {
   const { data, error } = await supabase
     .from('question_mapping')
-    .select('question_id, question, answer, mode, answer_order, max_choices, style, points')
+    .select('*')
     .order('question_id', { ascending: true })
     .order('answer_order', { ascending: true });
 
@@ -504,7 +504,7 @@ export async function listarQuestionMapping(): Promise<Question[]> {
     const questionId = Number(row.question_id ?? row.questionId ?? row.id_question);
     if (!Number.isFinite(questionId) || questionId <= 0) return;
 
-    const questionText = String(row.question ?? '').trim();
+    const questionText = String(row.question ?? row.question_text ?? '').trim();
     const answerText = String(row.answer ?? row.answer_text ?? row.option_text ?? '').trim();
     if (!questionText || !answerText) return;
 
