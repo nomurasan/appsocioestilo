@@ -487,33 +487,66 @@ function getDraftSessionToken(): string {
 }
 
 export async function listarQuestionMapping(): Promise<Question[]> {
-  const { data, error } = await supabase
-    .from('question_mapping')
-    .select('question_id, question, mode, max_choices, answer_order, answer, socio_style, points, active, question_order')
-    .order('question_order', { ascending: true })
-    .order('question_id', { ascending: true })
-    .order('answer_order', { ascending: true });
+  const runQuery = async (withQuestionOrder: boolean, withAnswerOrder: boolean) => {
+    let query = supabase
+      .from('question_mapping')
+      .select('*')
+      .order('question_id', { ascending: true });
 
-  if (error) {
-    console.warn('[question_mapping] Nao foi possivel carregar perguntas da tabela:', error.message);
+    if (withQuestionOrder) {
+      query = query.order('question_order', { ascending: true });
+    }
+    if (withAnswerOrder) {
+      query = query.order('answer_order', { ascending: true });
+    }
+
+    return query;
+  };
+
+  let response = await runQuery(true, true);
+
+  if (response.error) {
+    console.warn('[question_mapping] Falha ao ordenar por question_order/answer_order. Tentando ordenacao basica:', response.error.message);
+    response = await runQuery(false, true);
+  }
+
+  if (response.error) {
+    console.warn('[question_mapping] Falha ao ordenar por answer_order. Tentando apenas question_id:', response.error.message);
+    response = await runQuery(false, false);
+  }
+
+  if (response.error) {
+    console.warn('[question_mapping] Nao foi possivel carregar perguntas da tabela:', response.error.message);
     return [];
   }
 
+  const rows = (response.data || [])
+    .slice()
+    .sort((a: any, b: any) => {
+      const aq = Number(a.question_order ?? a.question_id ?? 0);
+      const bq = Number(b.question_order ?? b.question_id ?? 0);
+      if (aq !== bq) return aq - bq;
+      const aid = Number(a.question_id ?? 0);
+      const bid = Number(b.question_id ?? 0);
+      if (aid !== bid) return aid - bid;
+      return Number(a.answer_order ?? a.id ?? 0) - Number(b.answer_order ?? b.id ?? 0);
+    });
+
   const questionsById = new Map<number, Question>();
 
-  (data || []).forEach((row: any) => {
+  rows.forEach((row: any) => {
     if (String(row.active).toLowerCase() === 'false') return;
 
-    const questionId = Number(row.question_id);
+    const questionId = Number(row.question_id ?? row.questionId ?? row.id_question);
     if (!Number.isFinite(questionId) || questionId <= 0) return;
 
-    const questionText = String(row.question ?? '').trim();
-    const answerText = String(row.answer ?? '').trim();
+    const questionText = String(row.question ?? row.question_text ?? '').trim();
+    const answerText = String(row.answer ?? row.answer_text ?? row.option_text ?? '').trim();
     if (!questionText || !answerText) return;
 
     const rawMode = String(row.mode || '').trim().toLowerCase();
     const mode: Question['mode'] = rawMode === 'multi' ? 'multi' : 'single';
-    const maxChoices = Number(row.max_choices);
+    const maxChoices = Number(row.max_choices ?? row.maxChoices);
 
     if (!questionsById.has(questionId)) {
       questionsById.set(questionId, {
@@ -529,15 +562,21 @@ export async function listarQuestionMapping(): Promise<Question[]> {
     if (!question.options.some(option => option.text === answerText)) {
       question.options.push({
         text: answerText,
-        ...(row.socio_style ? { style: row.socio_style } : {}),
+        ...(row.socio_style || row.style ? { style: row.socio_style || row.style } : {}),
         ...(row.points !== undefined ? { points: Number(row.points) } : {})
       });
     }
   });
 
-  return Array.from(questionsById.values())
+  const questions = Array.from(questionsById.values())
     .filter(question => question.text && question.options.length > 0)
     .sort((a, b) => a.id - b.id);
+
+  if (rows.length > 0 && questions.length === 0) {
+    console.warn('[question_mapping] Linhas carregadas, mas nenhuma pergunta valida foi montada. Colunas encontradas:', Object.keys(rows[0] || {}));
+  }
+
+  return questions;
 }
 
 export async function buscarRascunhoQuestionario(usuario: Usuario): Promise<QuestionarioRascunho | null> {
