@@ -664,9 +664,10 @@ export async function salvarRascunhoQuestionario(usuario: Usuario, parcial: Part
   const now = new Date().toISOString();
   const respostas = parcial.respostas || {};
   const participanteId = parcial.participante_id || mapFirebaseUidToUuid(usuario.uid);
+  const empresaId = parseBigIntId(usuario.empresa_id || parcial.empresa_id) || null;
 
   const payload: any = {
-    empresa_id: usuario.empresa_id || parcial.empresa_id || null,
+    empresa_id: empresaId,
     participante_id: participanteId || null,
     session_token: sessionToken,
     respostas,
@@ -679,13 +680,29 @@ export async function salvarRascunhoQuestionario(usuario: Usuario, parcial: Part
     finalizado_em: parcial.data_finalizacao || null
   };
 
-  const { error } = await supabase
+  const { data: existingDraft, error: findError } = await supabase
     .from('questionario_rascunhos')
-    .upsert(payload, { onConflict: 'participante_id' });
+    .select('id')
+    .eq('status', 'EM_ANDAMENTO')
+    .or(`participante_id.eq.${participanteId},session_token.eq.${sessionToken}`)
+    .order('ultimo_acesso_em', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (findError) {
+    console.warn('[questionario_rascunhos] Nao foi possivel localizar rascunho existente:', findError.message);
+    return false;
+  }
+
+  const query = existingDraft?.id
+    ? supabase.from('questionario_rascunhos').update(payload).eq('id', existingDraft.id)
+    : supabase.from('questionario_rascunhos').insert(payload);
+
+  const { error } = await query;
 
   if (!error) return true;
 
-  console.warn('[questionario_rascunhos] Upsert falhou:', error.message);
+  console.warn('[questionario_rascunhos] Nao foi possivel salvar rascunho:', error.message);
   return false;
 }
 
@@ -1624,17 +1641,44 @@ export async function buscarResultado(idResultado: string): Promise<Resultado | 
  * Listar Resultados do Usuário
  */
 export async function listarResultadosUsuario(uid: string): Promise<Resultado[]> {
-  const mappedUid = mapFirebaseUidToUuid(uid);
-  const userFilters = Array.from(new Set([mappedUid, uid].filter(Boolean)))
-    .flatMap(userId => [`user_id.eq.${userId}`, `id_usuario.eq.${userId}`])
-    .join(',');
-  const { data: rawData, error } = await supabase
-    .from('resultados')
-    .select('*')
-    .or(userFilters);
-  if (error) {
-    handleSupabaseError(error, OperationType.LIST, `listar_resultados_usuario: ${mappedUid}`);
+  const trimmedUid = String(uid || '').trim();
+  if (!trimmedUid) return [];
+
+  const mappedUid = mapFirebaseUidToUuid(trimmedUid);
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const dbUserIds = Array.from(new Set([
+    mappedUid,
+    ...(uuidRegex.test(trimmedUid) ? [trimmedUid] : [])
+  ].filter(Boolean)));
+  const allCandidateIds = Array.from(new Set([mappedUid, trimmedUid].filter(Boolean).map(String)));
+
+  let rawData: any[] = [];
+  let directError: any = null;
+
+  if (dbUserIds.length > 0) {
+    const { data, error } = await supabase
+      .from('resultados')
+      .select('*')
+      .in('user_id', dbUserIds);
+
+    if (error) {
+      directError = error;
+      console.warn('[listarResultadosUsuario] Consulta por resultados.user_id falhou; tentando fallback:', error.message);
+    } else {
+      rawData = data || [];
+    }
   }
+
+  if (directError || rawData.length === 0) {
+    const fallbackRows = await fetchBackendResultados();
+    rawData = fallbackRows.filter((item: any) => {
+      const ids = [item.user_id, item.id_usuario, item.uid]
+        .filter(Boolean)
+        .map(String);
+      return ids.some(id => allCandidateIds.includes(id));
+    });
+  }
+
   if (!rawData || rawData.length === 0) return [];
 
   // Fetch user name and company name
@@ -1653,11 +1697,16 @@ export async function listarResultadosUsuario(uid: string): Promise<Resultado[]>
   return rawData.map((item: any) => {
     const mapped = mapDbResultadoToResultado(item);
     if (mapped) {
-      mapped.nome_usuario = userName || 'Usuário Desconhecido';
-      mapped.empresa_nome = companyName || '';
+      mapped.nome_usuario = userName || mapped.nome_usuario || 'Usuario Desconhecido';
+      mapped.empresa_nome = companyName || mapped.empresa_nome || '';
     }
     return mapped;
   }).filter(Boolean) as Resultado[];
+}
+
+
+export async function listarOrientadorRelatoriosUsuario(uid: string): Promise<Resultado[]> {
+  return listarResultadosUsuario(uid);
 }
 
 /**

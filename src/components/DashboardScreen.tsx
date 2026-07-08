@@ -1298,7 +1298,7 @@ export default function DashboardScreen({
     const paramVisible = param?.ativo ?? true;
 
     const visibilityConfig = parseJsonIfNeeded(normalizedPayload?.report_data?.visibility_config || normalizedPayload?.visibility_config || {}) || {};
-    const profile = reportUserType === 'usuario' ? 'participante' : reportUserType;
+    const profile = reportUserType;
     const visibilityKey = (() => {
       if (secao === 'perfil' && campo === 'potencializacao_talentos') return 'potencializacao_talentos';
       if (secao === 'pdi') return 'pdi';
@@ -2078,7 +2078,7 @@ export default function DashboardScreen({
                         ID: {(reportData.identificacao?.relatorio_uuid || "UUID-9").substring(0, 8).toUpperCase()}
                       </span>
                       <span className="text-slate-300">|</span>
-                      <span className="text-[#112363] font-black">Pag. {String(pageNumber).padStart(2, "0")} / {(reportUserType === "participante" || reportUserType === "usuario") ? "06" : "08"}</span>
+                      <span className="text-[#112363] font-black">Pag. {String(pageNumber).padStart(2, "0")} / {reportUserType === "participante" ? "06" : "08"}</span>
                     </div>
                   </div>
                 );

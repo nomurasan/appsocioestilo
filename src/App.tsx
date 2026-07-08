@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, buscarUsuario, buscarUsuarioPorEmail, listarResultadosUsuario, listarResultados, atualizarUsuario, mapFirebaseUidToUuid, syncFirebaseUserWithSupabaseAuth } from './lib/supabase';
+import { supabase, buscarUsuario, buscarUsuarioPorEmail, listarResultadosUsuario, listarOrientadorRelatoriosUsuario, listarResultados, atualizarUsuario, mapFirebaseUidToUuid, syncFirebaseUserWithSupabaseAuth } from './lib/supabase';
 import { auth as fbAuth, signOut as fbSignOut } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { Usuario, Resultado } from './types';
@@ -64,7 +64,7 @@ export default function App() {
 
     if (foundById.length > 0) {
       const uniqueResults = Array.from(
-        new Map(foundById.map(result => [result.id_resultado || result.id || `${result.id_usuario}-${result.data_conclusao}`, result])).values()
+        new Map<string, Resultado>(foundById.map(result => [result.id_resultado || result.id || `${result.id_usuario}-${result.data_conclusao}`, result])).values()
       );
       uniqueResults.sort((a, b) => getResultTime(b) - getResultTime(a));
       return uniqueResults[0];
@@ -73,9 +73,9 @@ export default function App() {
     try {
       const allResults = await listarResultados().catch(() => []);
       const normalizedProfileName = profile.nome.trim().toLowerCase();
-      const allAvailableReports = allResults;
+      const allAvailableReports: Resultado[] = allResults;
       const uniqueAvailableReports = Array.from(
-        new Map(allAvailableReports.map(result => [result.id_resultado || result.id || `${result.id_usuario}-${result.data_conclusao}`, result])).values()
+        new Map<string, Resultado>(allAvailableReports.map(result => [result.id_resultado || result.id || `${result.id_usuario}-${result.data_conclusao}`, result])).values()
       );
       const filtered = uniqueAvailableReports.filter(result => {
         const sameUserId = candidateIds.includes(String(result.id_usuario || ''));
