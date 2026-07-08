@@ -476,13 +476,28 @@ export async function salvarParametrosRelatorio(tipoUsuario: ReportUserType, par
   saveLocalReportParameters(tipoUsuario, parametros);
   return true;
 }
+function createUuid(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, char => {
+    const random = Math.random() * 16 | 0;
+    const value = char === 'x' ? random : (random & 0x3 | 0x8);
+    return value.toString(16);
+  });
+}
+
 function getDraftSessionToken(): string {
   const key = 'potenciar_questionario_session_token';
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   let token = localStorage.getItem(key);
-  if (!token) {
-    token = `sess_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+
+  if (!token || !uuidRegex.test(token)) {
+    token = createUuid();
     localStorage.setItem(key, token);
   }
+
   return token;
 }
 
@@ -612,12 +627,13 @@ export async function listarQuestionMapping(): Promise<Question[]> {
 
 export async function buscarRascunhoQuestionario(usuario: Usuario): Promise<QuestionarioRascunho | null> {
   const sessionToken = getDraftSessionToken();
+  const participanteId = mapFirebaseUidToUuid(usuario.uid);
   const { data, error } = await supabase
     .from('questionario_rascunhos')
     .select('*')
     .eq('status', 'EM_ANDAMENTO')
-    .or(`participante_id.eq.${usuario.uid},session_token.eq.${sessionToken}`)
-    .order('data_ultimo_acesso', { ascending: false })
+    .or(`participante_id.eq.${participanteId},session_token.eq.${sessionToken}`)
+    .order('ultimo_acesso_em', { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -630,16 +646,16 @@ export async function buscarRascunhoQuestionario(usuario: Usuario): Promise<Ques
   return {
     id: String(data.id || ''),
     empresa_id: String(data.empresa_id || usuario.empresa_id || ''),
-    participante_id: data.participante_id || usuario.uid,
+    participante_id: data.participante_id || participanteId,
     session_token: data.session_token || sessionToken,
     respostas: data.respostas || {},
     etapa_atual: Number(data.etapa_atual || 0),
-    ultima_pergunta_respondida: data.ultima_pergunta_respondida ?? null,
+    ultima_pergunta_respondida: Number(data.ultima_pergunta_id ?? data.ultima_pergunta_respondida ?? 0) || null,
     percentual_concluido: Number(data.percentual_concluido || 0),
     status: data.status || 'EM_ANDAMENTO',
-    data_inicio: data.data_inicio,
-    data_ultimo_acesso: data.data_ultimo_acesso,
-    data_finalizacao: data.data_finalizacao || null
+    data_inicio: data.iniciado_em || data.data_inicio,
+    data_ultimo_acesso: data.ultimo_acesso_em || data.data_ultimo_acesso,
+    data_finalizacao: data.finalizado_em || data.data_finalizacao || null
   };
 }
 
@@ -647,19 +663,20 @@ export async function salvarRascunhoQuestionario(usuario: Usuario, parcial: Part
   const sessionToken = parcial.session_token || getDraftSessionToken();
   const now = new Date().toISOString();
   const respostas = parcial.respostas || {};
+  const participanteId = parcial.participante_id || mapFirebaseUidToUuid(usuario.uid);
 
   const payload: any = {
     empresa_id: usuario.empresa_id || parcial.empresa_id || null,
-    participante_id: usuario.uid || parcial.participante_id || null,
+    participante_id: participanteId || null,
     session_token: sessionToken,
     respostas,
     etapa_atual: parcial.etapa_atual ?? 0,
-    ultima_pergunta_respondida: parcial.ultima_pergunta_respondida ?? null,
+    ultima_pergunta_id: parcial.ultima_pergunta_respondida === undefined || parcial.ultima_pergunta_respondida === null ? null : String(parcial.ultima_pergunta_respondida),
     percentual_concluido: parcial.percentual_concluido ?? 0,
     status: parcial.status || 'EM_ANDAMENTO',
-    data_inicio: parcial.data_inicio || now,
-    data_ultimo_acesso: now,
-    data_finalizacao: parcial.data_finalizacao || null
+    iniciado_em: parcial.data_inicio || now,
+    ultimo_acesso_em: now,
+    finalizado_em: parcial.data_finalizacao || null
   };
 
   const { error } = await supabase
@@ -685,13 +702,14 @@ export async function concluirRascunhoQuestionario(usuario: Usuario, respostas: 
 
 export async function abandonarRascunhoQuestionario(usuario: Usuario): Promise<boolean> {
   const sessionToken = getDraftSessionToken();
+  const participanteId = mapFirebaseUidToUuid(usuario.uid);
   const { error } = await supabase
     .from('questionario_rascunhos')
     .update({
       status: 'ABANDONADO',
-      data_ultimo_acesso: new Date().toISOString()
+      ultimo_acesso_em: new Date().toISOString()
     })
-    .or(`participante_id.eq.${usuario.uid},session_token.eq.${sessionToken}`)
+    .or(`participante_id.eq.${participanteId},session_token.eq.${sessionToken}`)
     .eq('status', 'EM_ANDAMENTO');
 
   if (error) {
