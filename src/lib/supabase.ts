@@ -117,53 +117,25 @@ export function mapUuidToCompanyId(uuidStr: any): string {
  * Isso gera uma conta "sister" no Supabase Auth para satisfazer restrições de chaves estrangeiras (ex: resultados_id_usuario_fkey).
  */
 export async function syncFirebaseUserWithSupabaseAuth(uid: string, email: string): Promise<string> {
-  if (!uid) {
-    return '';
-  }
+  const normalizedEmail = String(email || '').trim().toLowerCase();
 
-  const resolvedEmail = (email && email.trim()) ? email.trim() : `${uid.toLowerCase()}@firebase-stub.com`;
-
-  // Senha determinística e segura com base no UID original do Firebase
-  const deterministicPassword = `Supa_Fb_Auth_${uid}_SecurePct1!`;
-
-  try {
-    // 1. Tentar fazer login no Supabase Auth com email e senha determinística
-    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: resolvedEmail,
-      password: deterministicPassword,
+  if (normalizedEmail) {
+    const usuario = await buscarUsuarioPorEmail(normalizedEmail).catch((err) => {
+      console.warn('[SYNC USUARIOS] Falha ao buscar usuario por email em public.usuarios:', err);
+      return null;
     });
 
-    if (signInError) {
-      console.warn(`[SYNC SUPABASE] Falha no login do usuário do Firebase (${resolvedEmail}) no Supabase Auth com a senha determinística:`, signInError.message);
-    } else if (signInData?.user) {
-      console.log(`[SYNC SUPABASE] Login efetuado com sucesso para ${resolvedEmail}, ID: ${signInData.user.id}`);
-      return signInData.user.id;
+    if (usuario?.uid) {
+      return usuario.uid;
     }
-  } catch (err) {
-    console.warn("[SYNC SUPABASE] Exceção ao efetuar login, tentando cadastrar usuário:", err);
   }
 
-  try {
-    // 2. Se falhar por não existir, tentar cadastro no Supabase Auth
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: resolvedEmail,
-      password: deterministicPassword,
-    });
-
-    if (signUpError) {
-      console.warn(`[SYNC SUPABASE] Falha no cadastro do usuário do Firebase (${resolvedEmail}) no Supabase Auth:`, signUpError.message);
-    } else if (signUpData?.user) {
-      console.log(`[SYNC SUPABASE] Cadastro e login efetuado com sucesso para ${resolvedEmail}, ID: ${signUpData.user.id}`);
-      return signUpData.user.id;
-    }
-  } catch (err) {
-    console.error("[SYNC SUPABASE] Falha catastrófica ao sincronizar conta com Supabase Auth:", err);
+  const usuarioPorUid = await buscarUsuario(uid).catch(() => null);
+  if (usuarioPorUid?.uid) {
+    return usuarioPorUid.uid;
   }
 
-  // Se tudo falhar, retorna o UID mapeado deterministicamente para integridade de fallback
-  const fallbackId = mapFirebaseUidToUuid(uid);
-  console.warn(`[SYNC SUPABASE] Todos os métodos de autenticação de sincronização falharam para ${resolvedEmail}. Usando fallback ID: ${fallbackId}. Nota: Se a tabela public.resultados tiver uma chave estrangeira para auth.users(id), a inserção falhará a menos que essa trigger/restrição de banco seja removida ou alterada para referenciar public.usuarios(uid).`);
-  return fallbackId;
+  return mapFirebaseUidToUuid(uid);
 }
 
 export enum OperationType {
