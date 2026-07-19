@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { 
   Award, 
   Briefcase, 
@@ -2283,14 +2283,14 @@ export default function DashboardScreen({
                         <div className="space-y-4 w-full font-sans">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> 02. Distribuição Métrica de Energia & 03. Lente Situacional
+                              <Star className="w-4 h-4 text-amber-500 fill-amber-500" /> 02. Distribuição Métrica de Energia
                             </h3>
                             <span className="text-[10px] font-bold text-gray-400 italic">Pág. 03 do Participante</span>
                           </div>
 
                           <div className="space-y-0.5">
                             <h4 className="text-xs font-black text-slate-800 uppercase tracking-wider flex items-center gap-1.5 google-sans">
-                              2.1 Mapeamento Multidimensional e Distribuição de Energia
+                              2.1 Distribuição Métrica de Energia
                             </h4>
                           </div>
 
@@ -2525,43 +2525,33 @@ export default function DashboardScreen({
                             );
                           })()}
 
-                          {isReportFieldVisible('perfil', 'potencializacao_talentos') && (() => {
-                            const potencia = reportData.potencializacao_talentos || {};
-                            const hasPotencia = Boolean(potencia.talento_identificado || potencia.valor_gerado || potencia.contextos_ideais?.length || potencia.estrategias_potencializacao?.length || potencia.ponto_equilibrio || potencia.descricao_legada || potencia.acoes_legadas?.length || potencia.texto);
-                            if (!hasPotencia) return null;
-                            const talentoIdentificado = potencia.talento_identificado || potencia.descricao_legada;
-                            const estrategias = (potencia.estrategias_potencializacao?.length ? potencia.estrategias_potencializacao : potencia.acoes_legadas) || [];
-                            return (
-                              <div className="space-y-4 mt-4">
-                                <h4 className="text-[11px] font-black text-emerald-700 uppercase tracking-wider">03. Como potencializar seus talentos</h4>
-                                <p className="text-[11px] text-slate-600 font-semibold leading-relaxed">A partir do seu perfil predominante, esta secao apresenta caminhos para ampliar aquilo que voce ja faz bem.</p>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                                  {talentoIdentificado && <div className="p-4 bg-emerald-50/20 rounded-xl border border-emerald-100/60 shadow-3xs"><span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 block mb-1">Talento identificado</span><p className="text-slate-800 font-semibold leading-relaxed">{talentoIdentificado}</p></div>}
-                                  {potencia.valor_gerado && <div className="p-4 bg-slate-50 rounded-xl border border-slate-150 shadow-3xs"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block mb-1">Valor gerado</span><p className="text-slate-800 font-semibold leading-relaxed">{potencia.valor_gerado}</p></div>}
+
+                          {isReportFieldVisible('metodologia', 'metodologia_potenciar') &&
+                            reportData.metodologia?.metodologia_potenciar_ativada && (
+                              <div className="space-y-3 mt-4">
+                                <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider">
+                                  2.3 Sobre a Metodologia
+                                </h4>
+
+                                <div className="p-4 bg-[#112363]/5 rounded-xl border border-blue-100 text-[11px] leading-relaxed font-semibold text-slate-800">
+                                  {reportData.metodologia.metodologia_potenciar_ativada}
                                 </div>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                                  {potencia.contextos_ideais?.length > 0 && <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Onde esse talento gera mais valor</span><ul className="space-y-2">{potencia.contextos_ideais.map((item: string, idx: number) => (<li key={idx} className="flex items-start gap-2 text-slate-755 font-semibold"><span className="text-emerald-500 mt-0.5">+</span><span>{item}</span></li>))}</ul></div>}
-                                  {estrategias?.length > 0 && <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Estrategias de potencializacao</span><ul className="space-y-2">{estrategias.map((item: string, idx: number) => (<li key={idx} className="flex items-start gap-2 text-slate-755 font-semibold"><span className="text-[#112363] mt-0.5">+</span><span>{item}</span></li>))}</ul></div>}
-                                </div>
-                                {potencia.ponto_equilibrio && <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs"><span className="text-[9px] font-black uppercase tracking-widest text-amber-700 block mb-1">Ponto de equilibrio</span><p className="text-slate-800 font-semibold leading-relaxed">{potencia.ponto_equilibrio}</p></div>}
-                                {!talentoIdentificado && !potencia.valor_gerado && !potencia.contextos_ideais?.length && !estrategias?.length && !potencia.ponto_equilibrio && potencia.texto && <div className="p-4 bg-emerald-50/20 rounded-xl border border-emerald-100/60 shadow-3xs"><p className="text-slate-800 font-semibold leading-relaxed">{potencia.texto}</p></div>}
                               </div>
-                            );
-                          })()}
+                          )}
 
                           <div className={`space-y-4 mt-4 ${!isAnyReportFieldVisible([['perfil', 'explicacao_socioestilo'], ['perfil', 'quatro_socioestilos']]) ? 'hidden' : ''}`}>
                             <div className={`p-4 bg-[#112363]/5 rounded-xl border border-blue-100 text-xs leading-relaxed font-semibold text-slate-800 ${!isReportFieldVisible('perfil', 'explicacao_socioestilo') ? 'hidden' : ''}`}>
-                              <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider mb-2">2.1 O que e Socioestilo</h4>
+                              <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider mb-2">2.4 O que é Sócio Estilo</h4>
                               {reportData.narrativa.conhecimento_aplicado || reportData.metodologia.metodologia_potenciar_ativada}
                             </div>
 
                             <div className={`space-y-4 ${!isReportFieldVisible('perfil', 'quatro_socioestilos') ? 'hidden' : ''}`}>
-                              <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider">2.2 Conheca os quatro Socioestilos</h4>
+                              <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider">2.5 Conheça os Quatro Sócio Estilos</h4>
                               <div className="max-w-full overflow-hidden border border-slate-150 rounded-2xl bg-white shadow-3xs">
                                 <table className="w-full table-fixed divide-y divide-slate-150 text-xs text-slate-700">
                                   <thead className="bg-[#112363] font-black text-white uppercase text-[9px] md:text-[10px] tracking-wider">
                                     <tr>
-                                      <th className="px-3 md:px-5 py-2.5 md:py-3 text-left w-1/3 md:w-1/4">Socioestilo</th>
+                                      <th className="px-3 md:px-5 py-2.5 md:py-3 text-left w-1/3 md:w-1/4">Sócio Estilo</th>
                                       <th className="px-3 md:px-5 py-2.5 md:py-3 text-left">Foco de atuacao e fundamento comunicativo</th>
                                     </tr>
                                   </thead>
@@ -2579,7 +2569,7 @@ export default function DashboardScreen({
                                       <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.integrador || reportData.sobre_metodologia?.conservador_agregador}</td>
                                     </tr>
                                     <tr className="hover:bg-slate-50/50">
-                                      <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#112363] uppercase tracking-wider bg-slate-50/20 text-[10px] md:text-xs">Analitico</td>
+                                      <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#112363] uppercase tracking-wider bg-slate-50/20 text-[10px] md:text-xs">Analítico</td>
                                       <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.analitico}</td>
                                     </tr>
                                   </tbody>
@@ -2588,12 +2578,35 @@ export default function DashboardScreen({
                             </div>
                           </div>
 
+                          {isReportFieldVisible('perfil', 'potencializacao_talentos') && (() => {
+                            const potencia = reportData.potencializacao_talentos || {};
+                            const hasPotencia = Boolean(potencia.talento_identificado || potencia.valor_gerado || potencia.contextos_ideais?.length || potencia.estrategias_potencializacao?.length || potencia.ponto_equilibrio || potencia.descricao_legada || potencia.acoes_legadas?.length || potencia.texto);
+                            if (!hasPotencia) return null;
+                            const talentoIdentificado = potencia.talento_identificado || potencia.descricao_legada;
+                            const estrategias = (potencia.estrategias_potencializacao?.length ? potencia.estrategias_potencializacao : potencia.acoes_legadas) || [];
+                            return (
+                              <div className="space-y-4 mt-4">
+                                <h4 className="text-[11px] font-black text-emerald-700 uppercase tracking-wider">2.6 Como Potencializar seus Talentos</h4>
+                                <p className="text-[11px] text-slate-600 font-semibold leading-relaxed">A partir do seu perfil predominante, esta seção apresenta caminhos para ampliar aquilo que você já faz bem.</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                  {talentoIdentificado && <div className="p-4 bg-emerald-50/20 rounded-xl border border-emerald-100/60 shadow-3xs"><span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 block mb-1">Talento identificado</span><p className="text-slate-800 font-semibold leading-relaxed">{talentoIdentificado}</p></div>}
+                                  {potencia.valor_gerado && <div className="p-4 bg-slate-50 rounded-xl border border-slate-150 shadow-3xs"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block mb-1">Valor gerado</span><p className="text-slate-800 font-semibold leading-relaxed">{potencia.valor_gerado}</p></div>}
+                                </div>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                                  {potencia.contextos_ideais?.length > 0 && <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Onde esse talento gera mais valor</span><ul className="space-y-2">{potencia.contextos_ideais.map((item: string, idx: number) => (<li key={idx} className="flex items-start gap-2 text-slate-755 font-semibold"><span className="text-emerald-500 mt-0.5">+</span><span>{item}</span></li>))}</ul></div>}
+                                  {estrategias?.length > 0 && <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Estratégias de potencialização</span><ul className="space-y-2">{estrategias.map((item: string, idx: number) => (<li key={idx} className="flex items-start gap-2 text-slate-755 font-semibold"><span className="text-[#112363] mt-0.5">+</span><span>{item}</span></li>))}</ul></div>}
+                                </div>
+                                {potencia.ponto_equilibrio && <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs"><span className="text-[9px] font-black uppercase tracking-widest text-amber-700 block mb-1">Ponto de equilíbrio</span><p className="text-slate-800 font-semibold leading-relaxed">{potencia.ponto_equilibrio}</p></div>}
+                                {!talentoIdentificado && !potencia.valor_gerado && !potencia.contextos_ideais?.length && !estrategias?.length && !potencia.ponto_equilibrio && potencia.texto && <div className="p-4 bg-emerald-50/20 rounded-xl border border-emerald-100/60 shadow-3xs"><p className="text-slate-800 font-semibold leading-relaxed">{potencia.texto}</p></div>}
+                              </div>
+                            );
+                          })()}
+
                           {/* Dinâmica dos Estilos Seção */}
                           <div className={`space-y-3 mt-4 ${!isReportFieldVisible('dinamica', 'dinamica_estilos') ? 'hidden' : ''}`}>
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-100">
-                              <Zap className="w-4 h-4 text-amber-500 fill-amber-300" /> 03. Lente Situacional & Dinâmica dos Estilos
+                              <Zap className="w-4 h-4 text-amber-500 fill-amber-300" /> 2.7 Lente Situacional & Dinâmica dos Estilos
                             </h4>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full text-xs animate-fade-in">
                               <div className="bg-amber-50/20 p-3.5 rounded-xl border border-amber-200/60 shadow-3xs">
                                 <h5 className="font-black text-amber-800 uppercase tracking-wider text-[9px] mb-1 flex items-center gap-1">
                                   ☀️ Lado Luz
@@ -2760,36 +2773,19 @@ export default function DashboardScreen({
                         {renderFooter(5)}
                       </div>
 
-                                            {/* Page 6: SOBRE A METODOLOGIA */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isReportFieldVisible('metodologia', 'metodologia_potenciar') ? 'hidden' : ''}`} id="p-page-6">
-                        <div className="space-y-4 w-full font-sans">
-                          <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
-                            <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <FileText className="w-4 h-4 text-[#112363]" /> 06. Sobre a Metodologia
-                            </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">Pag. 06 do Participante</span>
-                          </div>
 
-                          <div className="p-5 bg-[#112363]/5 rounded-2xl border border-blue-100 text-sm leading-relaxed font-semibold text-slate-800">
-                            {reportData.metodologia?.metodologia_potenciar_ativada}
-                          </div>
-                        </div>
-
-                        {renderFooter(6)}
-                      </div>
-
-{/* Page 7: MEMÓRIA DO QUESTIONÁRIO & MEMÓRIA DE CÁLCULO (Seção 15 & Seção 16) */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isReportFieldVisible('memoria', 'respostas_questionario') ? 'hidden' : ''}`} id="p-page-7">
+{/* Page 6: MEMÓRIA DO QUESTIONÁRIO & MEMÓRIA DE CÁLCULO (Seção 15 & Seção 16) */}
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isReportFieldVisible('memoria', 'respostas_questionario') ? 'hidden' : ''}`} id="p-page-6">
                         <div className="space-y-4 w-full">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <FileText className="w-4 h-4 text-[#112363]" /> 07. Memória de Cálculo e Respostas do Questionário
+                              <FileText className="w-4 h-4 text-[#112363]" /> 06. Memória de Cálculo e Respostas do Questionário
                             </h3>
                             <span className="text-[10px] font-bold text-gray-400 italic">P�g. 06 do Participante</span>
                           </div>
 
                           <div className="space-y-4">
-                            <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">7.1 Rastreabilidade das Respostas Individuais</h4>
+                            <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">6.1 Rastreabilidade das Respostas Individuais</h4>
                             <div className="max-w-full overflow-hidden border border-slate-150 rounded-2xl bg-white shadow-3xs max-h-[280px] overflow-y-auto w-full">
                               {(() => {
                                 const memoriaRespostas = getMemoriaCalculoRespostas(reportData);
@@ -2829,7 +2825,7 @@ export default function DashboardScreen({
                           </div>
 
                           <div className="p-4 bg-slate-50 rounded-xl border border-slate-155 text-[11px] text-slate-600 font-semibold leading-relaxed">
-                            <strong className="text-slate-800 uppercase block mb-1">7.2 Memória Estrita de Cálculo de Pesos Lineares</strong>
+                            <strong className="text-slate-800 uppercase block mb-1">6.2 Memória Estrita de Cálculo de Pesos Lineares</strong>
                             A pontuação acumulada é obtida pela somatória linear simples do peso correlacionado correspondente a cada escolha do respondente de acordo com as diretrizes do gabarito oficial da metodologia Potenciar Socioestilos. Não há coeficientes multiplicadores, mantendo uma integridade matemática direta de 100%. Total Pontos Calculados: {rTotal} pontos.
                           </div>
                         </div>
@@ -2837,14 +2833,14 @@ export default function DashboardScreen({
                         {renderFooter(6)}
                       </div>
 
-                      {/* Page 8: AUDITORIA DO WORKFLOW n8n (Seção 17 / Admin View / Confidencial Lock) */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['auditoria', 'timeline_processamento'], ['auditoria', 'metadados_integracao'], ['auditoria', 'base_conhecimento'], ['auditoria', 'fundamentacao_teorica'], ['auditoria', 'trilha_rag']]) ? 'hidden' : ''}`} id="p-page-8">
+                      {/* Page 7: AUDITORIA DO WORKFLOW n8n (Seção 17 / Admin View / Confidencial Lock) */}
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['auditoria', 'timeline_processamento'], ['auditoria', 'metadados_integracao'], ['auditoria', 'base_conhecimento'], ['auditoria', 'fundamentacao_teorica'], ['auditoria', 'trilha_rag']]) ? 'hidden' : ''}`} id="p-page-7">
                         <div className="space-y-4 w-full">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <Bot className="w-4 h-4 text-[#112363]" /> 08. Registro de Auditoria e Conformidade Técnica
+                              <Bot className="w-4 h-4 text-[#112363]" /> 07. Registro de Auditoria e Conformidade Técnica
                             </h3>
-                            <span className="text-[10px] font-bold text-gray-400">PáP??g. 07 / Auditoria</span>
+                            <span className="text-[10px] font-bold text-gray-400">Pág. 07 / Auditoria</span>
                           </div>
 
                           {/* 4. Processing Timeline Progress Flow */}
@@ -2858,7 +2854,7 @@ export default function DashboardScreen({
 
                             return (
                               <div className={`space-y-3 ${!isReportFieldVisible('auditoria', 'timeline_processamento') ? 'hidden' : ''}`}>
-                                <h4 className="text-[10.5px] font-black text-[#112363] uppercase tracking-wider">8.1 Linha do Tempo de Processamento Autônomo</h4>
+                                <h4 className="text-[10.5px] font-black text-[#112363] uppercase tracking-wider">7.1 Linha do Tempo de Processamento Autônomo</h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 relative w-full">
                                   {/* Step 1 */}
                                   <div className="p-3 bg-white border border-slate-150 rounded-xl relative shadow-3xs flex flex-col justify-between">
@@ -2968,13 +2964,13 @@ export default function DashboardScreen({
                               return (
                                 <div className="space-y-4 font-sans w-full">
                                   
-                                  {/* Sections 8.2 + 8.3 lado a lado */}
+                                  {/* Sections 7.2 + 7.3 lado a lado */}
                                   <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-3 ${!isAnyReportFieldVisible([['auditoria', 'base_conhecimento'], ['auditoria', 'fundamentacao_teorica']]) ? 'hidden' : ''}`}>
 
-                                    {/* Section 8.2: Base de Conhecimento Consultada */}
+                                    {/* Section 7.2: Base de Conhecimento Consultada */}
                                     <div className={`space-y-2 font-sans ${!isReportFieldVisible('auditoria', 'base_conhecimento') ? 'hidden' : ''}`}>
                                       <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
-                                        <BookOpen className="w-4 h-4 text-[#112363]" /> 8.2 Base de Conhecimento Consultada
+                                        <BookOpen className="w-4 h-4 text-[#112363]" /> 7.2 Base de Conhecimento Consultada
                                       </strong>
                                       <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-2 shadow-3xs text-xs">
                                         <div className="flex items-center space-x-1.5 border-b border-slate-200 pb-1.5">
@@ -3013,10 +3009,10 @@ export default function DashboardScreen({
                                       </div>
                                     </div>
 
-                                    {/* Section 8.3: Fundamentação Teórica */}
+                                    {/* Section 7.3: Fundamentação Teórica */}
                                     <div className={`space-y-2 font-sans ${!isReportFieldVisible('auditoria', 'fundamentacao_teorica') ? 'hidden' : ''}`}>
                                       <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
-                                        <BookOpen className="w-4 h-4 text-[#112363]" /> 8.3 Fundamentação Teórica de Socioestilos Utilizada
+                                        <BookOpen className="w-4 h-4 text-[#112363]" /> 7.3 Fundamentação Teórica de Sócio Estilos Utilizada
                                       </strong>
                                       {(() => {
                                         const textVal = (reportData.referenciais_teoricos_texto || '').trim();
@@ -3074,7 +3070,7 @@ export default function DashboardScreen({
                                     return (
                                       <div className="space-y-2 font-sans border-t border-slate-100 pt-3">
                                         <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
-                                          <FileText className="w-4 h-4 text-[#112363]" /> 8.4 Trilha de Auditoria RAG
+                                          <FileText className="w-4 h-4 text-[#112363]" /> 7.4 Trilha de Auditoria RAG
                                         </strong>
                                         <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-3 shadow-3xs">
                                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] text-slate-600 font-semibold">
@@ -3120,7 +3116,7 @@ export default function DashboardScreen({
                           </div>
                         </div>
 
-                        {renderFooter(6)}
+                        {renderFooter(7)}
                       </div>
 
                   </div>
