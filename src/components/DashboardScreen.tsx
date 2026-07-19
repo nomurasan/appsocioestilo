@@ -34,6 +34,8 @@ import { listarParametrosRelatorio, listarResultados } from '../lib/supabase';
 type ChunkAuditItem = {
   ordem?: number;
   documento?: string | null;
+  ku_code?: string | null;
+  codigo?: string | null;
   chunk?: string | number | null;
   conteudo?: string | null;
 };
@@ -72,14 +74,30 @@ function getChunkContentAudit(report: any): ChunkContentAudit {
   return audit as ChunkContentAudit;
 }
 
+function extractChunkTitle(content?: string): string {
+  if (!content || typeof content !== 'string') return '';
+
+  const normalized = content.trim();
+
+  const match = normalized.match(
+    /Título:\s*(.*?)(?=\s+Tipo de entidade:|\n|$)/i
+  );
+
+  return match?.[1]?.trim() || '';
+}
+
 function chunkAuditToText(audit: ChunkContentAudit): string {
   const chunks = audit.chunks_recuperados || [];
-  return chunks.map((item, index) => {
-    const documento = item.documento || 'Documento não identificado';
-    const chunk = item.chunk ?? 'não identificado';
-    const conteudo = item.conteudo || 'Conteúdo do chunk não disponível.';
-    return `${index + 1}. ${documento} - Chunk ${chunk}\n${conteudo}`;
-  }).join('\n\n');
+  return chunks
+    .map((item, index) => {
+      const kuCode = item.documento || item.ku_code || item.codigo || '';
+      const titulo = extractChunkTitle(item.conteudo);
+      const identificacao = [kuCode, titulo].filter(Boolean).join(' — ');
+      const conteudo = item.conteudo || 'Conteúdo recuperado indisponível.';
+
+      return `${index + 1}. ${identificacao || `Conteúdo recuperado ${index + 1}`}\n${conteudo}`;
+    })
+    .join('\n\n');
 }
 
 // Helper to fully normalize and transition payloads to the unified n8n structured schema safely
@@ -2078,7 +2096,7 @@ export default function DashboardScreen({
                         ID: {(reportData.identificacao?.relatorio_uuid || "UUID-9").substring(0, 8).toUpperCase()}
                       </span>
                       <span className="text-slate-300">|</span>
-                      <span className="text-[#112363] font-black">Pag. {String(pageNumber).padStart(2, "0")} / {reportUserType === "participante" ? "06" : "08"}</span>
+                      <span className="text-[#112363] font-black">Pag. {String(pageNumber).padStart(2, "0")} / {reportUserType === "participante" ? "05" : "07"}</span>
                     </div>
                   </div>
                 );
