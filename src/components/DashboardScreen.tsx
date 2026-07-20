@@ -3087,19 +3087,38 @@ export default function DashboardScreen({
 
                                           <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
                                             {chunks.map((item, index) => {
-                                              const documento = item.documento || 'Documento não identificado';
-                                              const chunk = item.chunk ?? 'não identificado';
+                                              const kuCode =
+                                                item.documento ||
+                                                item.ku_code ||
+                                                item.codigo ||
+                                                '';
+
+                                              const titulo = extractChunkTitle(item.conteudo);
+
+                                              const labelParts = [
+                                                kuCode,
+                                                titulo
+                                              ].filter(Boolean);
+
+                                              const label =
+                                                labelParts.length > 0
+                                                  ? labelParts.join(' — ')
+                                                  : `Conteúdo recuperado ${index + 1}`;
+
                                               return (
-                                                <details key={`${documento}-${chunk}-${index}`} className="group bg-white border border-slate-150 rounded-xl overflow-hidden">
+                                                <details
+                                                  key={`${kuCode || 'audit'}-${index}`}
+                                                  className="group bg-white border border-slate-150 rounded-xl overflow-hidden"
+                                                >
                                                   <summary className="list-none cursor-pointer px-3 py-2 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
                                                     <span className="text-[10px] font-black text-[#112363] uppercase tracking-wide truncate">
-                                                      {item.ordem || index + 1}. {documento} - Chunk {chunk}
+                                                      {item.ordem || index + 1}. {label}
                                                     </span>
                                                     <span className="text-[9px] font-extrabold text-[#D80E2A] shrink-0 group-open:hidden">Ver conteúdo recuperado</span>
                                                     <span className="text-[9px] font-extrabold text-slate-500 shrink-0 hidden group-open:inline">Ocultar conteúdo</span>
                                                   </summary>
                                                   <pre className="whitespace-pre-wrap text-[10px] leading-relaxed text-slate-700 bg-white border-t border-slate-100 p-3 font-mono max-h-[220px] overflow-y-auto">
-                                                    {item.conteudo || 'Conteúdo do chunk não disponível.'}
+                                                    {item.conteudo || 'Conteúdo recuperado indisponível.'}
                                                   </pre>
                                                 </details>
                                               );
@@ -3120,7 +3139,6 @@ export default function DashboardScreen({
                       </div>
 
                   </div>
-                </div>
               );
             })()}
           </div>
