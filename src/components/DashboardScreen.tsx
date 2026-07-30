@@ -30,6 +30,7 @@ import html2canvas from 'html2canvas';
 import { Usuario, Resultado, Scores, STYLE_NAMES, ReportParameter, ReportUserType } from '../types';
 import { PROFILE_DETAILS } from '../data/profile-details';
 import { listarParametrosRelatorio, listarResultados } from '../lib/supabase';
+import { resolveV30Report, V30Content, V30PublicReport } from '../lib/report-v30';
 
 type ChunkAuditItem = {
   ordem?: number;
@@ -46,6 +47,30 @@ type ChunkContentAudit = {
   finalidade?: string;
   chunks_recuperados?: ChunkAuditItem[];
 };
+
+function V30ReportPresentation({ report }: { report: V30PublicReport }) {
+  const elements = report.elements.filter(element => element.enabled).sort((a, b) => a.order - b.order);
+  return (
+    <div className="lg:col-span-3 min-w-0 max-w-full space-y-6" id="participant-report-v30">
+      {elements.map(element => (
+        <section key={element.id} className="bg-white rounded-3xl border border-gray-150 shadow-xs p-6 md:p-10 space-y-4">
+          <div className="flex items-center justify-between gap-4 border-b border-gray-100 pb-4">
+            <h2 className="text-xl font-black text-[#112363]">{element.title}</h2>
+            {element.fallback.used && <span className="text-[10px] font-bold text-amber-700 bg-amber-50 rounded-full px-3 py-1">Conteúdo de fallback</span>}
+          </div>
+          {element.status === 'generated' && element.content ? <V30ContentView content={element.content} /> : (
+            <p className="text-sm text-slate-500">Este elemento não pôde ser gerado com evidências suficientes.</p>
+          )}
+        </section>
+      ))}
+    </div>
+  );
+}
+
+function V30ContentView({ content }: { content: V30Content }) {
+  if (content.kind === 'text') return <p className="text-sm leading-7 text-slate-700 whitespace-pre-line">{content.text}</p>;
+  return <ul className="list-disc pl-5 space-y-2 text-sm leading-7 text-slate-700">{content.items.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>;
+}
 
 function parseJsonIfNeeded(value: any) {
   if (!value || typeof value !== 'string') return value;
@@ -1474,8 +1499,9 @@ export default function DashboardScreen({
     return detailed;
   };
 
-  // Exact payload normalization requested
-  const normalizedPayload = activeResult ? normalizeN8nPayload(activeResult.raw_payload, activeResult, usuario) : null;
+  const v30Resolution = activeResult ? resolveV30Report(activeResult) : { declared: false, validation: { valid: false, errors: [] } };
+  // The legacy adapter is intentionally not invoked for records declared as V30.
+  const normalizedPayload = activeResult && !v30Resolution.declared ? normalizeN8nPayload(activeResult.raw_payload, activeResult, usuario) : null;
 
   const nomeUsuario = normalizedPayload?.metadata?.userName || '';
   const nomeEmpresa = normalizedPayload?.metadata?.companyName || '';
@@ -2037,6 +2063,22 @@ export default function DashboardScreen({
 
             {/* Document wrapper */}
             {(() => {
+              if (v30Resolution.declared) {
+                if (!v30Resolution.validation.valid || !v30Resolution.validation.report) {
+                  return (
+                    <div className="lg:col-span-3 bg-red-50 border border-red-100 rounded-2xl p-8 text-red-800" role="alert">
+                      <div className="flex items-start gap-3">
+                        <AlertCircle className="w-5 h-5 text-[#D80E2A] shrink-0 mt-0.5" />
+                        <div>
+                          <h2 className="font-bold text-sm">Não foi possível validar o relatório V30</h2>
+                          <p className="text-xs mt-2">O relatório não foi substituído pelo fluxo legado. Corrija o contrato V30 ou solicite uma nova geração.</p>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                }
+                return <V30ReportPresentation report={v30Resolution.validation.report.publicReport} />;
+              }
               const reportData = normalizedPayload?.report_data;
               if (!reportData) return null;
 
