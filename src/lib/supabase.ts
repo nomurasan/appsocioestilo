@@ -1445,6 +1445,10 @@ export async function criarResultado(
     total_pontos: rawPayload.db_record?.total_pontos ?? (scoreAssertivo + scoreParticipativo + scoreIntegrador + scoreAnalitico),
     raw_payload: rawPayload, // Stores full structured report JSON
     ai_insights: rawPayload, // Stores full structured report payload as requested to protect all report sections
+    ...(rawPayload.report_output ? { relatorio_pronto_para_app: rawPayload.report_output } : {}),
+    ...(rawPayload.resultado_id ? { id_resultado: rawPayload.resultado_id } : {}),
+    ...(rawPayload.relatorio_uuid ? { relatorio_uuid: rawPayload.relatorio_uuid } : {}),
+    ...(rawPayload.contract_version ? { contract_version: rawPayload.contract_version } : {}),
     data_conclusao: rawPayload.db_record?.data_conclusao || metadata.completedAt || cp.completedAt || null,
     generated_at: rawPayload.db_record?.generated_at || metadata.generatedAt || cp.generatedAt || null,
     answers: answers || {},

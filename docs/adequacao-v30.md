@@ -9,6 +9,14 @@
 - Um registro com `report_output` ou indicação V30 passa obrigatoriamente pelo adaptador. V30 inválido exibe erro controlado e não usa o legado como fallback silencioso.
 - Registros sem `report_output` e sem indicação V30 continuam no fluxo legado, sem migração ou regravação.
 
+## Integração funcional mínima — etapa posterior
+
+- A resposta do n8n é incorporada ao payload já usado pela aplicação, preservando `report_output`, `contract_version`, `resultado_id`, `relatorio_uuid` e `persisted` quando recebidos.
+- Quando o n8n informa `persisted=true` e fornece identificador, o frontend não executa uma segunda gravação. Quando não informa persistência, a gravação existente em `criarResultado` continua sendo usada uma única vez.
+- O `report_output` também é incluído em `relatorio_pronto_para_app` quando a coluna existir; o mecanismo de retry existente remove a coluna caso o schema instalado ainda não a possua.
+- Scores V30 válidos são lidos do adaptador e reaproveitados; não são recalculados nem substituídos por zero.
+- Uma resposta `persisted=true` sem `resultado_id` e sem `relatorio_uuid` interrompe a gravação local e mostra erro controlado, evitando duplicidade.
+
 ## O que continua legado
 
 O fluxo histórico continua usando a normalização e apresentação legadas existentes no Dashboard. Aliases e textos históricos permanecem restritos a esse fluxo e não são usados para reparar contratos V30.
@@ -18,11 +26,13 @@ O fluxo histórico continua usando a normalização e apresentação legadas exi
 - A segregação efetiva da auditoria no backend continua pendente: nesta etapa o payload completo ainda pode chegar ao navegador, embora não seja renderizado no relatório do participante.
 - Continuam fora desta etapa autorização, persistência única, gestão e versionamento de UCs, indexação vetorial, parametrização administrativa, banco/políticas Supabase e workflow n8n.
 - Não foi criada interface administrativa de habilitação; o Dashboard respeita apenas `enabled`/`habilitado` resolvido no contrato V30.
+- A segregação efetiva da auditoria no backend continua pendente; esta etapa apenas conecta o payload ao fluxo existente e não remove os dados privados já armazenados.
 
 ## Arquivos da Parte 2
 
 - Modificados: `src/lib/report-v30.ts`, `src/components/DashboardScreen.tsx`, este documento.
 - Criado: `src/lib/report-v30.test.ts`.
+- Criado: `src/lib/report-integration.ts`.
 
 ## Critério V30 versus histórico
 

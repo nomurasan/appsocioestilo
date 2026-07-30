@@ -10,6 +10,12 @@ import {
   salvarRascunhoQuestionario,
   atualizarUsuario
 } from '../lib/supabase';
+import {
+  getAnalysisPersistenceState,
+  getReportOutputFromAnalysis,
+  getV30ScoresFromAnalysis,
+  unwrapAnalysisResponse
+} from '../lib/report-integration';
 
 interface QuestionnaireScreenProps {
   usuario: Usuario;
@@ -833,6 +839,9 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
 
     const localReportPayload = buildLocalReportPayload(payload, currentAnswers, calculatedScores);
     let reportPayload = localReportPayload;
+    let remotePersistence = { persisted: false, invalidPersistedResponse: false };
+    let remoteReportOutput: Record<string, unknown> | null = null;
+    let effectiveScores = calculatedScores;
 
     try {
       const n8nScores = {
@@ -861,10 +870,39 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
       };
 
       const n8nResponse = await callN8nReportWebhook(n8nPayload);
+      remotePersistence = getAnalysisPersistenceState(n8nResponse);
+      remoteReportOutput = getReportOutputFromAnalysis(n8nResponse);
+      const v30ScoresFromN8n = getV30ScoresFromAnalysis(n8nResponse);
       reportPayload = mergeN8nReportPayload(localReportPayload, n8nResponse);
+      if (v30ScoresFromN8n) {
+        effectiveScores = v30ScoresFromN8n;
+        reportPayload.assessment = {
+          ...reportPayload.assessment,
+          scores: v30ScoresFromN8n
+        };
+        reportPayload.report_data = {
+          ...reportPayload.report_data,
+          resultado: {
+            ...reportPayload.report_data.resultado,
+            scores: v30ScoresFromN8n
+          }
+        };
+      } else if (reportPayload.assessment?.scores) {
+        effectiveScores = reportPayload.assessment.scores;
+      }
       console.log('[N8N SOCIOESTILO] Workflow acionado com sucesso.');
     } catch (n8nErr) {
       console.warn('[N8N SOCIOESTILO] Falha ao acionar workflow. Usando fallback local:', n8nErr);
+    }
+
+    if (remotePersistence.invalidPersistedResponse) {
+      setIsTyping(false);
+      setMessages(prev => [...prev, {
+        id: 'persisted-report-invalid',
+        sender: 'bot',
+        text: 'O serviço informou que o relatório foi persistido, mas não forneceu um identificador válido. Nenhuma nova gravação foi realizada.'
+      }]);
+      return;
     }
 
     const dominantStyle = reportPayload.report_data.resultado.perfil_dominante || '';
@@ -876,17 +914,19 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
     setNormalizedResponse(localNormalized);
     setReportSummary(localNormalized.summary);
 
-    try {
-      await criarResultado(
-        usuario.uid,
-        usuario.empresa_id,
-        reportPayload,
-        currentAnswers,
-        usuario.nome,
-        usuario.empresa_nome
-      );
-    } catch (dbErr) {
-      console.log('[OFFLINE RESILIENCE] Cloud write pending:', dbErr);
+    if (!remotePersistence.persisted) {
+      try {
+        await criarResultado(
+          usuario.uid,
+          usuario.empresa_id,
+          reportPayload,
+          currentAnswers,
+          usuario.nome,
+          usuario.empresa_nome
+        );
+      } catch (dbErr) {
+        console.log('[OFFLINE RESILIENCE] Cloud write pending:', dbErr);
+      }
     }
 
     try {
@@ -909,15 +949,18 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
       localStorage.removeItem(`potenciar_progress_${usuario.uid}`);
 
       const resultPayload = {
+        ...(remotePersistence.resultadoId ? { id_resultado: remotePersistence.resultadoId } : {}),
+        ...(remotePersistence.relatorioUuid ? { id: remotePersistence.relatorioUuid } : {}),
         id_usuario: usuario.uid,
         nome_usuario: usuario.nome,
         empresa_id: usuario.empresa_id,
         empresa_nome: usuario.empresa_nome,
-        scores: calculatedScores,
+        scores: effectiveScores,
         perfil_dominante: dominantStyle,
         data_conclusao: new Date().toISOString(),
         ai_insights: reportPayload,
         raw_payload: reportPayload,
+        ...(remoteReportOutput ? { relatorio_pronto_para_app: remoteReportOutput } : {}),
         answers: currentAnswers
       };
 
