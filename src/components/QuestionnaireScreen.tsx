@@ -11,6 +11,7 @@ import {
   atualizarUsuario
 } from '../lib/supabase';
 import {
+  AnalysisPersistenceState,
   getAnalysisPersistenceState,
   getReportOutputFromAnalysis,
   getV30ScoresFromAnalysis,
@@ -839,7 +840,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
 
     const localReportPayload = buildLocalReportPayload(payload, currentAnswers, calculatedScores);
     let reportPayload = localReportPayload;
-    let remotePersistence = { persisted: false, invalidPersistedResponse: false };
+    let remotePersistence: AnalysisPersistenceState = { persisted: false, invalidPersistedResponse: false };
     let remoteReportOutput: Record<string, unknown> | null = null;
     let effectiveScores = calculatedScores;
 

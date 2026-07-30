@@ -29,7 +29,7 @@ const validResponse = {
   resultado_id: 'resultado-remoto-1',
   relatorio_uuid: '123e4567-e89b-12d3-a456-426614174000',
   persisted: true,
-  report_output
+  report_output: reportOutput
 };
 
 test('preserva report_output e IDs através de envelope data', () => {
@@ -57,4 +57,3 @@ test('reaproveita scores V30 válidos sem recalcular e rejeita V30 inválido', (
   });
   assert.equal(getV30ScoresFromAnalysis({ report_output: {} }), null);
 });
-
