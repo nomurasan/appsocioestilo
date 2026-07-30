@@ -27,9 +27,10 @@ function nonEmptyString(value: unknown): string | undefined {
 
 export function getAnalysisPersistenceState(response: unknown): AnalysisPersistenceState {
   const payload = unwrapAnalysisResponse(response);
-  const persisted = payload.persisted === true;
-  const resultadoId = nonEmptyString(payload.resultado_id);
-  const relatorioUuid = nonEmptyString(payload.relatorio_uuid);
+  const nestedPersistence = asRecord(payload.persistence);
+  const persisted = payload.persisted === true || nestedPersistence.persisted === true;
+  const resultadoId = nonEmptyString(payload.resultado_id ?? nestedPersistence.resultado_id);
+  const relatorioUuid = nonEmptyString(payload.relatorio_uuid ?? nestedPersistence.relatorio_uuid);
   return {
     persisted: persisted && Boolean(resultadoId || relatorioUuid),
     invalidPersistedResponse: persisted && !resultadoId && !relatorioUuid,
