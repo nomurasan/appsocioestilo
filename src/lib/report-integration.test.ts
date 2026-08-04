@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
   getAnalysisPersistenceState,
+  getFullReportData,
   getReportOutputFromAnalysis,
   getV30ScoresFromAnalysis,
+  hasRichSocioEstiloReport,
   unwrapAnalysisResponse
 } from './report-integration';
 
@@ -67,4 +69,22 @@ test('aceita id_resultado como alias para impedir gravaÃ§Ã£o duplicada', () 
   const state = getAnalysisPersistenceState({ persisted: true, id_resultado: 'resultado-alias' });
   assert.equal(state.persisted, true);
   assert.equal(state.resultadoId, 'resultado-alias');
+});
+
+test('separa report_data completo de report_output pÃºblico', () => {
+  const reportData = {
+    resultado: {}, narrativa: {}, dinamica_dos_estilos: {}, memoria_calculo: {}, auditoria: {},
+    potencializacao_talentos: { talento_identificado: 'escuta' },
+    pdi: { objetivos_prioritarios: ['objetivo'] }
+  };
+  const response = { report_output: reportOutput, report_data: reportData };
+  assert.equal(getFullReportData(response), reportData);
+  assert.equal(hasRichSocioEstiloReport(reportData), true);
+  assert.equal(hasRichSocioEstiloReport(reportOutput), false);
+});
+
+test('resolve report_data salvo em relatorio sem confundir com a camada V30', () => {
+  const reportData = { resultado: {}, narrativa: {}, dinamica_dos_estilos: {}, memoria_calculo: {}, auditoria: {} };
+  const response = { report_output: reportOutput, relatorio: reportData };
+  assert.equal(getFullReportData(response), reportData);
 });

@@ -886,6 +886,8 @@ function mapDbResultadoToResultado(item: any): any {
   };
 
   const parsedMetadata = safeParseJSON(item.metadata) || {};
+  const parsedReportData = safeParseJSON(item.relatorio) || {};
+  const parsedReportOutput = safeParseJSON(item.relatorio_pronto_para_app) || {};
 
   const reconstructedAnswers: Record<string, string | string[]> = {};
   try {
@@ -938,7 +940,7 @@ function mapDbResultadoToResultado(item: any): any {
 
   const resultadoId = String(item.resultado_id || item.id_resultado || item.id || '');
   const relatorioUuid = item.relatorio_uuid ? String(item.relatorio_uuid) : '';
-  const contractVersion = item.contract_version || parsedMetadata.contract_version || parsedMetadata.contractVersion || '';
+  const contractVersion = item.contract_version || parsedMetadata.contract_version || parsedMetadata.contractVersion || parsedReportOutput.contract_version || parsedReportOutput.contractVersion || '';
 
   return {
     id: resultadoId,
@@ -968,9 +970,18 @@ function mapDbResultadoToResultado(item: any): any {
     pontuacoes_comportamentais: safeParseJSON(item.pontuacoes_comportamentais),
     respostas_questionario: safeParseJSON(item.respostas_questionario),
     respostas_detalhadas: safeParseJSON(item.respostas_detalhadas),
-    relatorio: safeParseJSON(item.relatorio),
+    report_data: parsedReportData,
+    report_output: parsedReportOutput,
+    relatorio: parsedReportData,
     fontes_consultadas: safeParseJSON(item.fontes_consultadas),
-    relatorio_pronto_para_app: safeParseJSON(item.relatorio_pronto_para_app),
+    relatorio_pronto_para_app: parsedReportOutput,
+    auditoria_tecnica: safeParseJSON(item.auditoria_tecnica),
+    memoria_calculo: safeParseJSON(item.memoria_calculo),
+    fundamentacao_rag: safeParseJSON(item.fundamentacao_rag),
+    chunk_content_audit: safeParseJSON(item.chunk_content_audit),
+    potencializacao_talentos: safeParseJSON(item.potencializacao_talentos),
+    pdi: safeParseJSON(item.pdi),
+    visibility_config: safeParseJSON(item.visibility_config),
     raw_payload: safeParseJSON(item.raw_payload)
   };
 }

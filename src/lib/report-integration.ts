@@ -64,3 +64,27 @@ export function getReportOutputFromAnalysis(response: unknown): Record<string, u
   }
   return isRecord(payload.relatorio_pronto_para_app) ? payload.relatorio_pronto_para_app : null;
 }
+
+export function getFullReportData(response: unknown): Record<string, unknown> | null {
+  const payload = unwrapAnalysisResponse(response);
+
+  if (isRecord(payload.report_data)) return payload.report_data;
+
+  const rawPayload = asRecord(payload.raw_payload);
+  if (isRecord(rawPayload.report_data)) return rawPayload.report_data;
+
+  if (isRecord(payload.relatorio)) return payload.relatorio;
+  if (isRecord(rawPayload.relatorio)) return rawPayload.relatorio;
+
+  return null;
+}
+
+export function hasRichSocioEstiloReport(value: unknown): boolean {
+  if (!isRecord(value)) return false;
+
+  return isRecord(value.resultado)
+    && isRecord(value.narrativa)
+    && isRecord(value.dinamica_dos_estilos)
+    && isRecord(value.memoria_calculo)
+    && isRecord(value.auditoria);
+}

@@ -31,6 +31,7 @@ import { Usuario, Resultado, Scores, STYLE_NAMES, ReportParameter, ReportUserTyp
 import { PROFILE_DETAILS } from '../data/profile-details';
 import { listarParametrosRelatorio, listarResultados } from '../lib/supabase';
 import { resolveV30Report, V30Content, V30PublicReport } from '../lib/report-v30';
+import { getFullReportData, hasRichSocioEstiloReport } from '../lib/report-integration';
 
 type ChunkAuditItem = {
   ordem?: number;
@@ -1500,8 +1501,18 @@ export default function DashboardScreen({
   };
 
   const v30Resolution = activeResult ? resolveV30Report(activeResult) : { declared: false, validation: { valid: false, errors: [] } };
+  const fullV30ReportData = v30Resolution.declared && v30Resolution.validation.valid
+    ? getFullReportData(activeResult)
+    : null;
+  const useRichV30Report = v30Resolution.declared
+    && v30Resolution.validation.valid
+    && hasRichSocioEstiloReport(fullV30ReportData);
   // The legacy adapter is intentionally not invoked for records declared as V30.
-  const normalizedPayload = activeResult && !v30Resolution.declared ? normalizeN8nPayload(activeResult.raw_payload, activeResult, usuario) : null;
+  const normalizedPayload = activeResult && !v30Resolution.declared
+    ? normalizeN8nPayload(activeResult.raw_payload, activeResult, usuario)
+    : useRichV30Report
+      ? { report_data: fullV30ReportData }
+      : null;
 
   const nomeUsuario = normalizedPayload?.metadata?.userName || '';
   const nomeEmpresa = normalizedPayload?.metadata?.companyName || '';
@@ -2077,7 +2088,9 @@ export default function DashboardScreen({
                     </div>
                   );
                 }
-                return <V30ReportPresentation report={v30Resolution.validation.report.publicReport} />;
+                if (!useRichV30Report) {
+                  return <V30ReportPresentation report={v30Resolution.validation.report.publicReport} />;
+                }
               }
               const reportData = normalizedPayload?.report_data;
               if (!reportData) return null;
