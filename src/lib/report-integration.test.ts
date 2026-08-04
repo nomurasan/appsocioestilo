@@ -57,3 +57,14 @@ test('reaproveita scores V30 válidos sem recalcular e rejeita V30 inválido', (
   });
   assert.equal(getV30ScoresFromAnalysis({ report_output: {} }), null);
 });
+
+test('bloqueia fallback legado quando V30 estÃ¡ declarado e invÃ¡lido', () => {
+  const state = getAnalysisPersistenceState({ contract_version: 'socioestilo-report/v30', persisted: false });
+  assert.equal(state.invalidV30Response, true);
+});
+
+test('aceita id_resultado como alias para impedir gravaÃ§Ã£o duplicada', () => {
+  const state = getAnalysisPersistenceState({ persisted: true, id_resultado: 'resultado-alias' });
+  assert.equal(state.persisted, true);
+  assert.equal(state.resultadoId, 'resultado-alias');
+});

@@ -96,3 +96,27 @@ test('seleciona V30 inválido sem cair no legado e mantém histórico sem sinal 
   const legacy = resolveV30Report({ relatorio: { narrativa: { resumo: 'histórico' } } });
   assert.equal(legacy.declared, false);
 });
+
+test('aceita scores superiores a 9 sem recalcular', () => {
+  const base = payload();
+  (base.report_output.resultado_calculado as Record<string, unknown>).scores = {
+    assertivo: 12, participativo: 10, integrador: 11, analitico: 13
+  };
+  const result = normalizeV30Report(base);
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.report?.reportOutput.resultado_calculado, {
+    scores: { assertivo: 12, participativo: 10, integrador: 11, analitico: 13 }
+  });
+});
+
+test('recupera V30 de relatorio_pronto_para_app e aceita id_resultado', () => {
+  const base = payload();
+  const { report_output, resultado_id, ...rest } = base;
+  const result = normalizeV30Report({
+    ...rest,
+    id_resultado: 'resultado-alias',
+    relatorio_pronto_para_app: JSON.stringify(report_output)
+  });
+  assert.equal(result.valid, true);
+  assert.equal(result.report?.resultadoId, 'resultado-alias');
+});

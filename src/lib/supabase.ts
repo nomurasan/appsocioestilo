@@ -936,9 +936,16 @@ function mapDbResultadoToResultado(item: any): any {
     effectivePerfilDominante = normalizeProfileName(maxStyle) || undefined;
   }
 
+  const resultadoId = String(item.resultado_id || item.id_resultado || item.id || '');
+  const relatorioUuid = item.relatorio_uuid ? String(item.relatorio_uuid) : '';
+  const contractVersion = item.contract_version || parsedMetadata.contract_version || parsedMetadata.contractVersion || '';
+
   return {
-    id: String(item.id_resultado || item.id || ''),
-    id_resultado: String(item.id_resultado || item.id || ''),
+    id: resultadoId,
+    id_resultado: resultadoId,
+    resultado_id: resultadoId,
+    relatorio_uuid: relatorioUuid,
+    contract_version: contractVersion,
     id_usuario: item.id_usuario || item.user_id || item.uid || '',
     nome_usuario: item.user_name || item.nome_usuario || item.usuario_nome || item.nome || parsedMetadata.userName || parsedMetadata.name || parsedMetadata.nome || 'Usuário Desconhecido',
     empresa_id: String(item.id_empresa === 0 || item.id_empresa ? item.id_empresa : mapUuidToCompanyId(item.empresa_id)),

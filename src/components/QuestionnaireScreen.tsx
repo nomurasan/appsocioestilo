@@ -840,7 +840,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
 
     const localReportPayload = buildLocalReportPayload(payload, currentAnswers, calculatedScores);
     let reportPayload = localReportPayload;
-    let remotePersistence: AnalysisPersistenceState = { persisted: false, invalidPersistedResponse: false };
+    let remotePersistence: AnalysisPersistenceState = { persisted: false, invalidPersistedResponse: false, invalidV30Response: false };
     let remoteReportOutput: Record<string, unknown> | null = null;
     let effectiveScores = calculatedScores;
 
@@ -896,7 +896,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
       console.warn('[N8N SOCIOESTILO] Falha ao acionar workflow. Usando fallback local:', n8nErr);
     }
 
-    if (remotePersistence.invalidPersistedResponse) {
+    if (remotePersistence.invalidPersistedResponse || remotePersistence.invalidV30Response) {
       setIsTyping(false);
       setMessages(prev => [...prev, {
         id: 'persisted-report-invalid',

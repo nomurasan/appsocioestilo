@@ -1,9 +1,10 @@
 import { Scores } from '../types';
-import { normalizeV30Report, v30Scores } from './report-v30';
+import { normalizeV30Report, resolveV30Report, v30Scores } from './report-v30';
 
 export interface AnalysisPersistenceState {
   persisted: boolean;
   invalidPersistedResponse: boolean;
+  invalidV30Response: boolean;
   resultadoId?: string;
   relatorioUuid?: string;
 }
@@ -29,11 +30,15 @@ export function getAnalysisPersistenceState(response: unknown): AnalysisPersiste
   const payload = unwrapAnalysisResponse(response);
   const nestedPersistence = asRecord(payload.persistence);
   const persisted = payload.persisted === true || nestedPersistence.persisted === true;
-  const resultadoId = nonEmptyString(payload.resultado_id ?? nestedPersistence.resultado_id);
+  const reportOutput = asRecord(payload.report_output);
+  const identification = asRecord(reportOutput.identificacao);
+  const resultadoId = nonEmptyString(payload.resultado_id ?? payload.id_resultado ?? nestedPersistence.resultado_id ?? identification.resultado_id);
   const relatorioUuid = nonEmptyString(payload.relatorio_uuid ?? nestedPersistence.relatorio_uuid);
+  const v30 = resolveV30Report(payload);
   return {
     persisted: persisted && Boolean(resultadoId || relatorioUuid),
     invalidPersistedResponse: persisted && !resultadoId && !relatorioUuid,
+    invalidV30Response: v30.declared && !v30.validation.valid,
     ...(resultadoId ? { resultadoId } : {}),
     ...(relatorioUuid ? { relatorioUuid } : {})
   };
@@ -48,5 +53,14 @@ export function getReportOutputFromAnalysis(response: unknown): Record<string, u
   const payload = unwrapAnalysisResponse(response);
   if (isRecord(payload.report_output)) return payload.report_output;
   const reportData = asRecord(payload.report_data);
-  return isRecord(reportData.report_output) ? reportData.report_output : null;
+  if (isRecord(reportData.report_output)) return reportData.report_output;
+  if (typeof payload.relatorio_pronto_para_app === 'string') {
+    try {
+      const parsed: unknown = JSON.parse(payload.relatorio_pronto_para_app);
+      return isRecord(parsed) ? parsed : null;
+    } catch {
+      return null;
+    }
+  }
+  return isRecord(payload.relatorio_pronto_para_app) ? payload.relatorio_pronto_para_app : null;
 }

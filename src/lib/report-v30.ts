@@ -131,7 +131,9 @@ const isCompatibleV30Version = (value: unknown): value is string =>
 
 function getReportOutput(root: ObjectRecord): ObjectRecord {
   const reportData = parseObject(root.report_data);
-  return isObject(root.report_output) ? root.report_output : asObject(reportData.report_output);
+  if (isObject(root.report_output)) return root.report_output;
+  if (isObject(reportData.report_output)) return reportData.report_output;
+  return parseObject(root.relatorio_pronto_para_app);
 }
 
 function getContractVersion(root: ObjectRecord): unknown {
@@ -190,8 +192,8 @@ function validateScores(output: ObjectRecord, errors: V30ValidationError[]): voi
   const scores = asObject(calculated.scores);
   for (const key of ['assertivo', 'participativo', 'integrador', 'analitico']) {
     const value = scores[key] ?? scores[key[0].toUpperCase() + key.slice(1)];
-    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0 || value > 9) {
-      addError(errors, `report_output.resultado_calculado.scores.${key}`, 'invalid_score', 'Score obrigatório deve ser numérico e estar entre 0 e 9.');
+    if (typeof value !== 'number' || !Number.isFinite(value) || value < 0) {
+      addError(errors, `report_output.resultado_calculado.scores.${key}`, 'invalid_score', 'Score obrigatório deve ser numérico, finito e igual ou superior a zero.');
     }
   }
 }
@@ -227,7 +229,7 @@ export function validateV30Report(response: unknown): V30ValidationResult {
   const version = getContractVersion(root);
   if (!isCompatibleV30Version(version)) addError(errors, 'contractVersion', 'unsupported_contract', 'contractVersion deve ser compatível com V30.');
 
-  const resultadoIdValue = root.resultado_id ?? asObject(root.persistence).resultado_id ?? asObject(output.identificacao).resultado_id;
+  const resultadoIdValue = root.resultado_id ?? root.id_resultado ?? asObject(root.persistence).resultado_id ?? asObject(output.identificacao).resultado_id;
   const uuidValue = root.relatorio_uuid ?? asObject(root.persistence).relatorio_uuid ?? asObject(output.identificacao).relatorio_uuid;
   if (!isNonEmptyString(resultadoIdValue)) addError(errors, 'resultado_id', 'invalid_resultado_id', 'resultado_id deve ser uma string não vazia.');
   if (!isUuid(uuidValue)) addError(errors, 'relatorio_uuid', 'invalid_relatorio_uuid', 'relatorio_uuid deve ser um UUID válido.');
