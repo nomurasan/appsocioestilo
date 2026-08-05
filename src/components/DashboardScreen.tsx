@@ -28,6 +28,7 @@ import {
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Usuario, Resultado, Scores, STYLE_NAMES, ReportParameter, ReportUserType } from '../types';
+import type { ReactNode } from 'react';
 import { PROFILE_DETAILS } from '../data/profile-details';
 import { listarParametrosRelatorio, listarResultados } from '../lib/supabase';
 import { resolveV30Report, V30Content, V30PublicReport } from '../lib/report-v30';
@@ -49,6 +50,75 @@ type ChunkContentAudit = {
   chunks_recuperados?: ChunkAuditItem[];
 };
 
+type StructuredV30Value = Record<string, unknown>;
+
+function normalizeStringList(value: unknown): string[] {
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0);
+  }
+  return typeof value === 'string' && value.trim() ? [value] : [];
+}
+
+function titleizeField(key: string): string {
+  return key.replaceAll('_', ' ').replace(/\b\w/g, char => char.toUpperCase());
+}
+
+function renderSafeValue(value: unknown, key = 'valor'): ReactNode {
+  if (value === null || value === undefined || value === '') return null;
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (typeof value === 'boolean') return value ? 'Sim' : 'Não';
+  if (Array.isArray(value)) {
+    return (
+      <ul className="list-disc pl-5 space-y-1">
+        {value.map((item, index) => <li key={`${key}-${index}`}>{renderSafeValue(item, `${key}-${index}`)}</li>)}
+      </ul>
+    );
+  }
+  if (typeof value === 'object') {
+    return (
+      <div className="space-y-2">
+        {Object.entries(value as Record<string, unknown>).map(([childKey, childValue]) => {
+          const rendered = renderSafeValue(childValue, `${key}-${childKey}`);
+          return rendered === null ? null : (
+            <div key={childKey}>
+              <span className="font-bold text-slate-600">{titleizeField(childKey)}: </span>
+              <span>{rendered}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
+  return String(value);
+}
+
+function renderProfileContent(content: StructuredV30Value): ReactNode {
+  const strengths = normalizeStringList(content.forcas_naturais);
+  return (
+    <div className="space-y-3">
+      {typeof content.estilo === 'string' && <h3 className="font-black text-[#112363]">{content.estilo}</h3>}
+      {typeof content.resumo === 'string' && <p>{content.resumo}</p>}
+      {typeof content.descricao === 'string' && <p>{content.descricao}</p>}
+      {strengths.length > 0 && (
+        <div>
+          <h4 className="font-bold text-slate-700">Forças naturais</h4>
+          <ul className="list-disc pl-5 space-y-1">{strengths.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>
+        </div>
+      )}
+      {Object.entries(content)
+        .filter(([key]) => !['estilo', 'resumo', 'descricao', 'forcas_naturais'].includes(key))
+        .map(([key, value]) => <div key={key}><span className="font-bold text-slate-600">{titleizeField(key)}: </span>{renderSafeValue(value, key)}</div>)}
+    </div>
+  );
+}
+
+function V30ContentView({ fieldId, content }: { fieldId: string; content: V30Content }) {
+  if (content.kind === 'text') return <p className="text-sm leading-7 text-slate-700 whitespace-pre-line">{content.text}</p>;
+  if (content.kind === 'list') return <ul className="list-disc pl-5 space-y-2 text-sm leading-7 text-slate-700">{content.items.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>;
+  if (fieldId === 'perfil_predominante' || fieldId === 'perfil_secundario') return <div className="text-sm leading-7 text-slate-700">{renderProfileContent(content.value)}</div>;
+  return <div className="text-sm leading-7 text-slate-700">{renderSafeValue(content.value, fieldId)}</div>;
+}
+
 function V30ReportPresentation({ report }: { report: V30PublicReport }) {
   const elements = report.elements.filter(element => element.enabled).sort((a, b) => a.order - b.order);
   return (
@@ -59,18 +129,13 @@ function V30ReportPresentation({ report }: { report: V30PublicReport }) {
             <h2 className="text-xl font-black text-[#112363]">{element.title}</h2>
             {element.fallback.used && <span className="text-[10px] font-bold text-amber-700 bg-amber-50 rounded-full px-3 py-1">Conteúdo de fallback</span>}
           </div>
-          {element.status === 'generated' && element.content ? <V30ContentView content={element.content} /> : (
+          {element.status === 'generated' && element.content ? <V30ContentView fieldId={element.id} content={element.content} /> : (
             <p className="text-sm text-slate-500">Este elemento não pôde ser gerado com evidências suficientes.</p>
           )}
         </section>
       ))}
     </div>
   );
-}
-
-function V30ContentView({ content }: { content: V30Content }) {
-  if (content.kind === 'text') return <p className="text-sm leading-7 text-slate-700 whitespace-pre-line">{content.text}</p>;
-  return <ul className="list-disc pl-5 space-y-2 text-sm leading-7 text-slate-700">{content.items.map((item, index) => <li key={`${index}-${item}`}>{item}</li>)}</ul>;
 }
 
 function parseJsonIfNeeded(value: any) {

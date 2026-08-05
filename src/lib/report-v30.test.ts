@@ -109,6 +109,15 @@ test('aceita scores superiores a 9 sem recalcular', () => {
   });
 });
 
+test('preserva conteúdo estruturado para renderização segura do V30', () => {
+  const base = payload();
+  const structured = { estilo: 'Assertivo', resumo: 'Resumo', descricao: 'Descrição', forcas_naturais: ['Foco', 'Agilidade'] };
+  (base.report_output.campos_relatorio as Record<string, Record<string, unknown>>).perfil_predominante.conteudo = structured;
+  const result = normalizeV30Report(base);
+  assert.equal(result.valid, true);
+  assert.deepEqual(result.report?.publicReport.elements[0].content, { kind: 'structured', value: structured });
+});
+
 test('recupera V30 de relatorio_pronto_para_app e aceita id_resultado', () => {
   const base = payload();
   const { report_output, resultado_id, ...rest } = base;

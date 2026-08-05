@@ -16,7 +16,8 @@ export type V30ReportStatus = 'complete' | 'partial' | 'failed' | 'invalid';
 
 export type V30Content =
   | { kind: 'text'; text: string }
-  | { kind: 'list'; items: string[] };
+  | { kind: 'list'; items: string[] }
+  | { kind: 'structured'; value: Record<string, unknown> };
 
 export interface V30Evidence {
   id?: string;
@@ -159,12 +160,13 @@ function normalizeContent(value: unknown): V30Content | null {
   if (isNonEmptyString(value)) return { kind: 'text', text: value.trim() };
   if (!isObject(value)) return null;
   const text = value.text ?? value.texto ?? value.resumo ?? value.summary;
-  if (isNonEmptyString(text)) return { kind: 'text', text: text.trim() };
+  const structuredKeys = ['estilo', 'descricao', 'forcas_naturais', 'pontos_fortes', 'pontos_de_atencao', 'itens', 'relacoes', 'acoes'];
+  if (isNonEmptyString(text) && !structuredKeys.some(key => key in value)) return { kind: 'text', text: text.trim() };
   const list = value.items ?? value.lista;
   if (Array.isArray(list) && list.every(isNonEmptyString) && list.length > 0) {
     return { kind: 'list', items: list.map(item => item.trim()) };
   }
-  return null;
+  return { kind: 'structured', value };
 }
 
 function normalizeCollection(value: unknown): ObjectRecord[] | null {
