@@ -67,6 +67,62 @@ function safeList(value: unknown): unknown[] {
   return Array.isArray(value) ? value.filter(item => item !== null && item !== undefined) : [];
 }
 
+function asObject(value: unknown): Record<string, any> {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, any>
+    : {};
+}
+
+/**
+ * The V35 workflow deliberately keeps rich V29 structures in report_data.
+ * This copy gives the presentation layer stable containers without changing
+ * the persisted report or converting structured values to strings too early.
+ */
+function normalizeRichReportData(value: unknown): Record<string, any> {
+  const source = asObject(value);
+  const resultado = asObject(source.resultado);
+  const narrativa = asObject(source.narrativa);
+  const dinamica = asObject(source.dinamica_dos_estilos);
+  const analise = asObject(source.analise_comportamental);
+  const identificacao = asObject(source.identificacao);
+  const sobreMetodologia = asObject(source.sobre_metodologia);
+  const metodologia = asObject(source.metodologia);
+  const auditoria = asObject(source.auditoria);
+  const memoriaCalculo = asObject(source.memoria_calculo);
+  const scores = asObject(resultado.scores);
+
+  const numericScores = Object.fromEntries(
+    Object.entries(scores).map(([key, score]) => [
+      key,
+      typeof score === 'number' && Number.isFinite(score) ? score : Number(score) || 0
+    ])
+  );
+
+  return {
+    ...source,
+    identificacao,
+    resultado: {
+      ...resultado,
+      scores: numericScores,
+      ranking: Array.isArray(resultado.ranking) ? resultado.ranking : []
+    },
+    narrativa,
+    dinamica_dos_estilos: dinamica,
+    analise_comportamental: {
+      ...analise,
+      pontos_fortes_talentos: safeList(analise.pontos_fortes_talentos),
+      pontos_desenvolvimento: safeList(analise.pontos_desenvolvimento)
+    },
+    sobre_metodologia: sobreMetodologia,
+    metodologia,
+    auditoria,
+    memoria_calculo: memoriaCalculo,
+    evidencias_observadas: safeList(source.evidencias_observadas),
+    recomendacoes_praticas: safeList(source.recomendacoes_praticas),
+    potencial_desenvolvimento: safeList(source.potencial_desenvolvimento)
+  };
+}
+
 class ReportErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
   state = { hasError: false };
   private readonly children: ReactNode;
@@ -1616,7 +1672,7 @@ export default function DashboardScreen({
   const normalizedPayload = activeResult && !v30Resolution.declared
     ? normalizeN8nPayload(activeResult.raw_payload, activeResult, usuario)
     : useRichV30Report
-      ? { report_data: fullV30ReportData }
+      ? { report_data: normalizeRichReportData(fullV30ReportData) }
       : null;
 
   const nomeUsuario = normalizedPayload?.metadata?.userName || '';
@@ -2200,14 +2256,14 @@ export default function DashboardScreen({
               const reportData = normalizedPayload?.report_data;
               if (!reportData) return null;
 
-              const rScores = reportData.resultado.scores || { Assertivo: 0, Participativo: 0, Integrador: 0, Analítico: 0 };
-              const rTotal = Object.values(rScores).reduce((a: number, b: number) => a + b, 0) || 1;
+              const rScores = asObject(reportData.resultado?.scores);
+              const rTotal = Object.values(rScores).reduce((a: number, b: unknown) => a + (Number(b) || 0), 0) || 1;
 
               const stylesList = [
-                { name: "Assertivo", key: "Assertivo", desc: safeText(reportData.sobre_metodologia.assertivo), color: "text-amber-850 bg-amber-50 border-amber-200", badgeColor: "bg-amber-500" },
-                { name: "Participativo", key: "Participativo", desc: safeText(reportData.sobre_metodologia.participativo), color: "text-red-800 bg-red-50 border-red-200", badgeColor: "bg-[#D80E2A]" },
-                { name: "Integrador", key: "Integrador", desc: safeText(reportData.sobre_metodologia.conservador_agregador || reportData.sobre_metodologia.integrador), color: "text-emerald-800 bg-emerald-50 border-emerald-200", badgeColor: "bg-[#10b981]" },
-                { name: "Analítico", key: "Analitico", desc: safeText(reportData.sobre_metodologia.analitico), color: "text-blue-800 bg-blue-50 border-blue-200", badgeColor: "bg-[#112363]" }
+                { name: "Assertivo", key: "Assertivo", desc: safeText(reportData.sobre_metodologia?.assertivo), color: "text-amber-850 bg-amber-50 border-amber-200", badgeColor: "bg-amber-500" },
+                { name: "Participativo", key: "Participativo", desc: safeText(reportData.sobre_metodologia?.participativo), color: "text-red-800 bg-red-50 border-red-200", badgeColor: "bg-[#D80E2A]" },
+                { name: "Integrador", key: "Integrador", desc: safeText(reportData.sobre_metodologia?.conservador_agregador || reportData.sobre_metodologia?.integrador), color: "text-emerald-800 bg-emerald-50 border-emerald-200", badgeColor: "bg-[#10b981]" },
+                { name: "Analítico", key: "Analitico", desc: safeText(reportData.sobre_metodologia?.analitico), color: "text-blue-800 bg-blue-50 border-blue-200", badgeColor: "bg-[#112363]" }
               ];
 
               const isUserAdminOrNomura = usuario.role === 'admin' || usuario.email === 'nomura.eduardo@gmail.com';
@@ -2253,7 +2309,7 @@ export default function DashboardScreen({
                       <span className="text-red-600 font-black tracking-widest font-mono">CONFIDENCIAL</span>
                       <span className="text-slate-300">|</span>
                       <span className="font-mono text-[9px] text-[#112363] font-bold bg-slate-50 px-1.5 py-0.5 rounded border border-slate-200">
-                        ID: {(reportData.identificacao?.relatorio_uuid || "UUID-9").substring(0, 8).toUpperCase()}
+                        ID: {safeText(reportData.identificacao?.relatorio_uuid || "UUID-9").substring(0, 8).toUpperCase()}
                       </span>
                       <span className="text-slate-300">|</span>
                       <span className="text-[#112363] font-black">Pag. {String(pageNumber).padStart(2, "0")} / {reportUserType === "participante" ? "05" : "07"}</span>
@@ -2359,7 +2415,7 @@ export default function DashboardScreen({
                             <div className="bg-gray-50 border border-gray-200 rounded-2xl p-4 flex items-center justify-between space-x-10">
                               <div className="space-y-1">
                                 <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Código de Autenticação</span>
-                                <p className="font-mono text-xs font-bold text-slate-700">{reportData.identificacao.relatorio_uuid.substring(0, 18).toUpperCase()}</p>
+                                <p className="font-mono text-xs font-bold text-slate-700">{safeText(reportData.identificacao?.relatorio_uuid).substring(0, 18).toUpperCase() || 'UUID-9'}</p>
                               </div>
                               <div className="w-12 h-12 bg-white border border-gray-200 rounded-lg p-1 flex flex-col justify-between shrink-0">
                                 <div className="flex justify-between w-full h-1/3">
@@ -2378,11 +2434,11 @@ export default function DashboardScreen({
                         <div className="border-t border-gray-150 pt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 relative z-10 text-xs w-full">
                           <div>
                             <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wide block">Colaborador</span>
-                            <strong className="text-[#112363] font-black text-sm mt-1 block">{reportData.identificacao.nome}</strong>
+                            <strong className="text-[#112363] font-black text-sm mt-1 block">{safeText(reportData.identificacao?.nome) || 'Participante'}</strong>
                           </div>
                           <div>
                             <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wide block">Empresa</span>
-                            <strong className="text-slate-700 font-extrabold text-sm mt-1 block">{reportData.identificacao.empresa}</strong>
+                            <strong className="text-slate-700 font-extrabold text-sm mt-1 block">{safeText(reportData.identificacao?.empresa) || 'Empresa'}</strong>
                           </div>
                           <div>
                             <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wide block">Realizado em</span>
@@ -3279,7 +3335,7 @@ export default function DashboardScreen({
                                                     <span className="text-[9px] font-extrabold text-slate-500 shrink-0 hidden group-open:inline">Ocultar conteúdo</span>
                                                   </summary>
                                                   <pre className="whitespace-pre-wrap text-[10px] leading-relaxed text-slate-700 bg-white border-t border-slate-100 p-3 font-mono max-h-[220px] overflow-y-auto">
-                                                    {item.conteudo || 'Conteúdo recuperado indisponível.'}
+                                                    {safeText(item.conteudo, ['texto', 'conteudo', 'descricao', 'resumo', 'content']) || 'Conteúdo recuperado indisponível.'}
                                                   </pre>
                                                 </details>
                                               );
