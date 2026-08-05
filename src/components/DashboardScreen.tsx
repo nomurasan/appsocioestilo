@@ -2194,7 +2194,7 @@ export default function DashboardScreen({
                   );
                 }
                 if (!useRichV30Report) {
-                  return <V30ReportPresentation report={v30Resolution.validation.report.publicReport} />;
+                  return <ReportErrorBoundary><V30ReportPresentation report={v30Resolution.validation.report.publicReport} /></ReportErrorBoundary>;
                 }
               }
               const reportData = normalizedPayload?.report_data;
