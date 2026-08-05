@@ -32,14 +32,18 @@ if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 /** Rascunhos dependem de uma sessão Supabase válida para satisfazer a RLS. */
-export async function hasSupabaseAuthSession(): Promise<boolean> {
+export async function getSupabaseAuthUserId(): Promise<string | null> {
   try {
     const { data, error } = await supabase.auth.getSession();
-    return !error && Boolean(data.session?.user?.id);
+    return !error && data.session?.user?.id ? data.session.user.id : null;
   } catch (error) {
     console.warn('[questionario_rascunhos] Sessão Supabase indisponível; usando armazenamento local:', error);
-    return false;
+    return null;
   }
+}
+
+export async function hasSupabaseAuthSession(): Promise<boolean> {
+  return Boolean(await getSupabaseAuthUserId());
 }
 
 // Deterministically map a Firebase UID (28-char alphanumeric) to a valid standard UUID
@@ -609,9 +613,10 @@ export async function listarQuestionMapping(): Promise<Question[]> {
 }
 
 export async function buscarRascunhoQuestionario(usuario: Usuario): Promise<QuestionarioRascunho | null> {
-  if (!(await hasSupabaseAuthSession())) return null;
+  const authUserId = await getSupabaseAuthUserId();
+  if (!authUserId) return null;
   const sessionToken = getDraftSessionToken();
-  const participanteId = mapFirebaseUidToUuid(usuario.uid);
+  const participanteId = authUserId;
   const { data, error } = await supabase
     .from('questionario_rascunhos')
     .select('*')
@@ -644,11 +649,12 @@ export async function buscarRascunhoQuestionario(usuario: Usuario): Promise<Ques
 }
 
 export async function salvarRascunhoQuestionario(usuario: Usuario, parcial: Partial<QuestionarioRascunho>): Promise<boolean> {
-  if (!(await hasSupabaseAuthSession())) return false;
+  const authUserId = await getSupabaseAuthUserId();
+  if (!authUserId) return false;
   const sessionToken = parcial.session_token || getDraftSessionToken();
   const now = new Date().toISOString();
   const respostas = parcial.respostas || {};
-  const participanteId = parcial.participante_id || mapFirebaseUidToUuid(usuario.uid);
+  const participanteId = authUserId;
   const empresaId = parseBigIntId(usuario.empresa_id || parcial.empresa_id) || null;
 
   const payload: any = {
@@ -703,9 +709,10 @@ export async function concluirRascunhoQuestionario(usuario: Usuario, respostas: 
 }
 
 export async function abandonarRascunhoQuestionario(usuario: Usuario): Promise<boolean> {
-  if (!(await hasSupabaseAuthSession())) return false;
+  const authUserId = await getSupabaseAuthUserId();
+  if (!authUserId) return false;
   const sessionToken = getDraftSessionToken();
-  const participanteId = mapFirebaseUidToUuid(usuario.uid);
+  const participanteId = authUserId;
   const { error } = await supabase
     .from('questionario_rascunhos')
     .update({

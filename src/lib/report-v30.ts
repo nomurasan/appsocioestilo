@@ -148,8 +148,8 @@ export function isV30ReportCandidate(response: unknown): boolean {
   const root = parseObject(response);
   const reportData = parseObject(root.report_data);
   const version = getContractVersion(root);
-  return 'report_output' in root || 'report_output' in reportData
-    || isCompatibleV30Version(version);
+  const output = getReportOutput(root);
+  return Object.keys(output).length > 0 || isCompatibleV30Version(version);
 }
 
 function addError(errors: V30ValidationError[], path: string, code: string, message: string): void {

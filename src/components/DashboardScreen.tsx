@@ -28,7 +28,7 @@ import {
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
 import { Usuario, Resultado, Scores, STYLE_NAMES, ReportParameter, ReportUserType } from '../types';
-import type { ReactNode } from 'react';
+import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { PROFILE_DETAILS } from '../data/profile-details';
 import { listarParametrosRelatorio, listarResultados } from '../lib/supabase';
 import { resolveV30Report, V30Content, V30PublicReport } from '../lib/report-v30';
@@ -51,6 +51,46 @@ type ChunkContentAudit = {
 };
 
 type StructuredV30Value = Record<string, unknown>;
+
+function safeText(value: unknown, preferredKeys: string[] = ['texto', 'text', 'titulo', 'title', 'resumo', 'descricao', 'estilo']): string {
+  if (typeof value === 'string' || typeof value === 'number') return String(value);
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return '';
+  const record = value as Record<string, unknown>;
+  for (const key of preferredKeys) {
+    const text = safeText(record[key], preferredKeys);
+    if (text) return text;
+  }
+  return '';
+}
+
+function safeList(value: unknown): unknown[] {
+  return Array.isArray(value) ? value.filter(item => item !== null && item !== undefined) : [];
+}
+
+class ReportErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  state = { hasError: false };
+  private readonly children: ReactNode;
+
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.children = props.children;
+  }
+
+  static getDerivedStateFromError(): { hasError: boolean } {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo): void {
+    console.error('[DashboardScreen] Falha controlada na apresentação do relatório:', error, info);
+  }
+
+  render(): ReactNode {
+    if (this.state.hasError) {
+      return <div className="lg:col-span-3 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-sm text-amber-900" role="alert">Uma seção deste relatório não pôde ser exibida. Os dados originais foram preservados.</div>;
+    }
+    return this.children;
+  }
+}
 
 function normalizeStringList(value: unknown): string[] {
   if (Array.isArray(value)) {
@@ -2164,10 +2204,10 @@ export default function DashboardScreen({
               const rTotal = Object.values(rScores).reduce((a: number, b: number) => a + b, 0) || 1;
 
               const stylesList = [
-                { name: "Assertivo", key: "Assertivo", desc: reportData.sobre_metodologia.assertivo, color: "text-amber-850 bg-amber-50 border-amber-200", badgeColor: "bg-amber-500" },
-                { name: "Participativo", key: "Participativo", desc: reportData.sobre_metodologia.participativo, color: "text-red-800 bg-red-50 border-red-200", badgeColor: "bg-[#D80E2A]" },
-                { name: "Integrador", key: "Integrador", desc: reportData.sobre_metodologia.conservador_agregador || reportData.sobre_metodologia.integrador, color: "text-emerald-800 bg-emerald-50 border-emerald-200", badgeColor: "bg-[#10b981]" },
-                { name: "Analítico", key: "Analitico", desc: reportData.sobre_metodologia.analitico, color: "text-blue-800 bg-blue-50 border-blue-200", badgeColor: "bg-[#112363]" }
+                { name: "Assertivo", key: "Assertivo", desc: safeText(reportData.sobre_metodologia.assertivo), color: "text-amber-850 bg-amber-50 border-amber-200", badgeColor: "bg-amber-500" },
+                { name: "Participativo", key: "Participativo", desc: safeText(reportData.sobre_metodologia.participativo), color: "text-red-800 bg-red-50 border-red-200", badgeColor: "bg-[#D80E2A]" },
+                { name: "Integrador", key: "Integrador", desc: safeText(reportData.sobre_metodologia.conservador_agregador || reportData.sobre_metodologia.integrador), color: "text-emerald-800 bg-emerald-50 border-emerald-200", badgeColor: "bg-[#10b981]" },
+                { name: "Analítico", key: "Analitico", desc: safeText(reportData.sobre_metodologia.analitico), color: "text-blue-800 bg-blue-50 border-blue-200", badgeColor: "bg-[#112363]" }
               ];
 
               const isUserAdminOrNomura = usuario.role === 'admin' || usuario.email === 'nomura.eduardo@gmail.com';
@@ -2203,9 +2243,9 @@ export default function DashboardScreen({
                     <div className="flex items-center space-x-2">
                       <span>Socioestilo Potenciar V9</span>
                       <span className="text-slate-300">|</span>
-                      <span>Workflow v{reportData.auditoria?.workflow_version || "9.0"}</span>
+                      <span>Workflow v{safeText(reportData.auditoria?.workflow_version) || "9.0"}</span>
                       <span className="text-slate-300">|</span>
-                      <span>Prompt v{reportData.auditoria?.prompt_version || "System_v9"}</span>
+                      <span>Prompt v{safeText(reportData.auditoria?.prompt_version) || "System_v9"}</span>
                     </div>
                     <div className="flex items-center space-x-3 text-right">
                       <span>Gerado em: {reportData.identificacao?.generated_at ? new Date(reportData.identificacao.generated_at).toLocaleString('pt-BR') : new Date().toLocaleString('pt-BR')}</span>
@@ -2286,6 +2326,7 @@ export default function DashboardScreen({
               };
 
               return (
+                <ReportErrorBoundary>
                 <div className="lg:col-span-3 min-w-0 max-w-full space-y-6 md:space-y-8">
                   <div className="min-w-0 max-w-full space-y-6 md:space-y-8" id="participant-report-doc">
                       
@@ -2351,7 +2392,7 @@ export default function DashboardScreen({
                           </div>
                           <div>
                             <span className="text-[10px] text-gray-400 font-extrabold uppercase tracking-wide block">Estilo Predominante</span>
-                            <strong className="text-[#D80E2A] font-black text-sm mt-1 block">{reportData.resultado.perfil_dominante}</strong>
+                            <strong className="text-[#D80E2A] font-black text-sm mt-1 block">{safeText(reportData.resultado.perfil_dominante, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}</strong>
                           </div>
                         </div>
                       </div>
@@ -2369,19 +2410,19 @@ export default function DashboardScreen({
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                               <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
                                 <span className="text-[8px] font-black text-amber-700 uppercase tracking-widest block">Estilo Principal</span>
-                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{reportData.resultado.perfil_dominante}</strong>
+                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{safeText(reportData.resultado.perfil_dominante, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}</strong>
                               </div>
                               <div className="bg-red-50 p-4 rounded-xl border border-red-200">
                                 <span className="text-[8px] font-black text-red-700 uppercase tracking-widest block">Estilo Auxiliar</span>
-                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{reportData.resultado.perfil_secundario}</strong>
+                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{safeText(reportData.resultado.perfil_secundario, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}</strong>
                               </div>
                               <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
                                 <span className="text-[8px] font-black text-emerald-700 uppercase tracking-widest block">Estilo Terciário</span>
-                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{reportData.resultado.perfil_terciario}</strong>
+                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{safeText(reportData.resultado.perfil_terciario, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}</strong>
                               </div>
                               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
                                 <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest block">Estilo Menos Utilizado</span>
-                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{reportData.resultado.perfil_menos_utilizado}</strong>
+                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{safeText(reportData.resultado.perfil_menos_utilizado, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}</strong>
                               </div>
                             </div>
                           </div>
@@ -2390,7 +2431,7 @@ export default function DashboardScreen({
                             <div className="absolute top-0 right-0 p-2 text-[8px] font-black text-[#D80E2A] tracking-widest uppercase">Parecer do Orientador</div>
                             <h4 className="text-[11px] font-black text-[#D80E2A] uppercase tracking-wider">1.2 Parecer Executivo da Banca</h4>
                             <p className="text-xs text-slate-800 leading-relaxed font-semibold whitespace-pre-line">
-                              {reportData.narrativa.parecer_executivo}
+                              {renderSafeValue(reportData.narrativa.parecer_executivo, 'parecer_executivo')}
                             </p>
                           </div>
                         </div>
@@ -2579,7 +2620,7 @@ export default function DashboardScreen({
                                               {estilo === "Conservador agregador" ? "Integrador" : estilo}
                                             </h5>
                                             <div className="flex items-baseline space-x-1 mt-0.5">
-                                              <span className="text-base font-black text-[#112363]">{pontos}</span>
+                                              <span className="text-base font-black text-[#112363]">{safeText(pontos, ['valor', 'pontos', 'pontuacao', 'score']) || '0'}</span>
                                               <span className="text-[8px] text-slate-500 font-extrabold uppercase">pts</span>
                                               <span className="text-emerald-600 font-extrabold text-[11px] ml-auto">
                                                 {typeof percentual === 'number' || !String(percentual).includes('%') ? `${percentual}%` : String(percentual)}
@@ -2654,7 +2695,7 @@ export default function DashboardScreen({
                                 </h4>
 
                                 <div className="p-4 bg-[#112363]/5 rounded-xl border border-blue-100 text-[11px] leading-relaxed font-semibold text-slate-800">
-                                  {reportData.metodologia.metodologia_potenciar_ativada}
+                                  {renderSafeValue(reportData.metodologia.metodologia_potenciar_ativada, 'metodologia_potenciar_ativada')}
                                 </div>
                               </div>
                           )}
@@ -2662,7 +2703,7 @@ export default function DashboardScreen({
                           <div className={`space-y-4 mt-4 ${!isAnyReportFieldVisible([['perfil', 'explicacao_socioestilo'], ['perfil', 'quatro_socioestilos']]) ? 'hidden' : ''}`}>
                             <div className={`p-4 bg-[#112363]/5 rounded-xl border border-blue-100 text-xs leading-relaxed font-semibold text-slate-800 ${!isReportFieldVisible('perfil', 'explicacao_socioestilo') ? 'hidden' : ''}`}>
                               <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider mb-2">2.4 O que é Sócio Estilo</h4>
-                              {reportData.narrativa.conhecimento_aplicado || reportData.metodologia.metodologia_potenciar_ativada}
+                              {renderSafeValue(reportData.narrativa.conhecimento_aplicado || reportData.metodologia.metodologia_potenciar_ativada, 'conhecimento_aplicado')}
                             </div>
 
                             <div className={`space-y-4 ${!isReportFieldVisible('perfil', 'quatro_socioestilos') ? 'hidden' : ''}`}>
@@ -2678,19 +2719,19 @@ export default function DashboardScreen({
                                   <tbody className="divide-y divide-slate-150">
                                     <tr className="hover:bg-slate-50/50">
                                       <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-amber-700 uppercase tracking-wider bg-amber-50/10 text-[10px] md:text-xs">Assertivo</td>
-                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.assertivo}</td>
+                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{renderSafeValue(reportData.sobre_metodologia?.assertivo, 'assertivo')}</td>
                                     </tr>
                                     <tr className="hover:bg-slate-50/50">
                                       <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#D80E2A] uppercase tracking-wider bg-red-50/10 text-[10px] md:text-xs">Participativo</td>
-                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.participativo}</td>
+                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{renderSafeValue(reportData.sobre_metodologia?.participativo, 'participativo')}</td>
                                     </tr>
                                     <tr className="hover:bg-slate-50/50">
                                       <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-emerald-800 uppercase tracking-wider bg-emerald-50/10 text-[10px] md:text-xs">Integrador</td>
-                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.integrador || reportData.sobre_metodologia?.conservador_agregador}</td>
+                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{renderSafeValue(reportData.sobre_metodologia?.integrador || reportData.sobre_metodologia?.conservador_agregador, 'integrador')}</td>
                                     </tr>
                                     <tr className="hover:bg-slate-50/50">
                                       <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#112363] uppercase tracking-wider bg-slate-50/20 text-[10px] md:text-xs">Analítico</td>
-                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{reportData.sobre_metodologia?.analitico}</td>
+                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{renderSafeValue(reportData.sobre_metodologia?.analitico, 'analitico')}</td>
                                     </tr>
                                   </tbody>
                                 </table>
@@ -2732,7 +2773,7 @@ export default function DashboardScreen({
                                   ☀️ Lado Luz
                                 </h5>
                                 <p className="text-slate-750 leading-relaxed font-semibold text-[11px]">
-                                  {reportData.dinamica_dos_estilos?.lado_luz}
+                                  {renderSafeValue(reportData.dinamica_dos_estilos?.lado_luz, 'lado_luz')}
                                 </p>
                               </div>
                               
@@ -2741,7 +2782,7 @@ export default function DashboardScreen({
                                   🌙 Lado Sombra
                                 </h5>
                                 <p className="text-slate-755 leading-relaxed font-semibold text-[11px]">
-                                  {reportData.dinamica_dos_estilos?.lado_sombra}
+                                  {renderSafeValue(reportData.dinamica_dos_estilos?.lado_sombra, 'lado_sombra')}
                                 </p>
                               </div>
 
@@ -2750,7 +2791,7 @@ export default function DashboardScreen({
                                   🤝 Estilo de Apoio
                                 </h5>
                                 <p className="text-slate-750 leading-relaxed font-semibold text-[11px]">
-                                  {reportData.dinamica_dos_estilos?.estilo_apoio}
+                                  {renderSafeValue(reportData.dinamica_dos_estilos?.estilo_apoio, 'estilo_apoio')}
                                 </p>
                               </div>
 
@@ -2759,7 +2800,7 @@ export default function DashboardScreen({
                                   🌱 Estilo a Desenvolver
                                 </h5>
                                 <p className="text-slate-750 leading-relaxed font-semibold text-[11px]">
-                                  {reportData.dinamica_dos_estilos?.estilo_a_desenvolver}
+                                  {renderSafeValue(reportData.dinamica_dos_estilos?.estilo_a_desenvolver, 'estilo_a_desenvolver')}
                                 </p>
                               </div>
                             </div>
@@ -2793,12 +2834,12 @@ export default function DashboardScreen({
                               <div className={`space-y-3 ${!isReportFieldVisible('diagnostico', 'pontos_fortes') ? 'hidden' : ''}`}>
                                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Talentos & Forças Naturais</span>
                                 <div className="space-y-2.5">
-                                  {reportData.analise_comportamental.pontos_fortes_talentos.map((talent: string, idx: number) => (
+                                  {safeList(reportData.analise_comportamental.pontos_fortes_talentos).map((talent, idx) => (
                                     <div key={idx} className="p-3 bg-emerald-50/20 rounded-xl border border-emerald-100/50 flex space-x-2.5 shadow-xxs">
                                       <span className="w-5 h-5 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">
                                         {idx + 1}
                                       </span>
-                                      <p className="text-slate-800 leading-relaxed font-semibold text-xs">{talent}</p>
+                                      <p className="text-slate-800 leading-relaxed font-semibold text-xs">{renderSafeValue(talent, `talento-${idx}`)}</p>
                                     </div>
                                   ))}
                                 </div>
@@ -2808,7 +2849,7 @@ export default function DashboardScreen({
                               <div className={`space-y-3 ${!isReportFieldVisible('diagnostico', 'evidencias_observadas') ? 'hidden' : ''}`}>
                                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Evidências Observadas de Atuação</span>
                                 <div className="space-y-2.5">
-                                  {reportData.evidencias_observadas.map((ev: string, idx: number) => renderEvidenceItem(ev, idx))}
+                                  {safeList(reportData.evidencias_observadas).map((ev, idx) => renderEvidenceItem(safeText(ev), idx))}
                                 </div>
                               </div>
                             </div>
@@ -2825,12 +2866,12 @@ export default function DashboardScreen({
                               <div className={`space-y-3 ${!isReportFieldVisible('diagnostico', 'pontos_desenvolvimento') ? 'hidden' : ''}`}>
                                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Riscos Comportamentais Sob Pressão</span>
                                 <div className="space-y-2.5">
-                                  {reportData.analise_comportamental.pontos_desenvolvimento.map((growth: string, idx: number) => (
+                                  {safeList(reportData.analise_comportamental.pontos_desenvolvimento).map((growth, idx) => (
                                     <div key={idx} className="p-3 bg-red-50/20 rounded-xl border border-red-100/40 flex space-x-2.5 shadow-xxs">
                                       <span className="w-5 h-5 bg-red-100 text-[#D80E2A] rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">
                                         {idx + 1}
                                       </span>
-                                      <p className="text-slate-800 leading-relaxed font-semibold text-xs">{growth}</p>
+                                      <p className="text-slate-800 leading-relaxed font-semibold text-xs">{renderSafeValue(growth, `desenvolvimento-${idx}`)}</p>
                                     </div>
                                   ))}
                                 </div>
@@ -2841,9 +2882,9 @@ export default function DashboardScreen({
                                 <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Expressão do Estilo Dominante</span>
                                 <div className="p-4 bg-slate-50 rounded-xl border border-slate-150 shadow-2xs leading-relaxed text-xs text-slate-800 font-semibold relative overflow-hidden">
                                   <div className="absolute top-0 right-0 py-0.5 px-2 bg-indigo-50 border-l border-b border-indigo-100/60 rounded-bl text-[8px] font-black text-indigo-700 tracking-wider uppercase">
-                                    Perfil {reportData.analise_comportamental.estilo_identificado}
+                                    Perfil {safeText(reportData.analise_comportamental.estilo_identificado, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}
                                   </div>
-                                  <p className="pt-2 leading-relaxed whitespace-pre-line">{reportData.analise_comportamental.descricao}</p>
+                                  <p className="pt-2 leading-relaxed whitespace-pre-line">{renderSafeValue(reportData.analise_comportamental.descricao, 'descricao')}</p>
                                 </div>
                               </div>
                             </div>
@@ -2868,7 +2909,7 @@ export default function DashboardScreen({
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">
                               <CheckCircle2 className="w-4.5 h-4.5 text-[#112363] shrink-0" /> Recomendacoes praticas de aplicacao
                             </h4>
-                            {reportData.recomendacoes_praticas.length > 0 && <div className="space-y-2.5">{reportData.recomendacoes_praticas.map((rec: string, idx: number) => (<div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start space-x-2.5 shadow-3xs"><span className="text-[#112363] font-bold shrink-0 mt-0.5">-&gt;</span><span className="text-slate-755 font-semibold text-xs leading-relaxed">{rec}</span></div>))}</div>}
+                            {safeList(reportData.recomendacoes_praticas).length > 0 && <div className="space-y-2.5">{safeList(reportData.recomendacoes_praticas).map((rec, idx) => (<div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start space-x-2.5 shadow-3xs"><span className="text-[#112363] font-bold shrink-0 mt-0.5">-&gt;</span><span className="text-slate-755 font-semibold text-xs leading-relaxed">{renderSafeValue(rec, `recomendacao-${idx}`)}</span></div>))}</div>}
                           </div>
 
                           {(() => {
@@ -2883,8 +2924,8 @@ export default function DashboardScreen({
                                 {isReportFieldVisible('pdi', 'plano_acao') && pdi.plano_acao?.length > 0 && <div className="space-y-2 max-w-full overflow-hidden"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">5.2 Plano de acao</span><div className="border border-slate-150 rounded-2xl overflow-hidden bg-white shadow-3xs"><table className="w-full text-left text-[11px]"><thead className="bg-slate-50 text-slate-600 uppercase tracking-wider text-[9px] font-black"><tr><th className="px-3 py-2">Acao</th><th className="px-3 py-2">Frequencia</th><th className="px-3 py-2">Indicador</th><th className="px-3 py-2">Prazo</th></tr></thead><tbody className="divide-y divide-slate-100">{pdi.plano_acao.map((item: any, idx: number) => (<tr key={idx}><td className="px-3 py-2 font-semibold text-slate-800">{item.acao || item.texto || '-'}</td><td className="px-3 py-2 text-slate-700 font-medium">{item.frequencia || item.periodicidade || '-'}</td><td className="px-3 py-2 text-slate-700 font-medium">{item.indicador || item.medida || '-'}</td><td className="px-3 py-2 text-slate-700 font-medium">{item.prazo_sugerido || item.prazo || '-'}</td></tr>))}</tbody></table></div></div>}
                                 {isReportFieldVisible('pdi', 'indicadores_evolucao') && pdi.indicadores_evolucao?.length > 0 && <div className="space-y-2"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">5.3 Indicadores de evolucao</span><ul className="space-y-2">{pdi.indicadores_evolucao.map((item: any, idx: number) => (<li key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-755 font-semibold text-xs leading-relaxed">{item.indicador || item.pergunta || item.texto || item.reflexao || '-'}</li>))}</ul></div>}
                                 {isReportFieldVisible('pdi', 'compromisso_desenvolvimento') && pdi.compromisso_desenvolvimento && <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-1"><span className="absolute top-0 right-0 py-1 px-2.5 bg-amber-100 text-amber-800 font-black rounded-bl-lg text-[8px] uppercase tracking-wider">Compromisso</span><h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">5.4 Compromisso de desenvolvimento</h4><p className="text-xs text-slate-850 leading-relaxed font-semibold italic">"{pdi.compromisso_desenvolvimento}"</p></div>}
-                                {!hasStructuredPdi && isReportFieldVisible('pdi', 'potencial_desenvolvimento') && reportData.potencial_desenvolvimento?.length > 0 && <div className="space-y-2"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Compatibilidade com relatorios anteriores</span><div className="space-y-2.5">{reportData.potencial_desenvolvimento.map((pot: string, idx: number) => (<div key={idx} className="p-3 bg-emerald-50/10 rounded-xl border border-emerald-100/40 flex items-start space-x-2.5 shadow-3xs"><span className="text-emerald-500 font-extrabold shrink-0 mt-0.5 font-mono">+</span><span className="text-slate-755 font-semibold text-xs leading-relaxed">{pot}</span></div>))}</div></div>}
-                                {!hasStructuredPdi && isReportFieldVisible('pdi', 'conselho_alta_performance') && reportData.narrativa.conselho_alta_performance && <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-1"><span className="absolute top-0 right-0 py-1 px-2.5 bg-amber-100 text-amber-800 font-black rounded-bl-lg text-[8px] uppercase tracking-wider">Diretiva</span><h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">Conselho de alta performance</h4><p className="text-xs text-slate-850 leading-relaxed font-semibold italic">"{reportData.narrativa.conselho_alta_performance}"</p></div>}
+                                {!hasStructuredPdi && isReportFieldVisible('pdi', 'potencial_desenvolvimento') && safeList(reportData.potencial_desenvolvimento).length > 0 && <div className="space-y-2"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Compatibilidade com relatorios anteriores</span><div className="space-y-2.5">{safeList(reportData.potencial_desenvolvimento).map((pot, idx) => (<div key={idx} className="p-3 bg-emerald-50/10 rounded-xl border border-emerald-100/40 flex items-start space-x-2.5 shadow-3xs"><span className="text-emerald-500 font-extrabold shrink-0 mt-0.5 font-mono">+</span><span className="text-slate-755 font-semibold text-xs leading-relaxed">{renderSafeValue(pot, `potencial-${idx}`)}</span></div>))}</div></div>}
+                                {!hasStructuredPdi && isReportFieldVisible('pdi', 'conselho_alta_performance') && reportData.narrativa.conselho_alta_performance && <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-1"><span className="absolute top-0 right-0 py-1 px-2.5 bg-amber-100 text-amber-800 font-black rounded-bl-lg text-[8px] uppercase tracking-wider">Diretiva</span><h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">Conselho de alta performance</h4><p className="text-xs text-slate-850 leading-relaxed font-semibold italic">"{renderSafeValue(reportData.narrativa.conselho_alta_performance, 'conselho_alta_performance')}"</p></div>}
                               </div>
                             );
                           })()}
@@ -3021,8 +3062,8 @@ export default function DashboardScreen({
                                     <div className="mt-2 text-[10px]">
                                       <strong className="text-slate-800 block text-[10px]">Cognição Comportamental</strong>
                                       <p className="text-slate-500 font-medium leading-tight text-[9px]">Narrativa executada sob conformidade.</p>
-                                      <span className="text-[8px] font-mono text-rose-600 font-black block mt-1 truncate" title={reportData.auditoria?.modelo_llm || "Gemini 1.5 Pro"}>
-                                        {reportData.auditoria?.modelo_llm || "Gemini 1.5 Pro"}
+                                      <span className="text-[8px] font-mono text-rose-600 font-black block mt-1 truncate" title={safeText(reportData.auditoria?.modelo_llm) || "Gemini 1.5 Pro"}>
+                                        {safeText(reportData.auditoria?.modelo_llm) || "Gemini 1.5 Pro"}
                                       </span>
                                     </div>
                                   </div>
@@ -3053,7 +3094,7 @@ export default function DashboardScreen({
                               <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5 shadow-3xs">
                                 <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block font-sans">Metadados Corporativos</span>
                                 <strong className="text-[#112363] block font-black text-xs leading-none font-sans">n8n Integration Channel</strong>
-                                <p className="text-[10px] text-slate-500 font-medium font-sans">Flow: v{reportData.auditoria?.workflow_version || "9.0"} | Engine: {reportData.auditoria?.prompt_version || "System_v9"}</p>
+                                <p className="text-[10px] text-slate-500 font-medium font-sans">Flow: v{safeText(reportData.auditoria?.workflow_version) || "9.0"} | Engine: {safeText(reportData.auditoria?.prompt_version) || "System_v9"}</p>
                               </div>
 
                               <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5 shadow-3xs">
@@ -3161,10 +3202,10 @@ export default function DashboardScreen({
                                                 <div key={idx} className="p-3 bg-white border border-slate-150 rounded-xl shadow-3xs space-y-1 hover:bg-slate-50/50 transition-colors">
                                                   <div className="flex items-center gap-1.5">
                                                     <span className="w-1.5 h-1.5 rounded-full bg-[#112363] shrink-0 mt-0.5" />
-                                                    <strong className="text-[#112363] font-extrabold text-[11px]">{ref.autor}</strong>
+                                                    <strong className="text-[#112363] font-extrabold text-[11px]">{safeText(ref.autor)}</strong>
                                                   </div>
                                                   {ref.contribuicao && (
-                                                    <p className="text-slate-600 font-semibold text-[10.5px] leading-relaxed pl-3">{ref.contribuicao}</p>
+                                                    <p className="text-slate-600 font-semibold text-[10.5px] leading-relaxed pl-3">{renderSafeValue(ref.contribuicao, 'contribuicao')}</p>
                                                   )}
                                                 </div>
                                               ))}
@@ -3259,6 +3300,7 @@ export default function DashboardScreen({
                       </div>
 
                   </div>
+                </ReportErrorBoundary>
               );
             })()}
           </div>

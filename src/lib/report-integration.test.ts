@@ -8,6 +8,7 @@ import {
   hasRichSocioEstiloReport,
   unwrapAnalysisResponse
 } from './report-integration';
+import { resolveV30Report } from './report-v30';
 
 const ids = ['perfil_predominante', 'perfil_secundario', 'lado_luz', 'lado_sombra', 'estilo_a_desenvolver', 'relacoes_entre_estilos', 'recomendacoes'] as const;
 const reportOutput = {
@@ -77,7 +78,7 @@ test('separa report_data completo de report_output pÃºblico', () => {
     potencializacao_talentos: { talento_identificado: 'escuta' },
     pdi: { objetivos_prioritarios: ['objetivo'] }
   };
-  const response = { report_output: reportOutput, report_data: reportData };
+  const response = { contractVersion: 'V30', report_output: reportOutput, report_data: reportData, resultado_id: 'resultado-rico', relatorio_uuid: '123e4567-e89b-12d3-a456-426614174000' };
   assert.equal(getFullReportData(response), reportData);
   assert.equal(hasRichSocioEstiloReport(reportData), true);
   assert.equal(hasRichSocioEstiloReport(reportOutput), false);
@@ -87,4 +88,23 @@ test('resolve report_data salvo em relatorio sem confundir com a camada V30', ()
   const reportData = { resultado: {}, narrativa: {}, dinamica_dos_estilos: {}, memoria_calculo: {}, auditoria: {} };
   const response = { report_output: reportOutput, relatorio: reportData };
   assert.equal(getFullReportData(response), reportData);
+});
+
+test('ativa apresentaÃ§Ã£o rica e preserva perfil estruturado, PDI, memÃ³ria e auditoria', () => {
+  const reportData = {
+    resultado: { perfil_dominante: { estilo: 'Assertivo', resumo: 'Resumo', descricao: 'DescriÃ§Ã£o', forcas_naturais: ['Foco', 'Agilidade'] } },
+    narrativa: {}, dinamica_dos_estilos: {}, memoria_calculo: { total_pontos: 10 },
+    auditoria: { workflow_version: 'n8n-v35' }, pdi: { objetivos: ['Objetivo'] },
+    potencializacao_talentos: { estrategias: ['EstratÃ©gia'] }
+  };
+  const response = { contractVersion: 'V30', report_output: reportOutput, report_data: reportData, resultado_id: 'resultado-rico', relatorio_uuid: '123e4567-e89b-12d3-a456-426614174000' };
+  const resolution = resolveV30Report(response);
+  const fullReport = getFullReportData(response);
+  assert.equal(resolution.declared, true);
+  assert.equal(resolution.validation.valid, true);
+  assert.equal(hasRichSocioEstiloReport(fullReport), true);
+  assert.equal((fullReport?.resultado as any).perfil_dominante.estilo, 'Assertivo');
+  assert.deepEqual(fullReport?.pdi, reportData.pdi);
+  assert.deepEqual(fullReport?.memoria_calculo, reportData.memoria_calculo);
+  assert.deepEqual(fullReport?.auditoria, reportData.auditoria);
 });

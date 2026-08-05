@@ -91,10 +91,16 @@ test('detecta elemento duplicado quando o contrato usa coleção de elementos', 
 
 test('seleciona V30 inválido sem cair no legado e mantém histórico sem sinal V30 fora do adaptador', () => {
   const invalidV30 = resolveV30Report({ report_output: {} });
-  assert.equal(invalidV30.declared, true);
-  assert.equal(invalidV30.validation.valid, false);
+  assert.equal(invalidV30.declared, false);
   const legacy = resolveV30Report({ relatorio: { narrativa: { resumo: 'histórico' } } });
   assert.equal(legacy.declared, false);
+});
+
+test('ignora report_output vazio na raiz e localiza V30 vÃ¡lido no raw_payload', () => {
+  const base = payload();
+  const result = resolveV30Report({ report_output: {}, raw_payload: base });
+  assert.equal(result.declared, true);
+  assert.equal(result.validation.valid, true);
 });
 
 test('aceita scores superiores a 9 sem recalcular', () => {
