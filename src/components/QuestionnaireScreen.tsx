@@ -8,7 +8,8 @@ import {
   criarResultado,
   listarQuestionMapping,
   salvarRascunhoQuestionario,
-  atualizarUsuario
+  atualizarUsuario,
+  hasSupabaseAuthSession
 } from '../lib/supabase';
 import {
   AnalysisPersistenceState,
@@ -127,7 +128,8 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
   const [draftLoading, setDraftLoading] = useState(true);
   const [remoteDraft, setRemoteDraft] = useState<any>(null);
   const [showDraftRecovery, setShowDraftRecovery] = useState(false);
-  const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [autosaveStatus, setAutosaveStatus] = useState<'idle' | 'saving' | 'saved' | 'local' | 'error'>('idle');
+  const [draftStorageNotice, setDraftStorageNotice] = useState('');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [questionMappingLoading, setQuestionMappingLoading] = useState(true);
 
@@ -188,6 +190,12 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
     currentAnswers: Record<string, string | string[]>,
     status: 'EM_ANDAMENTO' | 'CONCLUIDO' = 'EM_ANDAMENTO'
   ) => {
+    if (!(await hasSupabaseAuthSession())) {
+      setAutosaveStatus('local');
+      setDraftStorageNotice('Rascunho salvo neste dispositivo. Faça login no Supabase para sincronizar na nuvem.');
+      return;
+    }
+
     setAutosaveStatus('saving');
     const saved = status === 'CONCLUIDO'
       ? await concluirRascunhoQuestionario(usuario, currentAnswers, questions.length)
@@ -248,6 +256,11 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
 
     const loadRemoteDraft = async () => {
       setDraftLoading(true);
+      if (!(await hasSupabaseAuthSession())) {
+        setDraftStorageNotice('Rascunho salvo neste dispositivo. Faça login no Supabase para sincronizar na nuvem.');
+        setDraftLoading(false);
+        return;
+      }
       const draft = await buscarRascunhoQuestionario(usuario);
       if (cancelled) return;
 
@@ -1086,7 +1099,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
                 ? 'bg-red-50 text-[#D80E2A] border-red-100'
                 : 'bg-emerald-50 text-emerald-700 border-emerald-100'
             }`}>
-              {autosaveStatus === 'saving' ? 'Salvando...' : autosaveStatus === 'error' ? 'Erro ao salvar. Tentando novamente.' : 'Salvo automaticamente'}
+              {autosaveStatus === 'saving' ? 'Salvando...' : autosaveStatus === 'error' ? 'Erro ao salvar. Tentando novamente.' : autosaveStatus === 'local' ? 'Salvo neste dispositivo' : 'Salvo automaticamente'}
             </span>
           )}
 
@@ -1116,6 +1129,12 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
           )}
         </div>
       </div>
+
+      {draftStorageNotice && (
+        <div className="px-4 py-2 text-[11px] text-amber-800 bg-amber-50 border-b border-amber-100" role="status">
+          {draftStorageNotice}
+        </div>
+      )}
 
       {/* Message feed stream with inline selections */}
       <div ref={messageFeedRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/50" id="message-feed">

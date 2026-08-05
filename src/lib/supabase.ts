@@ -31,6 +31,17 @@ if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+/** Rascunhos dependem de uma sessão Supabase válida para satisfazer a RLS. */
+export async function hasSupabaseAuthSession(): Promise<boolean> {
+  try {
+    const { data, error } = await supabase.auth.getSession();
+    return !error && Boolean(data.session?.user?.id);
+  } catch (error) {
+    console.warn('[questionario_rascunhos] Sessão Supabase indisponível; usando armazenamento local:', error);
+    return false;
+  }
+}
+
 // Deterministically map a Firebase UID (28-char alphanumeric) to a valid standard UUID
 export function mapFirebaseUidToUuid(uid: string): string {
   if (!uid) return uid;
@@ -598,6 +609,7 @@ export async function listarQuestionMapping(): Promise<Question[]> {
 }
 
 export async function buscarRascunhoQuestionario(usuario: Usuario): Promise<QuestionarioRascunho | null> {
+  if (!(await hasSupabaseAuthSession())) return null;
   const sessionToken = getDraftSessionToken();
   const participanteId = mapFirebaseUidToUuid(usuario.uid);
   const { data, error } = await supabase
@@ -632,6 +644,7 @@ export async function buscarRascunhoQuestionario(usuario: Usuario): Promise<Ques
 }
 
 export async function salvarRascunhoQuestionario(usuario: Usuario, parcial: Partial<QuestionarioRascunho>): Promise<boolean> {
+  if (!(await hasSupabaseAuthSession())) return false;
   const sessionToken = parcial.session_token || getDraftSessionToken();
   const now = new Date().toISOString();
   const respostas = parcial.respostas || {};
@@ -690,6 +703,7 @@ export async function concluirRascunhoQuestionario(usuario: Usuario, respostas: 
 }
 
 export async function abandonarRascunhoQuestionario(usuario: Usuario): Promise<boolean> {
+  if (!(await hasSupabaseAuthSession())) return false;
   const sessionToken = getDraftSessionToken();
   const participanteId = mapFirebaseUidToUuid(usuario.uid);
   const { error } = await supabase
