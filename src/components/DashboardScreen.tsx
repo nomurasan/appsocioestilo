@@ -33,6 +33,7 @@ import { PROFILE_DETAILS } from '../data/profile-details';
 import { listarParametrosRelatorio, listarResultados } from '../lib/supabase';
 import { resolveV30Report, V30Content, V30PublicReport } from '../lib/report-v30';
 import { getFullReportData, hasRichSocioEstiloReport } from '../lib/report-integration';
+import { buildReportV36ViewModel } from '../lib/report-v36-view-model';
 
 type ChunkAuditItem = {
   ordem?: number;
@@ -1674,6 +1675,7 @@ export default function DashboardScreen({
     : useRichV30Report
       ? { report_data: normalizeRichReportData(fullV30ReportData) }
       : null;
+  const reportVm = buildReportV36ViewModel(activeResult || normalizedPayload || {});
 
   const nomeUsuario = normalizedPayload?.metadata?.userName || '';
   const nomeEmpresa = normalizedPayload?.metadata?.companyName || '';
@@ -2465,20 +2467,20 @@ export default function DashboardScreen({
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">1.1 Visão Geral do Perfil</h4>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                               <div className="bg-amber-50 p-4 rounded-xl border border-amber-200">
-                                <span className="text-[8px] font-black text-amber-700 uppercase tracking-widest block">Estilo Principal</span>
-                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{safeText(reportData.resultado.perfil_dominante, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}</strong>
+                                <span className="text-[8px] font-black text-amber-700 uppercase tracking-widest block">Dominante</span>
+                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{reportVm.fields.predominant.style || safeText(reportData.resultado.perfil_dominante, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}</strong>
                               </div>
                               <div className="bg-red-50 p-4 rounded-xl border border-red-200">
-                                <span className="text-[8px] font-black text-red-700 uppercase tracking-widest block">Estilo Auxiliar</span>
-                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{safeText(reportData.resultado.perfil_secundario, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}</strong>
+                                <span className="text-[8px] font-black text-red-700 uppercase tracking-widest block">Auxiliar</span>
+                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{reportVm.fields.secondary.style || safeText(reportData.resultado.perfil_secundario, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}</strong>
                               </div>
                               <div className="bg-emerald-50 p-4 rounded-xl border border-emerald-200">
-                                <span className="text-[8px] font-black text-emerald-700 uppercase tracking-widest block">Estilo Terciário</span>
+                                <span className="text-[8px] font-black text-emerald-700 uppercase tracking-widest block">Terciário</span>
                                 <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{safeText(reportData.resultado.perfil_terciario, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}</strong>
                               </div>
                               <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
-                                <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest block">Estilo Menos Utilizado</span>
-                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{safeText(reportData.resultado.perfil_menos_utilizado, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}</strong>
+                                <span className="text-[8px] font-black text-slate-700 uppercase tracking-widest block">Adjacente</span>
+                                <strong className="mt-1 block text-[#112363] font-black text-xs md:text-sm truncate">{reportVm.ranking.find(item => item.role === 'Adjacente')?.style || safeText(reportData.resultado.perfil_menos_utilizado, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}</strong>
                               </div>
                             </div>
                           </div>
@@ -2638,100 +2640,42 @@ export default function DashboardScreen({
                             })()}
                           </div>
 
-                           {(() => {
-                            if (!isReportFieldVisible('metricas', 'ranking_estilos')) return null;
-
-                            const hasRealRanking = reportData.resultado?.ranking && reportData.resultado.ranking.length > 0;
-                            
-                            if (hasRealRanking) {
-                              return (
-                                <div className="space-y-3 mt-4 font-sans">
-                                  <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider flex items-center gap-1">
-                                    <Star className="w-4 h-4 text-amber-500 pb-0.5" /> 2.2 Histórico de Ranking de Prevalência
-                                  </h4>
-                                  <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full">
-                                    {reportData.resultado.ranking.map((item: any, idx: number) => {
-                                      const posicao = item.posicao !== undefined ? item.posicao : (item.posição !== undefined ? item.posição : (idx + 1));
-                                      const rawEstilo = item.estilo || "Informação não disponível.";
-                                      const estilo = (typeof rawEstilo === 'object' && rawEstilo !== null)
-                                        ? (rawEstilo.estilo || rawEstilo.name || rawEstilo.title || "Informação não disponível.")
-                                        : String(rawEstilo);
-                                      const pontos = item.pontos !== undefined ? item.pontos : (item.pontuacao !== undefined ? item.pontuacao : (item.pontuação !== undefined ? item.pontuação : "0"));
-                                      const percentual = item.percentual !== undefined ? item.percentual : "0";
-                                      
-                                      const isDominant = idx === 0;
-                                      const bgClass = isDominant ? "bg-amber-50/30 border-amber-200" : "bg-slate-50/20 border-slate-150";
-                                      const accentBadge = isDominant ? "bg-amber-100 text-amber-800 border-amber-300 font-black" : "bg-slate-100 text-slate-700 border-slate-200";
-                                      
-                                      return (
-                                        <div key={idx} className={`p-4 rounded-xl border ${bgClass} flex flex-col justify-between space-y-2`} id={`ranking-card-${idx}`}>
-                                          <div className="flex justify-between items-center">
-                                            <span className={`text-[8px] uppercase tracking-widest px-2 py-0.5 rounded border ${accentBadge}`}>
-                                              {idx === 0 ? "🏆 Dominante" : (idx === 1 ? "🥈 Auxiliar" : (idx === 2 ? "🥉 Terciário" : "💤 Adjacente"))}
-                                            </span>
-                                            <strong className="text-[10px] text-slate-400 font-bold"># {posicao} de {reportData.resultado.ranking.length}</strong>
-                                          </div>
-                                          <div>
-                                            <h5 className="font-extrabold text-[10px] text-[#112363] uppercase tracking-wider">
-                                              {estilo === "Conservador agregador" ? "Integrador" : estilo}
-                                            </h5>
-                                            <div className="flex items-baseline space-x-1 mt-0.5">
-                                              <span className="text-base font-black text-[#112363]">{safeText(pontos, ['valor', 'pontos', 'pontuacao', 'score']) || '0'}</span>
-                                              <span className="text-[8px] text-slate-500 font-extrabold uppercase">pts</span>
-                                              <span className="text-emerald-600 font-extrabold text-[11px] ml-auto">
-                                                {typeof percentual === 'number' || !String(percentual).includes('%') ? `${percentual}%` : String(percentual)}
-                                              </span>
-                                            </div>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              );
-                            }
-
-                            const scoresObj = reportData.resultado?.scores || {};
-                            const assertivoVal = getScoreVal(scoresObj, 'Assertivo');
-                            const participativoVal = getScoreVal(scoresObj, 'Participativo');
-                            const conservadorVal = getScoreVal(scoresObj, 'Integrador');
-                            const analiticoVal = getScoreVal(scoresObj, 'Analítico');
-                            
-                            const totalVal = (assertivoVal + participativoVal + conservadorVal + analiticoVal) || 1;
-
-                            const rankingList = [
-                              { name: "Assertivo", val: assertivoVal, bgProgress: "bg-amber-500" },
-                              { name: "Participativo", val: participativoVal, bgProgress: "bg-[#D80E2A]" },
-                              { name: "Integrador", val: conservadorVal, bgProgress: "bg-[#10b981]" },
-                              { name: "Analítico", val: analiticoVal, bgProgress: "bg-[#112363]" },
-                            ].sort((a, b) => b.val - a.val);
-
+                          {(() => {
+                            if (!reportVm.ranking.length) return null;
                             return (
-                              <div className="space-y-3 mt-4">
+                              <div className="space-y-3 mt-4 font-sans">
                                 <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider flex items-center gap-1">
-                                  <Star className="w-4 h-4 text-amber-500 pb-0.5" /> 2.2 Histórico de Ranking de Prevalência
+                                  <Star className="w-4 h-4 text-amber-500 pb-0.5" /> 2.2 Ranking de Prevalência
                                 </h4>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 w-full">
-                                  {rankingList.map((st, idx) => {
-                                    const pct = Math.round((st.val / totalVal) * 100);
-                                    const isDominant = idx === 0;
-                                    const bgClass = isDominant ? "bg-amber-50/30 border-amber-200" : "bg-slate-50/20 border-slate-150";
-                                    const accentBadge = isDominant ? "bg-amber-100 text-amber-800 border-amber-300 font-black" : "bg-slate-100 text-slate-700 border-slate-200";
-                                    
+                                  {reportVm.ranking.map((item) => {
+                                    const accentClass = item.role === 'Dominante'
+                                      ? 'bg-amber-50/30 border-amber-200'
+                                      : item.role === 'Auxiliar'
+                                        ? 'bg-red-50/20 border-red-200'
+                                        : item.role === 'Terciário'
+                                          ? 'bg-emerald-50/20 border-emerald-200'
+                                          : 'bg-slate-50/20 border-slate-150';
+                                    const badgeClass = item.role === 'Dominante'
+                                      ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                      : item.role === 'Auxiliar'
+                                        ? 'bg-red-100 text-red-800 border-red-300'
+                                        : item.role === 'Terciário'
+                                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                          : 'bg-slate-100 text-slate-700 border-slate-200';
+
                                     return (
-                                      <div key={idx} className={`p-4 rounded-xl border ${bgClass} flex flex-col justify-between space-y-2`}>
+                                      <div key={`${item.role}-${item.style}`} className={`p-4 rounded-xl border ${accentClass} flex flex-col justify-between space-y-2`}>
                                         <div className="flex justify-between items-center">
-                                          <span className={`text-[8px] uppercase tracking-widest px-2 py-0.5 rounded border ${accentBadge}`}>
-                                            {idx === 0 ? "🏆 Dominante" : (idx === 1 ? "🥈 Auxiliar" : (idx === 2 ? "🥉 Terciário" : "💤 Adjacente"))}
-                                          </span>
-                                          <strong className="text-[10px] text-slate-400">#{idx + 1} de 4</strong>
+                                          <span className={`text-[8px] uppercase tracking-widest px-2 py-0.5 rounded border font-black ${badgeClass}`}>{item.role}</span>
+                                          <strong className="text-[10px] text-slate-400 font-bold">#{item.position} de 4</strong>
                                         </div>
                                         <div>
-                                          <h5 className="font-extrabold text-[10px] text-[#112363] uppercase tracking-wider">{st.name}</h5>
+                                          <h5 className="font-extrabold text-[10px] text-[#112363] uppercase tracking-wider">{item.style}</h5>
                                           <div className="flex items-baseline space-x-1 mt-0.5">
-                                            <span className="text-base font-black text-[#112363]">{st.val}</span>
+                                            <span className="text-base font-black text-[#112363]">{item.points}</span>
                                             <span className="text-[8px] text-slate-500 font-extrabold uppercase">pts</span>
-                                            <span className="text-emerald-600 font-extrabold text-[11px] ml-auto">{pct}%</span>
+                                            <span className="text-emerald-600 font-extrabold text-[11px] ml-auto">{item.percentage}%</span>
                                           </div>
                                         </div>
                                       </div>
@@ -2742,56 +2686,13 @@ export default function DashboardScreen({
                             );
                           })()}
 
-
-                          {isReportFieldVisible('metodologia', 'metodologia_potenciar') &&
-                            reportData.metodologia?.metodologia_potenciar_ativada && (
-                              <div className="space-y-3 mt-4">
-                                <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider">
-                                  2.3 Sobre a Metodologia
-                                </h4>
-
-                                <div className="p-4 bg-[#112363]/5 rounded-xl border border-blue-100 text-[11px] leading-relaxed font-semibold text-slate-800">
-                                  {renderSafeValue(reportData.metodologia.metodologia_potenciar_ativada, 'metodologia_potenciar_ativada')}
-                                </div>
-                              </div>
-                          )}
-
-                          <div className={`space-y-4 mt-4 ${!isAnyReportFieldVisible([['perfil', 'explicacao_socioestilo'], ['perfil', 'quatro_socioestilos']]) ? 'hidden' : ''}`}>
-                            <div className={`p-4 bg-[#112363]/5 rounded-xl border border-blue-100 text-xs leading-relaxed font-semibold text-slate-800 ${!isReportFieldVisible('perfil', 'explicacao_socioestilo') ? 'hidden' : ''}`}>
-                              <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider mb-2">2.4 O que é Sócio Estilo</h4>
-                              {renderSafeValue(reportData.narrativa.conhecimento_aplicado || reportData.metodologia.metodologia_potenciar_ativada, 'conhecimento_aplicado')}
-                            </div>
-
-                            <div className={`space-y-4 ${!isReportFieldVisible('perfil', 'quatro_socioestilos') ? 'hidden' : ''}`}>
-                              <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider">2.5 Conheça os Quatro Sócio Estilos</h4>
-                              <div className="max-w-full overflow-hidden border border-slate-150 rounded-2xl bg-white shadow-3xs">
-                                <table className="w-full table-fixed divide-y divide-slate-150 text-xs text-slate-700">
-                                  <thead className="bg-[#112363] font-black text-white uppercase text-[9px] md:text-[10px] tracking-wider">
-                                    <tr>
-                                      <th className="px-3 md:px-5 py-2.5 md:py-3 text-left w-1/3 md:w-1/4">Sócio Estilo</th>
-                                      <th className="px-3 md:px-5 py-2.5 md:py-3 text-left">Foco de atuacao e fundamento comunicativo</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-slate-150">
-                                    <tr className="hover:bg-slate-50/50">
-                                      <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-amber-700 uppercase tracking-wider bg-amber-50/10 text-[10px] md:text-xs">Assertivo</td>
-                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{renderSafeValue(reportData.sobre_metodologia?.assertivo, 'assertivo')}</td>
-                                    </tr>
-                                    <tr className="hover:bg-slate-50/50">
-                                      <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#D80E2A] uppercase tracking-wider bg-red-50/10 text-[10px] md:text-xs">Participativo</td>
-                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{renderSafeValue(reportData.sobre_metodologia?.participativo, 'participativo')}</td>
-                                    </tr>
-                                    <tr className="hover:bg-slate-50/50">
-                                      <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-emerald-800 uppercase tracking-wider bg-emerald-50/10 text-[10px] md:text-xs">Integrador</td>
-                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{renderSafeValue(reportData.sobre_metodologia?.integrador || reportData.sobre_metodologia?.conservador_agregador, 'integrador')}</td>
-                                    </tr>
-                                    <tr className="hover:bg-slate-50/50">
-                                      <td className="px-3 md:px-5 py-2 md:py-3.5 font-black text-[#112363] uppercase tracking-wider bg-slate-50/20 text-[10px] md:text-xs">Analítico</td>
-                                      <td className="px-3 md:px-4 py-2 md:py-3.5 font-medium leading-relaxed text-[10px] md:text-[11px] break-words">{renderSafeValue(reportData.sobre_metodologia?.analitico, 'analitico')}</td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                              </div>
+                          <div className={`space-y-4 mt-4 ${!isReportFieldVisible('perfil', 'quatro_socioestilos') ? 'hidden' : ''}`}>
+                            <h4 className="text-[11px] font-black text-[#112363] uppercase tracking-wider">2.5 Conheça os Quatro Sócio Estilos</h4>
+                            <div className="w-full overflow-hidden rounded-2xl border border-slate-150 bg-white shadow-3xs print:break-inside-avoid">
+                              <picture>
+                                <source media="(max-width: 767px)" srcSet="/report/papeis-socioestilo-mobile.png" />
+                                <img src="/report/papeis-socioestilo-desktop.png" alt="Os quatro papéis psicológicos do Sócio Estilo" className="w-full h-auto object-contain" />
+                              </picture>
                             </div>
                           </div>
 
@@ -2866,125 +2767,197 @@ export default function DashboardScreen({
                         {renderFooter(3)}
                       </div>
 
-                      {/* Page 4: DIAGNÓSTICO COMPORTAMENTAL: LADO LUZ & SOMBREAMENTO (Seções 4.1 & 4.2) */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['diagnostico', 'pontos_fortes'], ['diagnostico', 'evidencias_observadas'], ['diagnostico', 'pontos_desenvolvimento'], ['diagnostico', 'descricao_estilo']]) ? 'hidden' : ''}`} id="p-page-4">
+                      {/* Page 4: ANÁLISE DO PERFIL E RELAÇÕES ENTRE ESTILOS */}
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['analise', 'perfil_predominante'], ['analise', 'perfil_secundario'], ['analise', 'lado_luz'], ['analise', 'lado_sombra'], ['analise', 'estilo_a_desenvolver'], ['analise', 'relacoes_entre_estilos']]) ? 'hidden' : ''}`} id="p-page-4">
                         <div className="space-y-4 w-full font-sans">
-                          {/* Page Title */}
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <Sun className="w-4 h-4 text-amber-500 fill-amber-500" /> 04. Dinâmica Comportamental: Luz & Sombra
+                              <Sun className="w-4 h-4 text-amber-500 fill-amber-500" /> 03. Perfil Predominante, Secundário e Relações
                             </h3>
                             <span className="text-[10px] font-bold text-gray-400 italic">Pág. 04 do Participante</span>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 lg:gap-8 w-full text-xs animate-fade-in items-start">
-                            {/* Left Column: Lado Luz (4.1 Lado Luz: Forças e Evidências) */}
-                            <div className="space-y-5">
-                              <div className="border-b border-emerald-100 pb-2">
-                                <h4 className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5 text-emerald-600">
-                                  <CheckCircle2 className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 4.1 Lado Luz: Forças e Evidências
-                                </h4>
-                              </div>
-
-                              {/* Talentos */}
-                              <div className={`space-y-3 ${!isReportFieldVisible('diagnostico', 'pontos_fortes') ? 'hidden' : ''}`}>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Talentos & Forças Naturais</span>
-                                <div className="space-y-2.5">
-                                  {safeList(reportData.analise_comportamental.pontos_fortes_talentos).map((talent, idx) => (
-                                    <div key={idx} className="p-3 bg-emerald-50/20 rounded-xl border border-emerald-100/50 flex space-x-2.5 shadow-xxs">
-                                      <span className="w-5 h-5 bg-emerald-100 text-emerald-800 rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">
-                                        {idx + 1}
-                                      </span>
-                                      <p className="text-slate-800 leading-relaxed font-semibold text-xs">{renderSafeValue(talent, `talento-${idx}`)}</p>
-                                    </div>
-                                  ))}
+                          <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${!isReportFieldVisible('analise', 'perfil_predominante') ? 'hidden' : ''}`}>
+                            {[
+                              { view: reportVm.fields.predominant, subtitle: 'Perfil Predominante', tone: 'amber' },
+                              { view: reportVm.fields.secondary, subtitle: 'Perfil Secundário', tone: 'red' }
+                            ].map(({ view, subtitle, tone }) => (
+                              <section key={view.id} className={`rounded-2xl border p-4 ${tone === 'amber' ? 'bg-amber-50/30 border-amber-200' : 'bg-red-50/20 border-red-200'}`}>
+                                <div className="flex items-center justify-between gap-3 mb-2">
+                                  <h4 className="text-[11px] font-black uppercase tracking-wider text-[#112363]">{subtitle}</h4>
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase">{view.style || 'Integrador'}</span>
                                 </div>
-                              </div>
-
-                              {/* Evidências */}
-                              <div className={`space-y-3 ${!isReportFieldVisible('diagnostico', 'evidencias_observadas') ? 'hidden' : ''}`}>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Evidências Observadas de Atuação</span>
-                                <div className="space-y-2.5">
-                                  {safeList(reportData.evidencias_observadas).map((ev, idx) => renderEvidenceItem(safeText(ev), idx))}
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Right Column: Lado Sombra (4.2 Lado Sombra: Riscos e Análises) */}
-                            <div className="space-y-5">
-                              <div className="border-b border-rose-100 pb-2">
-                                <h4 className="text-xs font-black text-[#D80E2A] uppercase tracking-wider flex items-center gap-1.5 font-sans">
-                                  <AlertTriangle className="w-4.5 h-4.5 text-[#D80E2A] shrink-0" /> 4.2 Lado Sombra: Riscos e Análises
-                                </h4>
-                              </div>
-
-                              {/* Riscos */}
-                              <div className={`space-y-3 ${!isReportFieldVisible('diagnostico', 'pontos_desenvolvimento') ? 'hidden' : ''}`}>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Riscos Comportamentais Sob Pressão</span>
-                                <div className="space-y-2.5">
-                                  {safeList(reportData.analise_comportamental.pontos_desenvolvimento).map((growth, idx) => (
-                                    <div key={idx} className="p-3 bg-red-50/20 rounded-xl border border-red-100/40 flex space-x-2.5 shadow-xxs">
-                                      <span className="w-5 h-5 bg-red-100 text-[#D80E2A] rounded-full flex items-center justify-center font-extrabold text-[10px] shrink-0">
-                                        {idx + 1}
-                                      </span>
-                                      <p className="text-slate-800 leading-relaxed font-semibold text-xs">{renderSafeValue(growth, `desenvolvimento-${idx}`)}</p>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* Expressão do Estilo */}
-                              <div className={`space-y-3 ${!isReportFieldVisible('diagnostico', 'descricao_estilo') ? 'hidden' : ''}`}>
-                                <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 block font-mono">Expressão do Estilo Dominante</span>
-                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-150 shadow-2xs leading-relaxed text-xs text-slate-800 font-semibold relative overflow-hidden">
-                                  <div className="absolute top-0 right-0 py-0.5 px-2 bg-indigo-50 border-l border-b border-indigo-100/60 rounded-bl text-[8px] font-black text-indigo-700 tracking-wider uppercase">
-                                    Perfil {safeText(reportData.analise_comportamental.estilo_identificado, ['estilo', 'nome', 'resumo', 'descricao', 'texto'])}
-                                  </div>
-                                  <p className="pt-2 leading-relaxed whitespace-pre-line">{renderSafeValue(reportData.analise_comportamental.descricao, 'descricao')}</p>
-                                </div>
-                              </div>
-                            </div>
+                                <p className="text-xs leading-7 text-slate-700 whitespace-pre-line">{view.text || 'Não foram recuperadas evidências suficientes para gerar esta seção com segurança.'}</p>
+                              </section>
+                            ))}
                           </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {[
+                              { view: reportVm.fields.light, title: '05. Lado Luz', subtitle: 'Quando você atua no seu melhor', tone: 'emerald' },
+                              { view: reportVm.fields.shadow, title: '06. Lado Sombra', subtitle: 'Quando o excesso pode limitar seus resultados', tone: 'slate' },
+                              { view: reportVm.fields.development, title: '07. Estilo a Desenvolver', subtitle: 'Competência complementar para ampliar repertório', tone: 'amber' }
+                            ].map(({ view, title, subtitle, tone }) => (
+                              <section key={view.id} className={`rounded-2xl border p-4 ${tone === 'emerald' ? 'bg-emerald-50/20 border-emerald-200' : tone === 'slate' ? 'bg-slate-50 border-slate-200' : 'bg-amber-50/20 border-amber-200'}`}>
+                                <h4 className="text-[11px] font-black uppercase tracking-wider text-[#112363]">{title}</h4>
+                                <p className="text-[10px] uppercase tracking-widest text-slate-400 mt-1">{subtitle}</p>
+                                <p className="mt-3 text-xs leading-7 text-slate-700 whitespace-pre-line">{view.text || 'Não foram recuperadas evidências suficientes para gerar esta seção com segurança.'}</p>
+                              </section>
+                            ))}
+                          </div>
+
+                          <section className={`rounded-2xl border p-4 bg-white shadow-3xs ${!isReportFieldVisible('analise', 'relacoes_entre_estilos') ? 'hidden' : ''}`}>
+                            <div className="flex items-center justify-between gap-3 mb-3">
+                              <h4 className="text-[11px] font-black uppercase tracking-wider text-[#112363]">08. Relações entre Estilos</h4>
+                              <span className="text-[10px] font-bold text-slate-400 uppercase">Casos e situações integrados</span>
+                            </div>
+                            <p className="text-xs leading-7 text-slate-700 whitespace-pre-line">{reportVm.fields.relations.text || 'Não foram recuperadas evidências suficientes para gerar esta seção com segurança.'}</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-xs">
+                              {reportVm.fields.relations.combinations.length > 0 && (
+                                <div>
+                                  <h5 className="font-black text-[#112363] uppercase tracking-wider text-[10px] mb-2">Combinações analisadas</h5>
+                                  <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                                    {reportVm.fields.relations.combinations.map((item, idx) => <li key={`${item}-${idx}`}>{item}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+                              {reportVm.fields.relations.practicalSituations.length > 0 && (
+                                <div>
+                                  <h5 className="font-black text-[#112363] uppercase tracking-wider text-[10px] mb-2">Como aparece na prática</h5>
+                                  <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                                    {reportVm.fields.relations.practicalSituations.map((item, idx) => <li key={`${item}-${idx}`}>{item}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+                              {reportVm.fields.relations.cautions.length > 0 && (
+                                <div>
+                                  <h5 className="font-black text-[#112363] uppercase tracking-wider text-[10px] mb-2">Cuidados</h5>
+                                  <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                                    {reportVm.fields.relations.cautions.map((item, idx) => <li key={`${item}-${idx}`}>{item}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+                              {reportVm.fields.relations.opportunities.length > 0 && (
+                                <div>
+                                  <h5 className="font-black text-[#112363] uppercase tracking-wider text-[10px] mb-2">Oportunidades</h5>
+                                  <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                                    {reportVm.fields.relations.opportunities.map((item, idx) => <li key={`${item}-${idx}`}>{item}</li>)}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </section>
                         </div>
 
                         {renderFooter(4)}
                       </div>
 
-                      {/* Page 5: POTENCIALIZACAO, RECOMENDACOES E PDI */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['perfil', 'potencializacao_talentos'], ['recomendacoes', 'recomendacoes_praticas'], ['pdi', 'objetivos_prioritarios'], ['pdi', 'plano_acao'], ['pdi', 'indicadores_evolucao'], ['pdi', 'compromisso_desenvolvimento'], ['pdi', 'potencial_desenvolvimento'], ['pdi', 'conselho_alta_performance']]) ? 'hidden' : ''}`} id="p-page-5">
+                      {/* Page 5: RECOMENDAÇÕES E PDI */}
+                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['recomendacoes', 'potencializacao_talentos'], ['recomendacoes', 'pdi'], ['recomendacoes', 'primeiros_passos']]) ? 'hidden' : ''}`} id="p-page-5">
                         <div className="space-y-4 w-full font-sans">
                           <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
                             <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <BookOpen className="w-4 h-4 text-emerald-500" /> 05. Plano de Desenvolvimento Individual e Recomendacoes Praticas
+                              <BookOpen className="w-4 h-4 text-emerald-500" /> 09. Recomendações e Plano de Desenvolvimento Individual
                             </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">Pag. 05 do Participante</span>
+                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 05 do Participante</span>
                           </div>
 
-
-                          <div className={`space-y-4 ${!isReportFieldVisible('recomendacoes', 'recomendacoes_praticas') ? 'hidden' : ''}`}>
+                          <section className={`space-y-3 ${!isReportFieldVisible('recomendacoes', 'potencializacao_talentos') ? 'hidden' : ''}`}>
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">
-                              <CheckCircle2 className="w-4.5 h-4.5 text-[#112363] shrink-0" /> Recomendacoes praticas de aplicacao
+                              <CheckCircle2 className="w-4.5 h-4.5 text-[#112363] shrink-0" /> 9.1 Potencialização dos Talentos
                             </h4>
-                            {safeList(reportData.recomendacoes_praticas).length > 0 && <div className="space-y-2.5">{safeList(reportData.recomendacoes_praticas).map((rec, idx) => (<div key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-100 flex items-start space-x-2.5 shadow-3xs"><span className="text-[#112363] font-bold shrink-0 mt-0.5">-&gt;</span><span className="text-slate-755 font-semibold text-xs leading-relaxed">{renderSafeValue(rec, `recomendacao-${idx}`)}</span></div>))}</div>}
-                          </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                              {reportVm.fields.recommendations.talentPotentialization.baseStyle && <div className="p-4 bg-amber-50/30 rounded-xl border border-amber-200"><span className="text-[9px] font-black uppercase tracking-widest text-amber-700 block mb-1">Estilo-base</span><p className="text-slate-800 font-semibold leading-relaxed">{reportVm.fields.recommendations.talentPotentialization.baseStyle}</p></div>}
+                              {reportVm.fields.recommendations.talentPotentialization.identifiedTalent && <div className="p-4 bg-emerald-50/20 rounded-xl border border-emerald-200"><span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 block mb-1">Talento identificado</span><p className="text-slate-800 font-semibold leading-relaxed">{reportVm.fields.recommendations.talentPotentialization.identifiedTalent}</p></div>}
+                              {reportVm.fields.recommendations.talentPotentialization.generatedValue && <div className="p-4 bg-slate-50 rounded-xl border border-slate-200"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block mb-1">Valor gerado</span><p className="text-slate-800 font-semibold leading-relaxed">{reportVm.fields.recommendations.talentPotentialization.generatedValue}</p></div>}
+                              {reportVm.fields.recommendations.talentPotentialization.balancePoint && <div className="p-4 bg-amber-50/30 rounded-xl border border-amber-200"><span className="text-[9px] font-black uppercase tracking-widest text-amber-700 block mb-1">Ponto de equilíbrio</span><p className="text-slate-800 font-semibold leading-relaxed">{reportVm.fields.recommendations.talentPotentialization.balancePoint}</p></div>}
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                              {reportVm.fields.recommendations.talentPotentialization.idealContexts.length > 0 && (
+                                <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2">
+                                  <span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Contextos ideais</span>
+                                  <ul className="space-y-2">
+                                    {reportVm.fields.recommendations.talentPotentialization.idealContexts.map((item, idx) => <li key={`${item}-${idx}`} className="flex items-start gap-2 text-slate-700 font-semibold"><span className="text-emerald-500 mt-0.5">+</span><span>{item}</span></li>)}
+                                  </ul>
+                                </div>
+                              )}
+                              {reportVm.fields.recommendations.talentPotentialization.strategies.length > 0 && (
+                                <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2">
+                                  <span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Estratégias de potencialização</span>
+                                  <ul className="space-y-2">
+                                    {reportVm.fields.recommendations.talentPotentialization.strategies.map((item, idx) => <li key={`${item}-${idx}`} className="flex items-start gap-2 text-slate-700 font-semibold"><span className="text-[#112363] mt-0.5">+</span><span>{item}</span></li>)}
+                                  </ul>
+                                </div>
+                              )}
+                            </div>
+                          </section>
 
-                          {(() => {
-                            const pdi = reportData.pdi || {};
-                            const hasStructuredPdi = Boolean(pdi.objetivos_prioritarios?.length || pdi.plano_acao?.length || pdi.indicadores_evolucao?.length || pdi.compromisso_desenvolvimento);
-                            const hasLegacyPdi = Boolean(reportData.potencial_desenvolvimento?.length || reportData.narrativa.conselho_alta_performance);
-                            if (!hasStructuredPdi && !hasLegacyPdi) return null;
-                            return (
-                              <div className="space-y-4">
-                                <h4 className="text-xs font-black text-emerald-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-emerald-100"><BookOpen className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 05. Plano de Desenvolvimento Individual - PDI</h4>
-                                {isReportFieldVisible('pdi', 'objetivos_prioritarios') && pdi.objetivos_prioritarios?.length > 0 && <div className="space-y-2"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">5.1 Objetivos prioritarios</span><div className="grid grid-cols-1 md:grid-cols-2 gap-3">{pdi.objetivos_prioritarios.map((item: any, idx: number) => (<div key={idx} className="p-3 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-1.5"><strong className="text-xs text-[#112363] font-black block">{item.objetivo || item.texto || item.title || `Objetivo ${idx + 1}`}</strong>{(item.beneficio_esperado || item.beneficio || item.resultado || item.descricao) && <p className="text-[11px] text-slate-700 font-semibold leading-relaxed">{item.beneficio_esperado || item.beneficio || item.resultado || item.descricao}</p>}</div>))}</div></div>}
-                                {isReportFieldVisible('pdi', 'plano_acao') && pdi.plano_acao?.length > 0 && <div className="space-y-2 max-w-full overflow-hidden"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">5.2 Plano de acao</span><div className="border border-slate-150 rounded-2xl overflow-hidden bg-white shadow-3xs"><table className="w-full text-left text-[11px]"><thead className="bg-slate-50 text-slate-600 uppercase tracking-wider text-[9px] font-black"><tr><th className="px-3 py-2">Acao</th><th className="px-3 py-2">Frequencia</th><th className="px-3 py-2">Indicador</th><th className="px-3 py-2">Prazo</th></tr></thead><tbody className="divide-y divide-slate-100">{pdi.plano_acao.map((item: any, idx: number) => (<tr key={idx}><td className="px-3 py-2 font-semibold text-slate-800">{item.acao || item.texto || '-'}</td><td className="px-3 py-2 text-slate-700 font-medium">{item.frequencia || item.periodicidade || '-'}</td><td className="px-3 py-2 text-slate-700 font-medium">{item.indicador || item.medida || '-'}</td><td className="px-3 py-2 text-slate-700 font-medium">{item.prazo_sugerido || item.prazo || '-'}</td></tr>))}</tbody></table></div></div>}
-                                {isReportFieldVisible('pdi', 'indicadores_evolucao') && pdi.indicadores_evolucao?.length > 0 && <div className="space-y-2"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">5.3 Indicadores de evolucao</span><ul className="space-y-2">{pdi.indicadores_evolucao.map((item: any, idx: number) => (<li key={idx} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-755 font-semibold text-xs leading-relaxed">{item.indicador || item.pergunta || item.texto || item.reflexao || '-'}</li>))}</ul></div>}
-                                {isReportFieldVisible('pdi', 'compromisso_desenvolvimento') && pdi.compromisso_desenvolvimento && <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-1"><span className="absolute top-0 right-0 py-1 px-2.5 bg-amber-100 text-amber-800 font-black rounded-bl-lg text-[8px] uppercase tracking-wider">Compromisso</span><h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">5.4 Compromisso de desenvolvimento</h4><p className="text-xs text-slate-850 leading-relaxed font-semibold italic">"{pdi.compromisso_desenvolvimento}"</p></div>}
-                                {!hasStructuredPdi && isReportFieldVisible('pdi', 'potencial_desenvolvimento') && safeList(reportData.potencial_desenvolvimento).length > 0 && <div className="space-y-2"><span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">Compatibilidade com relatorios anteriores</span><div className="space-y-2.5">{safeList(reportData.potencial_desenvolvimento).map((pot, idx) => (<div key={idx} className="p-3 bg-emerald-50/10 rounded-xl border border-emerald-100/40 flex items-start space-x-2.5 shadow-3xs"><span className="text-emerald-500 font-extrabold shrink-0 mt-0.5 font-mono">+</span><span className="text-slate-755 font-semibold text-xs leading-relaxed">{renderSafeValue(pot, `potencial-${idx}`)}</span></div>))}</div></div>}
-                                {!hasStructuredPdi && isReportFieldVisible('pdi', 'conselho_alta_performance') && reportData.narrativa.conselho_alta_performance && <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-1"><span className="absolute top-0 right-0 py-1 px-2.5 bg-amber-100 text-amber-800 font-black rounded-bl-lg text-[8px] uppercase tracking-wider">Diretiva</span><h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">Conselho de alta performance</h4><p className="text-xs text-slate-850 leading-relaxed font-semibold italic">"{renderSafeValue(reportData.narrativa.conselho_alta_performance, 'conselho_alta_performance')}"</p></div>}
+                          <section className={`space-y-3 ${!isReportFieldVisible('recomendacoes', 'pdi') ? 'hidden' : ''}`}>
+                            <h4 className="text-xs font-black text-emerald-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-emerald-100"><BookOpen className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 9.2 Plano de Desenvolvimento Individual</h4>
+                            {reportVm.fields.recommendations.pdi.priorityObjectives.length > 0 && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                                {reportVm.fields.recommendations.pdi.priorityObjectives.map((item, idx) => (
+                                  <div key={`${item.objective}-${idx}`} className="p-3 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-1.5">
+                                    <strong className="text-xs text-[#112363] font-black block">{item.objective}</strong>
+                                    {item.expectedBenefit && <p className="text-[11px] text-slate-700 font-semibold leading-relaxed">{item.expectedBenefit}</p>}
+                                  </div>
+                                ))}
                               </div>
-                            );
-                          })()}
+                            )}
+
+                            {reportVm.fields.recommendations.pdi.actionPlan.length > 0 && (
+                              <div className="max-w-full overflow-hidden rounded-2xl border border-slate-150 bg-white shadow-3xs print:break-inside-avoid">
+                                <div className="overflow-x-auto">
+                                  <table className="w-full text-left text-[11px]">
+                                    <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider text-[9px] font-black">
+                                      <tr>
+                                        <th className="px-3 py-2">Ação</th>
+                                        <th className="px-3 py-2">Frequência</th>
+                                        <th className="px-3 py-2">Indicador</th>
+                                        <th className="px-3 py-2">Prazo</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-100">
+                                      {reportVm.fields.recommendations.pdi.actionPlan.map((item, idx) => (
+                                        <tr key={`${item.action}-${idx}`}>
+                                          <td className="px-3 py-2 font-semibold text-slate-800">{item.action || '-'}</td>
+                                          <td className="px-3 py-2 text-slate-700 font-medium">{item.frequency || '-'}</td>
+                                          <td className="px-3 py-2 text-slate-700 font-medium">{item.indicator || '-'}</td>
+                                          <td className="px-3 py-2 text-slate-700 font-medium">{item.suggestedDeadline || '-'}</td>
+                                        </tr>
+                                      ))}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              </div>
+                            )}
+
+                            {reportVm.fields.recommendations.pdi.evolutionIndicators.length > 0 && (
+                              <div className="space-y-2">
+                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">9.3 Indicadores de evolução</span>
+                                <ul className="space-y-2">
+                                  {reportVm.fields.recommendations.pdi.evolutionIndicators.map((item, idx) => <li key={`${item}-${idx}`} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-semibold text-xs leading-relaxed">{item}</li>)}
+                                </ul>
+                              </div>
+                            )}
+
+                            {reportVm.fields.recommendations.pdi.developmentCommitment && (
+                              <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-1">
+                                <span className="absolute top-0 right-0 py-1 px-2.5 bg-amber-100 text-amber-800 font-black rounded-bl-lg text-[8px] uppercase tracking-wider">Compromisso</span>
+                                <h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">Compromisso de desenvolvimento</h4>
+                                <p className="text-xs text-slate-850 leading-relaxed font-semibold italic">"{reportVm.fields.recommendations.pdi.developmentCommitment}"</p>
+                              </div>
+                            )}
+                          </section>
+
+                          {reportVm.fields.recommendations.firstSteps.length > 0 && (
+                            <section className={`space-y-3 ${!isReportFieldVisible('recomendacoes', 'primeiros_passos') ? 'hidden' : ''}`}>
+                              <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">Primeiros Passos</h4>
+                              <ul className="space-y-2">
+                                {reportVm.fields.recommendations.firstSteps.map((item, idx) => <li key={`${item}-${idx}`} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-semibold text-xs leading-relaxed">{item}</li>)}
+                              </ul>
+                            </section>
+                          )}
                         </div>
 
                         {renderFooter(5)}

@@ -124,6 +124,41 @@ test('preserva conteúdo estruturado para renderização segura do V30', () => {
   assert.deepEqual(result.report?.publicReport.elements[0].content, { kind: 'structured', value: structured });
 });
 
+test('preserva relações e recomendações estruturadas com subcampos ricos', () => {
+  const base = payload();
+  const fields = base.report_output.campos_relatorio as Record<string, Record<string, unknown>>;
+  fields.relacoes_entre_estilos.conteudo = {
+    texto: 'Relação principal',
+    combinacoes_analisadas: ['A + B'],
+    situacoes_praticas: ['Em reuniões'],
+    cuidados: ['Evitar excesso'],
+    oportunidades: ['Aproveitar sinergia']
+  };
+  fields.recomendacoes.conteudo = {
+    texto: 'Recomendações base',
+    lista: ['Foco', 'Disciplina'],
+    potencializacao_talentos: {
+      estilo_base: 'Assertivo',
+      talento_identificado: 'Decisão',
+      valor_gerado: 'Agilidade',
+      contextos_ideais: ['Ambientes dinâmicos'],
+      estrategias_potencializacao: ['Delegar com clareza'],
+      ponto_equilibrio: 'Evitar impulsividade'
+    },
+    plano_desenvolvimento_individual: {
+      objetivos_prioritarios: [{ objetivo: 'Fortalecer escuta', beneficio_esperado: 'Melhor colaboração' }],
+      plano_acao: [{ acao: 'Feedback semanal', frequencia: 'Semanal', indicador: 'Aderência', prazo_sugerido: '30 dias' }],
+      indicadores_evolucao: ['Menos retrabalho'],
+      compromisso_desenvolvimento: 'Eu me comprometo.'
+    },
+    primeiros_passos: ['Organizar agenda']
+  };
+  const result = normalizeV30Report(base);
+  assert.equal(result.valid, true);
+  assert.equal(result.report?.publicReport.elements.find(element => element.id === 'relacoes_entre_estilos')?.content?.kind, 'structured');
+  assert.equal(result.report?.publicReport.elements.find(element => element.id === 'recomendacoes')?.content?.kind, 'structured');
+});
+
 test('recupera V30 de relatorio_pronto_para_app e aceita id_resultado', () => {
   const base = payload();
   const { report_output, resultado_id, ...rest } = base;

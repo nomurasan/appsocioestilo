@@ -1,7 +1,7 @@
 /**
  * Normalizar resposta do webhook n8n para estrutura canônica
- * Fonte principal: response.report_data
- * Fallbacks: response.metadata, response.assessment, response.persistence
+ * Fonte principal para o contrato público: response.report_output
+ * Fallbacks legados: response.report_data, response.metadata, response.assessment, response.persistence
  * 
  * Estrutura esperada de memoria_respostas:
  * [{
@@ -16,6 +16,7 @@ export function normalizeReportResponse(response: any): {
   success: boolean;
   reportGenerated: boolean;
   persisted: boolean;
+  reportOutput?: any;
   reportData: any;
   summary: string;
   metadata: any;
@@ -27,7 +28,8 @@ export function normalizeReportResponse(response: any): {
   const reportGenerated = response?.report_generated === true;
   const persisted = response?.persisted === true;
 
-  // Extrair report_data como fonte principal
+  // Extrair contrato público primeiro, mantendo report_data como fallback rico
+  const reportOutput = response?.report_output || response?.report_data?.report_output || {};
   const reportData = response?.report_data || {};
 
   // Extrair identificação
@@ -56,6 +58,9 @@ export function normalizeReportResponse(response: any): {
   // Extrair narrativa/resumo para summary
   const narrativa = reportData.narrativa || {};
   const summary =
+    reportOutput?.campos_relatorio?.recomendacoes?.conteudo?.texto ||
+    reportOutput?.campos_relatorio?.perfil_predominante?.conteudo?.resumo ||
+    reportOutput?.campos_relatorio?.perfil_predominante?.conteudo?.texto ||
     narrativa.parecer_executivo ||
     narrativa.resumo ||
     narrativa.insights ||
@@ -72,6 +77,7 @@ export function normalizeReportResponse(response: any): {
     success,
     reportGenerated,
     persisted,
+    reportOutput,
     reportData,
     summary,
     metadata,
@@ -84,10 +90,14 @@ export function normalizeReportResponse(response: any): {
  * Extrair apenas o resumo da resposta do webhook
  */
 export function extractReportSummary(response: any): string {
+  const reportOutput = response?.report_output || response?.report_data?.report_output || {};
   const reportData = response?.report_data || {};
   const narrativa = reportData.narrativa || {};
 
   return (
+    reportOutput?.campos_relatorio?.recomendacoes?.conteudo?.texto ||
+    reportOutput?.campos_relatorio?.perfil_predominante?.conteudo?.resumo ||
+    reportOutput?.campos_relatorio?.perfil_predominante?.conteudo?.texto ||
     narrativa.parecer_executivo ||
     narrativa.resumo ||
     narrativa.insights ||
