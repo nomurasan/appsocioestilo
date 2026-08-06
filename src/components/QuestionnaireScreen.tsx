@@ -190,12 +190,6 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
     currentAnswers: Record<string, string | string[]>,
     status: 'EM_ANDAMENTO' | 'CONCLUIDO' = 'EM_ANDAMENTO'
   ) => {
-    if (!(await hasSupabaseAuthSession())) {
-      setAutosaveStatus('local');
-      setDraftStorageNotice('Rascunho salvo neste dispositivo. Faça login no Supabase para sincronizar na nuvem.');
-      return;
-    }
-
     setAutosaveStatus('saving');
     const saved = status === 'CONCLUIDO'
       ? await concluirRascunhoQuestionario(usuario, currentAnswers, questions.length)
@@ -207,7 +201,19 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
           status
         });
 
-    setAutosaveStatus(saved ? 'saved' : 'error');
+    if (saved) {
+      setAutosaveStatus('saved');
+      setDraftStorageNotice('');
+      return;
+    }
+
+    const hasSession = await hasSupabaseAuthSession();
+    setAutosaveStatus(hasSession ? 'error' : 'local');
+    setDraftStorageNotice(
+      hasSession
+        ? 'Rascunho salvo localmente. Nao foi possivel sincronizar na nuvem neste momento.'
+        : 'Rascunho salvo neste dispositivo. Nao foi possivel autenticar a sincronizacao em nuvem.'
+    );
   };
 
   useEffect(() => {
@@ -257,10 +263,12 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
     const loadRemoteDraft = async () => {
       setDraftLoading(true);
       if (!(await hasSupabaseAuthSession())) {
-        setDraftStorageNotice('Rascunho salvo neste dispositivo. Faça login no Supabase para sincronizar na nuvem.');
+        setDraftStorageNotice('Rascunho salvo neste dispositivo. Nao foi possivel autenticar a sincronizacao em nuvem.');
         setDraftLoading(false);
         return;
       }
+
+      setDraftStorageNotice('');
       const draft = await buscarRascunhoQuestionario(usuario);
       if (cancelled) return;
 

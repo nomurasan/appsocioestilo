@@ -1,6 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 import { Usuario, Resultado, Empresa, Scores, AnswerDetail, ReportParameter, ReportUserType, QuestionarioRascunho, Question } from '../types';
 import { getDefaultReportParameters } from './report-parameters';
+import { auth as firebaseAuth } from './firebase';
 
 const env = (import.meta as any).env || {};
 
@@ -35,7 +36,23 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 export async function getSupabaseAuthUserId(): Promise<string | null> {
   try {
     const { data, error } = await supabase.auth.getSession();
-    return !error && data.session?.user?.id ? data.session.user.id : null;
+    if (!error && data.session?.user?.id) {
+      return data.session.user.id;
+    }
+
+    // If user is authenticated in Firebase (Google flow), bootstrap an anonymous
+    // Supabase session so frontend RLS-dependent draft sync can proceed.
+    if (!firebaseAuth.currentUser) {
+      return null;
+    }
+
+    const { data: anonymousData, error: anonymousError } = await supabase.auth.signInAnonymously();
+    if (anonymousError) {
+      console.warn('[questionario_rascunhos] Nao foi possivel iniciar sessao anonima no Supabase:', anonymousError.message);
+      return null;
+    }
+
+    return anonymousData.user?.id || null;
   } catch (error) {
     console.warn('[questionario_rascunhos] Sessão Supabase indisponível; usando armazenamento local:', error);
     return null;
