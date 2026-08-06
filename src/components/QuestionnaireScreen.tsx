@@ -44,7 +44,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
           return parsed.currentQuestionIndex;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return 0;
   });
 
@@ -57,7 +57,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
           return parsed.scores;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return {
       Assertivo: 0,
       Participativo: 0,
@@ -75,7 +75,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
           return parsed.started;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return false;
   });
 
@@ -88,8 +88,8 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
           return parsed.messages;
         }
       }
-    } catch (e) {}
-    
+    } catch (e) { }
+
     // Stable initial welcoming messages to prevent any raced duplication
     return [
       {
@@ -115,7 +115,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
           return parsed.answers;
         }
       }
-    } catch (e) {}
+    } catch (e) { }
     return {};
   });
 
@@ -194,12 +194,12 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
     const saved = status === 'CONCLUIDO'
       ? await concluirRascunhoQuestionario(usuario, currentAnswers, questions.length)
       : await salvarRascunhoQuestionario(usuario, {
-          respostas: currentAnswers,
-          etapa_atual: index,
-          ultima_pergunta_respondida: Math.max(0, index),
-          percentual_concluido: Math.round((Object.keys(currentAnswers).length / Math.max(questions.length, 1)) * 100),
-          status
-        });
+        respostas: currentAnswers,
+        etapa_atual: index,
+        ultima_pergunta_respondida: Math.max(0, index),
+        percentual_concluido: Math.round((Object.keys(currentAnswers).length / Math.max(questions.length, 1)) * 100),
+        status
+      });
 
     if (saved) {
       setAutosaveStatus('saved');
@@ -296,7 +296,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
       const el = messageFeedRef.current;
       const timeoutId = setTimeout(() => {
         const activeQuestionEl = el.querySelector('#active-question-container') as HTMLElement;
-        
+
         // Determine if the current state expects an active question to be shown
         const hasActiveQuestion = messages.some(
           m => m.sender === 'bot' && m.isQuestion && m.questionIndex === currentQuestionIndex
@@ -306,7 +306,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
           const containerRect = el.getBoundingClientRect();
           const targetRect = activeQuestionEl.getBoundingClientRect();
           const relativeTop = targetRect.top - containerRect.top + el.scrollTop;
-          
+
           el.scrollTo({
             top: Math.max(0, relativeTop - 16),
             behavior: 'smooth'
@@ -1087,7 +1087,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
 
   return (
     <div className="flex flex-col h-[740px] max-h-[85vh] min-h-[580px] max-w-4xl w-full mx-auto bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden" id="questionnaire-container">
-      
+
       {/* Dynamic Progress indicator */}
       <div className="bg-gray-50 border-b border-gray-100 p-4 shrink-0 flex items-center justify-between" id="chat-progress">
         <div>
@@ -1100,13 +1100,12 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
         </div>
         <div className="flex items-center space-x-3.5">
           {started && !testCompleted && autosaveStatus !== 'idle' && (
-            <span className={`hidden sm:inline-flex text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${
-              autosaveStatus === 'saving'
+            <span className={`hidden sm:inline-flex text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${autosaveStatus === 'saving'
                 ? 'bg-amber-50 text-amber-700 border-amber-100'
                 : autosaveStatus === 'error'
-                ? 'bg-red-50 text-[#D80E2A] border-red-100'
-                : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-            }`}>
+                  ? 'bg-red-50 text-[#D80E2A] border-red-100'
+                  : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+              }`}>
               {autosaveStatus === 'saving' ? 'Salvando...' : autosaveStatus === 'error' ? 'Erro ao salvar. Tentando novamente.' : autosaveStatus === 'local' ? 'Salvo neste dispositivo' : 'Salvo automaticamente'}
             </span>
           )}
@@ -1114,8 +1113,8 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
           {started && !testCompleted && (
             <div className="flex items-center space-x-2 w-32 sm:w-40">
               <div className="w-full bg-gray-200 h-1.5 rounded-full overflow-hidden">
-                <div 
-                  className="bg-[#D80E2A] h-1.5 rounded-full transition-all duration-500 ease-out" 
+                <div
+                  className="bg-[#D80E2A] h-1.5 rounded-full transition-all duration-500 ease-out"
                   style={{ width: `${progressPercent}%` }}
                 />
               </div>
@@ -1148,25 +1147,25 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
       <div ref={messageFeedRef} className="flex-1 overflow-y-auto p-6 space-y-6 bg-gray-50/50" id="message-feed">
         {messages.map((message, index) => {
           const isBot = message.sender === 'bot';
-          
+
           // Conditions for showing active options right below current question element
-          const isCurrentActiveQuestion = 
-            isBot && 
-            message.isQuestion && 
-            message.questionIndex === currentQuestionIndex && 
-            !testCompleted && 
+          const isCurrentActiveQuestion =
+            isBot &&
+            message.isQuestion &&
+            message.questionIndex === currentQuestionIndex &&
+            !testCompleted &&
             !isTyping;
 
-          const isPromptProceed = 
-            isBot && 
-            message.id === 'prompt-proceed' && 
-            !started && 
+          const isPromptProceed =
+            isBot &&
+            message.id === 'prompt-proceed' &&
+            !started &&
             !isTyping;
 
-          const isFinalDevolutionMessage = 
-            isBot && 
-            message.id === 'msg-expert-devolution' && 
-            savedResultPayload !== null && 
+          const isFinalDevolutionMessage =
+            isBot &&
+            message.id === 'msg-expert-devolution' &&
+            savedResultPayload !== null &&
             !isTyping;
 
           return (
@@ -1185,11 +1184,10 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
                   )}
                 </div>
                 <div
-                  className={`p-4 rounded-2xl shadow-2xs leading-relaxed text-sm ${
-                    isBot
+                  className={`p-4 rounded-2xl shadow-2xs leading-relaxed text-sm ${isBot
                       ? 'bg-white border border-gray-100 text-gray-800 rounded-tl-none'
                       : 'bg-[#112363] text-white rounded-tr-none'
-                  }`}
+                    }`}
                 >
                   {message.text}
                 </div>
@@ -1246,7 +1244,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
               {isCurrentActiveQuestion && activeQ && (
                 <div className="w-full pl-11 animate-fade-in mt-2" id="chat-inline-options-wrapper">
                   <div className="bg-white border border-gray-150 rounded-2xl p-5 shadow-sm max-w-2xl w-full">
-                    
+
                     {/* Multi Mode Selection (Question 1) */}
                     {activeQ.mode === 'multi' ? (
                       <div className="space-y-4">
@@ -1263,18 +1261,16 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
                                 key={opt.text}
                                 disabled={isLimit}
                                 onClick={() => handleToggleMultiOption(opt.text)}
-                                className={`flex items-center justify-between p-3 rounded-xl border text-left text-xs font-medium transition-all cursor-pointer ${
-                                  isChecked
+                                className={`flex items-center justify-between p-3 rounded-xl border text-left text-xs font-medium transition-all cursor-pointer ${isChecked
                                     ? 'border-[#112363] bg-[#112363]/5 text-[#112363]'
                                     : isLimit
-                                    ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
-                                    : 'border-gray-200 bg-white hover:border-gray-300 text-gray-700 hover:bg-gray-50'
-                                }`}
+                                      ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
+                                      : 'border-gray-200 bg-white hover:border-gray-300 text-gray-700 hover:bg-gray-50'
+                                  }`}
                               >
                                 <span>{opt.text}</span>
-                                <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${
-                                  isChecked ? 'bg-[#112363] border-[#112363] text-white' : 'border-gray-300 bg-white'
-                                }`}>
+                                <div className={`w-5 h-5 rounded-md flex items-center justify-center border transition-all ${isChecked ? 'bg-[#112363] border-[#112363] text-white' : 'border-gray-300 bg-white'
+                                  }`}>
                                   {isChecked && <Check className="w-3.5 h-3.5 stroke-[3px]" />}
                                 </div>
                               </button>

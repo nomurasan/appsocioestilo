@@ -1,7 +1,17 @@
-import { createClient } from '@supabase/supabase-js';
-import { Usuario, Resultado, Empresa, Scores, AnswerDetail, ReportParameter, ReportUserType, QuestionarioRascunho, Question } from '../types';
-import { getDefaultReportParameters } from './report-parameters';
-import { auth as firebaseAuth } from './firebase';
+import { createClient } from "@supabase/supabase-js";
+import {
+  Usuario,
+  Resultado,
+  Empresa,
+  Scores,
+  AnswerDetail,
+  ReportParameter,
+  ReportUserType,
+  QuestionarioRascunho,
+  Question,
+} from "../types";
+import { getDefaultReportParameters } from "./report-parameters";
+import { auth as firebaseAuth } from "./firebase";
 
 const env = (import.meta as any).env || {};
 
@@ -11,22 +21,30 @@ const SUPABASE_ANON_KEY = env.VITE_SUPABASE_ANON_KEY;
 const supabaseUrlExists = Boolean(env.VITE_SUPABASE_URL);
 const supabaseUrlStartsHttps = /^https:\/\//.test(SUPABASE_URL);
 const supabaseUrlEndsSupabase = /\.supabase\.co\/?$/.test(SUPABASE_URL);
-const supabaseAnonKeyLength = env.VITE_SUPABASE_ANON_KEY ? env.VITE_SUPABASE_ANON_KEY.length : String(SUPABASE_ANON_KEY).length;
+const supabaseAnonKeyLength = env.VITE_SUPABASE_ANON_KEY
+  ? env.VITE_SUPABASE_ANON_KEY.length
+  : String(SUPABASE_ANON_KEY).length;
 
 console.log(`[SUPABASE-CONFIG] VITE_SUPABASE_URL existe? ${supabaseUrlExists}`);
-console.log(`[SUPABASE-CONFIG] VITE_SUPABASE_URL começa com https://? ${supabaseUrlStartsHttps}`);
-console.log(`[SUPABASE-CONFIG] VITE_SUPABASE_URL termina com .supabase.co? ${supabaseUrlEndsSupabase}`);
-console.log(`[SUPABASE-CONFIG] VITE_SUPABASE_ANON_KEY tamanho: ${supabaseAnonKeyLength}`);
+console.log(
+  `[SUPABASE-CONFIG] VITE_SUPABASE_URL começa com https://? ${supabaseUrlStartsHttps}`,
+);
+console.log(
+  `[SUPABASE-CONFIG] VITE_SUPABASE_URL termina com .supabase.co? ${supabaseUrlEndsSupabase}`,
+);
+console.log(
+  `[SUPABASE-CONFIG] VITE_SUPABASE_ANON_KEY tamanho: ${supabaseAnonKeyLength}`,
+);
 
 if (!supabaseUrlStartsHttps || !supabaseUrlEndsSupabase) {
   console.error(
-    "[SUPABASE-CONFIG] ERRO: VITE_SUPABASE_URL inválida. Ajuste a variável de ambiente no Easypanel para usar uma URL Supabase válida."
+    "[SUPABASE-CONFIG] ERRO: VITE_SUPABASE_URL inválida. Ajuste a variável de ambiente no Easypanel para usar uma URL Supabase válida.",
   );
 }
 
 if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
   console.warn(
-    "[SUPABASE-CONFIG] AVISO: VITE_SUPABASE_URL ou VITE_SUPABASE_ANON_KEY não foram fornecidos nas variáveis de ambiente. Usando fallbacks locais padrão."
+    "[SUPABASE-CONFIG] AVISO: VITE_SUPABASE_URL ou VITE_SUPABASE_ANON_KEY não foram fornecidos nas variáveis de ambiente. Usando fallbacks locais padrão.",
   );
 }
 
@@ -46,15 +64,22 @@ export async function getSupabaseAuthUserId(): Promise<string | null> {
       return null;
     }
 
-    const { data: anonymousData, error: anonymousError } = await supabase.auth.signInAnonymously();
+    const { data: anonymousData, error: anonymousError } =
+      await supabase.auth.signInAnonymously();
     if (anonymousError) {
-      console.warn('[questionario_rascunhos] Nao foi possivel iniciar sessao anonima no Supabase:', anonymousError.message);
+      console.warn(
+        "[questionario_rascunhos] Nao foi possivel iniciar sessao anonima no Supabase:",
+        anonymousError.message,
+      );
       return null;
     }
 
     return anonymousData.user?.id || null;
   } catch (error) {
-    console.warn('[questionario_rascunhos] Sessão Supabase indisponível; usando armazenamento local:', error);
+    console.warn(
+      "[questionario_rascunhos] Sessão Supabase indisponível; usando armazenamento local:",
+      error,
+    );
     return null;
   }
 }
@@ -67,7 +92,8 @@ export async function hasSupabaseAuthSession(): Promise<boolean> {
 export function mapFirebaseUidToUuid(uid: string): string {
   if (!uid) return uid;
   // If it already looks like a UUID, return it
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(uid)) {
     return uid;
   }
@@ -87,7 +113,7 @@ export function mapFirebaseUidToUuid(uid: string): string {
   }
 
   const toHex = (n: number) => {
-    return (n >>> 0).toString(16).padStart(8, '0');
+    return (n >>> 0).toString(16).padStart(8, "0");
   };
 
   const hex = (toHex(h1) + toHex(h2) + toHex(h3) + toHex(h4)).toLowerCase();
@@ -95,8 +121,10 @@ export function mapFirebaseUidToUuid(uid: string): string {
   // Format as 8-4-4-4-12 RFC 4122 v4-ish UUID
   const part1 = hex.slice(0, 8);
   const part2 = hex.slice(8, 12);
-  const part3 = '4' + hex.slice(13, 16); // force version 4
-  const part4 = ((parseInt(hex.slice(16, 17), 16) & 0x3) | 0x8).toString(16) + hex.slice(17, 20); // force variant RFC 4122
+  const part3 = "4" + hex.slice(13, 16); // force version 4
+  const part4 =
+    ((parseInt(hex.slice(16, 17), 16) & 0x3) | 0x8).toString(16) +
+    hex.slice(17, 20); // force variant RFC 4122
   const part5 = hex.slice(20, 32);
 
   return `${part1}-${part2}-${part3}-${part4}-${part5}`;
@@ -104,11 +132,12 @@ export function mapFirebaseUidToUuid(uid: string): string {
 
 // Deterministically map a numeric or string company ID to a valid UUID format to satisfy column constraints
 export function mapCompanyIdToUuid(id: any): string | null {
-  if (id === undefined || id === null || id === '') return null;
+  if (id === undefined || id === null || id === "") return null;
   const strId = String(id).trim();
 
   // If already a valid UUID, return it
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(strId)) {
     return strId;
   }
@@ -116,7 +145,7 @@ export function mapCompanyIdToUuid(id: any): string | null {
   const parsedInt = parseInt(strId, 10);
   if (!isNaN(parsedInt)) {
     // Return a valid deterministic UUID for numeric IDs
-    return `00000000-0000-4000-8000-${String(parsedInt).padStart(12, '0')}`;
+    return `00000000-0000-4000-8000-${String(parsedInt).padStart(12, "0")}`;
   }
 
   // If it's a non-numeric string (like a company name), let's deterministically hash it to a UUID
@@ -127,17 +156,17 @@ export function mapCompanyIdToUuid(id: any): string | null {
     h1 = Math.imul(h1 ^ ch, 2654435761);
     h2 = Math.imul(h2 ^ ch, 1597334677);
   }
-  const toHex = (n: number) => (n >>> 0).toString(16).padStart(8, '0');
+  const toHex = (n: number) => (n >>> 0).toString(16).padStart(8, "0");
   const hex = (toHex(h1) + toHex(h2) + toHex(h2) + toHex(h1)).toLowerCase();
   return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-4${hex.slice(13, 16)}-8${hex.slice(17, 20)}-${hex.slice(20, 32)}`;
 }
 
 // Convert a deterministic company UUID back to its original short numeric ID pattern
 export function mapUuidToCompanyId(uuidStr: any): string {
-  if (!uuidStr) return '';
+  if (!uuidStr) return "";
   const str = String(uuidStr);
-  if (str.startsWith('00000000-0000-4000-8000-')) {
-    const numPart = str.replace('00000000-0000-4000-8000-', '');
+  if (str.startsWith("00000000-0000-4000-8000-")) {
+    const numPart = str.replace("00000000-0000-4000-8000-", "");
     const num = parseInt(numPart, 10);
     return isNaN(num) ? str : String(num);
   }
@@ -148,14 +177,24 @@ export function mapUuidToCompanyId(uuidStr: any): string {
  * Garante que um usuário autenticado pelo Firebase tenha uma correspondência de login no Supabase Auth.
  * Isso gera uma conta "sister" no Supabase Auth para satisfazer restrições de chaves estrangeiras (ex: resultados_id_usuario_fkey).
  */
-export async function syncFirebaseUserWithSupabaseAuth(uid: string, email: string): Promise<string> {
-  const normalizedEmail = String(email || '').trim().toLowerCase();
+export async function syncFirebaseUserWithSupabaseAuth(
+  uid: string,
+  email: string,
+): Promise<string> {
+  const normalizedEmail = String(email || "")
+    .trim()
+    .toLowerCase();
 
   if (normalizedEmail) {
-    const usuario = await buscarUsuarioPorEmail(normalizedEmail).catch((err) => {
-      console.warn('[SYNC USUARIOS] Falha ao buscar usuario por email em public.usuarios:', err);
-      return null;
-    });
+    const usuario = await buscarUsuarioPorEmail(normalizedEmail).catch(
+      (err) => {
+        console.warn(
+          "[SYNC USUARIOS] Falha ao buscar usuario por email em public.usuarios:",
+          err,
+        );
+        return null;
+      },
+    );
 
     if (usuario?.uid) {
       return usuario.uid;
@@ -171,79 +210,97 @@ export async function syncFirebaseUserWithSupabaseAuth(uid: string, email: strin
 }
 
 export enum OperationType {
-  CREATE = 'create',
-  UPDATE = 'update',
-  DELETE = 'delete',
-  LIST = 'list',
-  GET = 'get',
-  WRITE = 'write',
+  CREATE = "create",
+  UPDATE = "update",
+  DELETE = "delete",
+  LIST = "list",
+  GET = "get",
+  WRITE = "write",
 }
 
-export function handleSupabaseError(error: any, operationType: OperationType, path: string | null): never {
+export function handleSupabaseError(
+  error: any,
+  operationType: OperationType,
+  path: string | null,
+): never {
   const errMsg = error?.message || String(error);
-  console.log(`[SUPABASE RESOLVED ERROR - ${operationType}] in [${path}]:`, error);
+  console.log(
+    `[SUPABASE RESOLVED ERROR - ${operationType}] in [${path}]:`,
+    error,
+  );
   throw new Error(`Erro na operação ${operationType} em ${path}: ${errMsg}`);
-}// -------------------------------------------------------------
+} // -------------------------------------------------------------
 // AUXILIARY PARSERS & MODEL MAPPERS
 // -------------------------------------------------------------
 
 async function fetchBackendResultados(): Promise<any[]> {
-  if (typeof fetch !== 'function') return [];
+  if (typeof fetch !== "function") return [];
 
   try {
-    const response = await fetch('/api/resultados', {
-      method: 'GET',
-      headers: { Accept: 'application/json' }
+    const response = await fetch("/api/resultados", {
+      method: "GET",
+      headers: { Accept: "application/json" },
     });
 
     if (!response.ok) {
-      console.warn('[listarResultados] Backend fallback returned status:', response.status);
+      console.warn(
+        "[listarResultados] Backend fallback returned status:",
+        response.status,
+      );
       return [];
     }
 
     const payload = await response.json();
     return Array.isArray(payload?.data) ? payload.data : [];
   } catch (err) {
-    console.warn('[listarResultados] Backend fallback failed:', err);
+    console.warn("[listarResultados] Backend fallback failed:", err);
     return [];
   }
 }
 
 async function deleteBackendResultado(idResultado: string): Promise<boolean> {
-  if (typeof fetch !== 'function') return false;
+  if (typeof fetch !== "function") return false;
 
   try {
-    const response = await fetch(`/api/resultados/${encodeURIComponent(String(idResultado))}`, {
-      method: 'DELETE',
-      headers: { Accept: 'application/json' }
-    });
+    const response = await fetch(
+      `/api/resultados/${encodeURIComponent(String(idResultado))}`,
+      {
+        method: "DELETE",
+        headers: { Accept: "application/json" },
+      },
+    );
 
     if (response.ok) return true;
 
     const payload = await response.json().catch(() => ({}));
     if (response.status === 404) {
-      console.warn('[excluirResultado] Backend did not find result:', payload);
+      console.warn("[excluirResultado] Backend did not find result:", payload);
       return false;
     }
 
-    throw new Error(payload?.details || payload?.error || `Backend returned status ${response.status}`);
+    throw new Error(
+      payload?.details ||
+        payload?.error ||
+        `Backend returned status ${response.status}`,
+    );
   } catch (err) {
-    console.warn('[excluirResultado] Backend delete failed:', err);
+    console.warn("[excluirResultado] Backend delete failed:", err);
     return false;
   }
 }
 
 export function parseBigIntId(id: any): number | null {
-  if (id === undefined || id === null || id === '') return null;
+  if (id === undefined || id === null || id === "") return null;
   const unmapped = mapUuidToCompanyId(id);
   const parsed = parseInt(String(unmapped), 10);
   return isNaN(parsed) ? null : parsed;
 }
 
 export function parseResultId(id: any): string | number {
-  if (id === undefined || id === null || id === '') return '';
+  if (id === undefined || id === null || id === "") return "";
   const strId = String(id);
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   if (uuidRegex.test(strId)) {
     return strId;
   }
@@ -251,56 +308,72 @@ export function parseResultId(id: any): string | number {
   return isNaN(parsed) ? strId : parsed;
 }
 
-const REPORT_PARAMETER_TABLES = ['relatorio_parametrizacoes', 'parametrizacao_relatorio', 'relatorio_parametros'];
-const REPORT_PARAMETER_LOCAL_STORAGE_KEY = 'potenciar_report_parameters_v1';
+const REPORT_PARAMETER_TABLES = [
+  "relatorio_parametrizacoes",
+  "parametrizacao_relatorio",
+  "relatorio_parametros",
+];
+const REPORT_PARAMETER_LOCAL_STORAGE_KEY = "potenciar_report_parameters_v1";
 
-function getReportParameterKey(row: Pick<ReportParameter, 'secao' | 'campo'>): string {
+function getReportParameterKey(
+  row: Pick<ReportParameter, "secao" | "campo">,
+): string {
   return `${row.secao}:${row.campo}`;
 }
 
 function getStoredReportParameterTimestamp(row: any): number {
-  const timestamp = Date.parse(row?.updated_at || row?.created_at || '');
+  const timestamp = Date.parse(row?.updated_at || row?.created_at || "");
   return Number.isNaN(timestamp) ? 0 : timestamp;
 }
 
 function isMissingReportParameterTableError(error: any): boolean {
-  const code = String(error?.code || '');
-  const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  const code = String(error?.code || "");
+  const message =
+    `${error?.message || ""} ${error?.details || ""}`.toLowerCase();
 
   return (
-    code === '42P01' ||
-    code === 'PGRST205' ||
-    message.includes('could not find the table') ||
-    (message.includes('relation') && message.includes('does not exist'))
+    code === "42P01" ||
+    code === "PGRST205" ||
+    message.includes("could not find the table") ||
+    (message.includes("relation") && message.includes("does not exist"))
   );
 }
 
 function isMissingReportParameterConflictError(error: any): boolean {
-  const code = String(error?.code || '');
-  const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  const code = String(error?.code || "");
+  const message =
+    `${error?.message || ""} ${error?.details || ""}`.toLowerCase();
 
   return (
-    code === '42P10' ||
-    message.includes('no unique or exclusion constraint') ||
-    message.includes('there is no unique or exclusion constraint matching the on conflict specification')
+    code === "42P10" ||
+    message.includes("no unique or exclusion constraint") ||
+    message.includes(
+      "there is no unique or exclusion constraint matching the on conflict specification",
+    )
   );
 }
 
 function isMissingColumnError(error: any, column: string): boolean {
-  const code = String(error?.code || '');
-  const message = `${error?.message || ''} ${error?.details || ''}`.toLowerCase();
+  const code = String(error?.code || "");
+  const message =
+    `${error?.message || ""} ${error?.details || ""}`.toLowerCase();
   const normalizedColumn = column.toLowerCase();
 
   return (
-    code === '42703' ||
-    (message.includes('column') && message.includes(normalizedColumn) && message.includes('does not exist')) ||
+    code === "42703" ||
+    (message.includes("column") &&
+      message.includes(normalizedColumn) &&
+      message.includes("does not exist")) ||
     message.includes(`'${normalizedColumn}' column`) ||
     message.includes(`"${normalizedColumn}" column`)
   );
 }
 
-function getLocalReportParameterStorage(): Record<ReportUserType, ReportParameter[]> {
-  if (typeof localStorage === 'undefined') {
+function getLocalReportParameterStorage(): Record<
+  ReportUserType,
+  ReportParameter[]
+> {
+  if (typeof localStorage === "undefined") {
     return { usuario: [], participante: [], consultor: [], admin: [] };
   }
 
@@ -310,66 +383,89 @@ function getLocalReportParameterStorage(): Record<ReportUserType, ReportParamete
 
     return {
       usuario: Array.isArray(parsed?.usuario) ? parsed.usuario : [],
-      participante: Array.isArray(parsed?.participante) ? parsed.participante : (Array.isArray(parsed?.usuario) ? parsed.usuario : []),
+      participante: Array.isArray(parsed?.participante)
+        ? parsed.participante
+        : Array.isArray(parsed?.usuario)
+          ? parsed.usuario
+          : [],
       consultor: Array.isArray(parsed?.consultor) ? parsed.consultor : [],
-      admin: Array.isArray(parsed?.admin) ? parsed.admin : []
+      admin: Array.isArray(parsed?.admin) ? parsed.admin : [],
     };
   } catch (err) {
-    console.warn('[REPORT-PARAMS] Nao foi possivel ler parametros locais do relatorio:', err);
+    console.warn(
+      "[REPORT-PARAMS] Nao foi possivel ler parametros locais do relatorio:",
+      err,
+    );
     return { usuario: [], participante: [], consultor: [], admin: [] };
   }
 }
 
-function getLocalReportParameters(tipoUsuario: ReportUserType): ReportParameter[] {
+function getLocalReportParameters(
+  tipoUsuario: ReportUserType,
+): ReportParameter[] {
   return getLocalReportParameterStorage()[tipoUsuario] || [];
 }
 
-function saveLocalReportParameters(tipoUsuario: ReportUserType, parametros: ReportParameter[]): void {
-  if (typeof localStorage === 'undefined') return;
+function saveLocalReportParameters(
+  tipoUsuario: ReportUserType,
+  parametros: ReportParameter[],
+): void {
+  if (typeof localStorage === "undefined") return;
 
   const current = getLocalReportParameterStorage();
   localStorage.setItem(
     REPORT_PARAMETER_LOCAL_STORAGE_KEY,
     JSON.stringify({
       ...current,
-      [tipoUsuario]: mergeReportParameters(tipoUsuario, parametros)
-    })
+      [tipoUsuario]: mergeReportParameters(tipoUsuario, parametros),
+    }),
   );
 }
 
-function mergeReportParameters(tipoUsuario: ReportUserType, rows: any[] = []): ReportParameter[] {
+function mergeReportParameters(
+  tipoUsuario: ReportUserType,
+  rows: any[] = [],
+): ReportParameter[] {
   const defaults = getDefaultReportParameters(tipoUsuario);
   const rowMap = new Map<string, any>();
 
-  rows.forEach(row => {
+  rows.forEach((row) => {
     const key = getReportParameterKey(row);
     const current = rowMap.get(key);
 
-    if (!current || getStoredReportParameterTimestamp(row) >= getStoredReportParameterTimestamp(current)) {
+    if (
+      !current ||
+      getStoredReportParameterTimestamp(row) >=
+        getStoredReportParameterTimestamp(current)
+    ) {
       rowMap.set(key, row);
     }
   });
 
-  return defaults.map(item => {
-    const stored = rowMap.get(getReportParameterKey(item));
-    return {
-      ...item,
-      ativo: stored?.ativo === undefined ? item.ativo : Boolean(stored.ativo),
-      titulo: stored?.titulo || item.titulo,
-      descricao: stored?.descricao || item.descricao,
-      ordem: stored?.ordem ?? item.ordem
-    };
-  }).sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
+  return defaults
+    .map((item) => {
+      const stored = rowMap.get(getReportParameterKey(item));
+      return {
+        ...item,
+        ativo: stored?.ativo === undefined ? item.ativo : Boolean(stored.ativo),
+        titulo: stored?.titulo || item.titulo,
+        descricao: stored?.descricao || item.descricao,
+        ordem: stored?.ordem ?? item.ordem,
+      };
+    })
+    .sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
 }
 
-export async function listarParametrosRelatorio(tipoUsuario: ReportUserType): Promise<ReportParameter[]> {
+export async function listarParametrosRelatorio(
+  tipoUsuario: ReportUserType,
+): Promise<ReportParameter[]> {
   let foundExistingTable = false;
 
   for (const table of REPORT_PARAMETER_TABLES) {
     const { data, error } = await supabase
       .from(table)
-      .select('*')
-      .eq('tipo_usuario', tipoUsuario);
+      .select("*")
+      .eq("tipo_usuario", tipoUsuario);
 
     if (!error) {
       foundExistingTable = true;
@@ -395,25 +491,26 @@ export async function listarParametrosRelatorio(tipoUsuario: ReportUserType): Pr
       : getDefaultReportParameters(tipoUsuario);
 }
 
-async function salvarParametrosRelatorioSemConstraint(table: string, payload: any[]): Promise<void> {
+async function salvarParametrosRelatorioSemConstraint(
+  table: string,
+  payload: any[],
+): Promise<void> {
   for (const item of payload) {
     const { tipo_usuario, secao, campo, ...valuesToUpdate } = item;
     const { data, error: updateError } = await supabase
       .from(table)
       .update(valuesToUpdate)
-      .eq('tipo_usuario', tipo_usuario)
-      .eq('secao', secao)
-      .eq('campo', campo)
-      .select('tipo_usuario');
+      .eq("tipo_usuario", tipo_usuario)
+      .eq("secao", secao)
+      .eq("campo", campo)
+      .select("tipo_usuario");
 
     if (updateError) {
       throw updateError;
     }
 
     if (!data || data.length === 0) {
-      const { error: insertError } = await supabase
-        .from(table)
-        .insert(item);
+      const { error: insertError } = await supabase.from(table).insert(item);
 
       if (insertError) {
         throw insertError;
@@ -422,35 +519,44 @@ async function salvarParametrosRelatorioSemConstraint(table: string, payload: an
   }
 }
 
-export async function salvarParametrosRelatorio(tipoUsuario: ReportUserType, parametros: ReportParameter[]): Promise<boolean> {
-  const buildPayload = (includeUpdatedAt: boolean) => mergeReportParameters(tipoUsuario, parametros).map(item => ({
-    tipo_usuario: tipoUsuario,
-    secao: item.secao,
-    campo: item.campo,
-    titulo: item.titulo,
-    descricao: item.descricao,
-    ativo: item.ativo,
-    ordem: item.ordem || 0,
-    ...(includeUpdatedAt ? { updated_at: new Date().toISOString() } : {})
-  }));
+export async function salvarParametrosRelatorio(
+  tipoUsuario: ReportUserType,
+  parametros: ReportParameter[],
+): Promise<boolean> {
+  const buildPayload = (includeUpdatedAt: boolean) =>
+    mergeReportParameters(tipoUsuario, parametros).map((item) => ({
+      tipo_usuario: tipoUsuario,
+      secao: item.secao,
+      campo: item.campo,
+      titulo: item.titulo,
+      descricao: item.descricao,
+      ativo: item.ativo,
+      ordem: item.ordem || 0,
+      ...(includeUpdatedAt ? { updated_at: new Date().toISOString() } : {}),
+    }));
 
   for (const table of REPORT_PARAMETER_TABLES) {
     const payload = buildPayload(true);
     const { error } = await supabase
       .from(table)
-      .upsert(payload, { onConflict: 'tipo_usuario,secao,campo' });
+      .upsert(payload, { onConflict: "tipo_usuario,secao,campo" });
 
     if (!error) return true;
 
-    if (isMissingColumnError(error, 'updated_at')) {
+    if (isMissingColumnError(error, "updated_at")) {
       const { error: retryError } = await supabase
         .from(table)
-        .upsert(buildPayload(false), { onConflict: 'tipo_usuario,secao,campo' });
+        .upsert(buildPayload(false), {
+          onConflict: "tipo_usuario,secao,campo",
+        });
 
       if (!retryError) return true;
 
       if (isMissingReportParameterConflictError(retryError)) {
-        await salvarParametrosRelatorioSemConstraint(table, buildPayload(false));
+        await salvarParametrosRelatorioSemConstraint(
+          table,
+          buildPayload(false),
+        );
         return true;
       }
 
@@ -462,7 +568,7 @@ export async function salvarParametrosRelatorio(tipoUsuario: ReportUserType, par
     if (isMissingReportParameterConflictError(error)) {
       console.warn(
         `[REPORT-PARAMS] A tabela ${table} nao possui constraint unica em tipo_usuario, secao e campo. ` +
-        'Persistindo via update/insert; aplique a constraint unica para habilitar upsert nativo.'
+          "Persistindo via update/insert; aplique a constraint unica para habilitar upsert nativo.",
       );
       await salvarParametrosRelatorioSemConstraint(table, payload);
       return true;
@@ -474,27 +580,31 @@ export async function salvarParametrosRelatorio(tipoUsuario: ReportUserType, par
   }
 
   console.warn(
-    '[REPORT-PARAMS] Nenhuma tabela de parametrizacao encontrada no Supabase. ' +
-    'Salvando localmente neste navegador ate que public/relatorio_parametrizacoes.sql seja aplicado.'
+    "[REPORT-PARAMS] Nenhuma tabela de parametrizacao encontrada no Supabase. " +
+      "Salvando localmente neste navegador ate que public/relatorio_parametrizacoes.sql seja aplicado.",
   );
   saveLocalReportParameters(tipoUsuario, parametros);
   return true;
 }
 function createUuid(): string {
-  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+  if (
+    typeof crypto !== "undefined" &&
+    typeof crypto.randomUUID === "function"
+  ) {
     return crypto.randomUUID();
   }
 
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, char => {
-    const random = Math.random() * 16 | 0;
-    const value = char === 'x' ? random : (random & 0x3 | 0x8);
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (char) => {
+    const random = (Math.random() * 16) | 0;
+    const value = char === "x" ? random : (random & 0x3) | 0x8;
     return value.toString(16);
   });
 }
 
 function getDraftSessionToken(): string {
-  const key = 'potenciar_questionario_session_token';
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const key = "potenciar_questionario_session_token";
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
   let token = localStorage.getItem(key);
 
   if (!token || !uuidRegex.test(token)) {
@@ -506,55 +616,64 @@ function getDraftSessionToken(): string {
 }
 
 async function fetchBackendQuestionMappingRows(): Promise<any[]> {
-  if (typeof fetch !== 'function') return [];
+  if (typeof fetch !== "function") return [];
 
   try {
-    const response = await fetch('/api/question-mapping', {
-      method: 'GET',
-      headers: { Accept: 'application/json' }
+    const response = await fetch("/api/question-mapping", {
+      method: "GET",
+      headers: { Accept: "application/json" },
     });
 
     const payload = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      console.warn('[question_mapping] Backend fallback retornou erro:', payload?.details || payload?.error || response.status);
+      console.warn(
+        "[question_mapping] Backend fallback retornou erro:",
+        payload?.details || payload?.error || response.status,
+      );
       return [];
     }
 
     return Array.isArray(payload?.data) ? payload.data : [];
   } catch (err) {
-    console.warn('[question_mapping] Backend fallback falhou:', err);
+    console.warn("[question_mapping] Backend fallback falhou:", err);
     return [];
   }
 }
 
 function mapQuestionMappingRows(rowsInput: any[] = []): Question[] {
-  const rows = rowsInput
-    .slice()
-    .sort((a: any, b: any) => {
-      const aq = Number(a.question_order ?? a.question_id ?? 0);
-      const bq = Number(b.question_order ?? b.question_id ?? 0);
-      if (aq !== bq) return aq - bq;
-      const aid = Number(a.question_id ?? 0);
-      const bid = Number(b.question_id ?? 0);
-      if (aid !== bid) return aid - bid;
-      return Number(a.answer_order ?? a.id ?? 0) - Number(b.answer_order ?? b.id ?? 0);
-    });
+  const rows = rowsInput.slice().sort((a: any, b: any) => {
+    const aq = Number(a.question_order ?? a.question_id ?? 0);
+    const bq = Number(b.question_order ?? b.question_id ?? 0);
+    if (aq !== bq) return aq - bq;
+    const aid = Number(a.question_id ?? 0);
+    const bid = Number(b.question_id ?? 0);
+    if (aid !== bid) return aid - bid;
+    return (
+      Number(a.answer_order ?? a.id ?? 0) - Number(b.answer_order ?? b.id ?? 0)
+    );
+  });
 
   const questionsById = new Map<number, Question>();
 
   rows.forEach((row: any) => {
-    if (String(row.active).toLowerCase() === 'false') return;
+    if (String(row.active).toLowerCase() === "false") return;
 
-    const questionId = Number(row.question_id ?? row.questionId ?? row.id_question);
+    const questionId = Number(
+      row.question_id ?? row.questionId ?? row.id_question,
+    );
     if (!Number.isFinite(questionId) || questionId <= 0) return;
 
-    const questionText = String(row.question ?? row.question_text ?? '').trim();
-    const answerText = String(row.answer ?? row.answer_text ?? row.option_text ?? '').trim();
+    const questionText = String(row.question ?? row.question_text ?? "").trim();
+    const answerText = String(
+      row.answer ?? row.answer_text ?? row.option_text ?? "",
+    ).trim();
     if (!questionText || !answerText) return;
 
-    const rawMode = String(row.mode || '').trim().toLowerCase();
-    const mode: Question['mode'] = rawMode === 'multi' ? 'multi' : 'single';
+    const rawMode = String(row.mode || "")
+      .trim()
+      .toLowerCase();
+    const mode: Question["mode"] = rawMode === "multi" ? "multi" : "single";
     const maxChoices = Number(row.max_choices ?? row.maxChoices);
 
     if (!questionsById.has(questionId)) {
@@ -562,44 +681,55 @@ function mapQuestionMappingRows(rowsInput: any[] = []): Question[] {
         id: questionId,
         text: questionText,
         mode,
-        maxChoices: Number.isFinite(maxChoices) && maxChoices > 0 ? maxChoices : undefined,
-        options: []
+        maxChoices:
+          Number.isFinite(maxChoices) && maxChoices > 0
+            ? maxChoices
+            : undefined,
+        options: [],
       });
     }
 
     const question = questionsById.get(questionId)!;
-    if (!question.options.some(option => option.text === answerText)) {
+    if (!question.options.some((option) => option.text === answerText)) {
       question.options.push({
         text: answerText,
-        ...(row.socio_style || row.style ? { style: row.socio_style || row.style } : {}),
-        ...(row.points !== undefined ? { points: Number(row.points) } : {})
+        ...(row.socio_style || row.style
+          ? { style: row.socio_style || row.style }
+          : {}),
+        ...(row.points !== undefined ? { points: Number(row.points) } : {}),
       });
     }
   });
 
   const questions = Array.from(questionsById.values())
-    .filter(question => question.text && question.options.length > 0)
+    .filter((question) => question.text && question.options.length > 0)
     .sort((a, b) => a.id - b.id);
 
   if (rows.length > 0 && questions.length === 0) {
-    console.warn('[question_mapping] Linhas carregadas, mas nenhuma pergunta valida foi montada. Colunas encontradas:', Object.keys(rows[0] || {}));
+    console.warn(
+      "[question_mapping] Linhas carregadas, mas nenhuma pergunta valida foi montada. Colunas encontradas:",
+      Object.keys(rows[0] || {}),
+    );
   }
 
   return questions;
 }
 
 export async function listarQuestionMapping(): Promise<Question[]> {
-  const runQuery = async (withQuestionOrder: boolean, withAnswerOrder: boolean) => {
+  const runQuery = async (
+    withQuestionOrder: boolean,
+    withAnswerOrder: boolean,
+  ) => {
     let query = supabase
-      .from('question_mapping')
-      .select('*')
-      .order('question_id', { ascending: true });
+      .from("question_mapping")
+      .select("*")
+      .order("question_id", { ascending: true });
 
     if (withQuestionOrder) {
-      query = query.order('question_order', { ascending: true });
+      query = query.order("question_order", { ascending: true });
     }
     if (withAnswerOrder) {
-      query = query.order('answer_order', { ascending: true });
+      query = query.order("answer_order", { ascending: true });
     }
 
     return query;
@@ -608,71 +738,93 @@ export async function listarQuestionMapping(): Promise<Question[]> {
   let response = await runQuery(true, true);
 
   if (response.error) {
-    console.warn('[question_mapping] Falha ao ordenar por question_order/answer_order. Tentando ordenacao basica:', response.error.message);
+    console.warn(
+      "[question_mapping] Falha ao ordenar por question_order/answer_order. Tentando ordenacao basica:",
+      response.error.message,
+    );
     response = await runQuery(false, true);
   }
 
   if (response.error) {
-    console.warn('[question_mapping] Falha ao ordenar por answer_order. Tentando apenas question_id:', response.error.message);
+    console.warn(
+      "[question_mapping] Falha ao ordenar por answer_order. Tentando apenas question_id:",
+      response.error.message,
+    );
     response = await runQuery(false, false);
   }
 
   if (!response.error) {
     const mapped = mapQuestionMappingRows(response.data || []);
     if (mapped.length > 0) return mapped;
-    console.warn('[question_mapping] Consulta direta retornou sem perguntas validas. Tentando backend fallback.');
+    console.warn(
+      "[question_mapping] Consulta direta retornou sem perguntas validas. Tentando backend fallback.",
+    );
   } else {
-    console.warn('[question_mapping] Consulta direta falhou. Tentando backend fallback:', response.error.message);
+    console.warn(
+      "[question_mapping] Consulta direta falhou. Tentando backend fallback:",
+      response.error.message,
+    );
   }
 
   const backendRows = await fetchBackendQuestionMappingRows();
   return mapQuestionMappingRows(backendRows);
 }
 
-export async function buscarRascunhoQuestionario(usuario: Usuario): Promise<QuestionarioRascunho | null> {
+export async function buscarRascunhoQuestionario(
+  usuario: Usuario,
+): Promise<QuestionarioRascunho | null> {
   const authUserId = await getSupabaseAuthUserId();
   if (!authUserId) return null;
   const sessionToken = getDraftSessionToken();
   const participanteId = authUserId;
   const { data, error } = await supabase
-    .from('questionario_rascunhos')
-    .select('*')
-    .eq('status', 'EM_ANDAMENTO')
+    .from("questionario_rascunhos")
+    .select("*")
+    .eq("status", "EM_ANDAMENTO")
     .or(`participante_id.eq.${participanteId},session_token.eq.${sessionToken}`)
-    .order('ultimo_acesso_em', { ascending: false })
+    .order("ultimo_acesso_em", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (error) {
-    console.warn('[questionario_rascunhos] Não foi possível buscar rascunho:', error.message);
+    console.warn(
+      "[questionario_rascunhos] Não foi possível buscar rascunho:",
+      error.message,
+    );
     return null;
   }
 
   if (!data) return null;
   return {
-    id: String(data.id || ''),
-    empresa_id: String(data.empresa_id || usuario.empresa_id || ''),
+    id: String(data.id || ""),
+    empresa_id: String(data.empresa_id || usuario.empresa_id || ""),
     participante_id: data.participante_id || participanteId,
     session_token: data.session_token || sessionToken,
     respostas: data.respostas || {},
     etapa_atual: Number(data.etapa_atual || 0),
-    ultima_pergunta_respondida: Number(data.ultima_pergunta_id ?? data.ultima_pergunta_respondida ?? 0) || null,
+    ultima_pergunta_respondida:
+      Number(data.ultima_pergunta_id ?? data.ultima_pergunta_respondida ?? 0) ||
+      null,
     percentual_concluido: Number(data.percentual_concluido || 0),
-    status: data.status || 'EM_ANDAMENTO',
+    status: data.status || "EM_ANDAMENTO",
     data_inicio: data.iniciado_em || data.data_inicio,
     data_ultimo_acesso: data.ultimo_acesso_em || data.data_ultimo_acesso,
-    data_finalizacao: data.finalizado_em || data.data_finalizacao || null
+    data_finalizacao: data.finalizado_em || data.data_finalizacao || null,
   };
 }
 
-export async function salvarRascunhoQuestionario(usuario: Usuario, parcial: Partial<QuestionarioRascunho>): Promise<boolean> {
+export async function salvarRascunhoQuestionario(
+  usuario: Usuario,
+  parcial: Partial<QuestionarioRascunho>,
+): Promise<boolean> {
   const authUserId = await getSupabaseAuthUserId();
   if (!authUserId) return false;
   const sessionToken = parcial.session_token || getDraftSessionToken();
   const now = new Date().toISOString();
   const respostas = parcial.respostas || {};
   const participanteId = authUserId;
-  const empresaId = parseBigIntId(usuario.empresa_id || parcial.empresa_id) || null;
+  const empresaId =
+    parseBigIntId(usuario.empresa_id || parcial.empresa_id) || null;
 
   const payload: any = {
     empresa_id: empresaId,
@@ -680,67 +832,89 @@ export async function salvarRascunhoQuestionario(usuario: Usuario, parcial: Part
     session_token: sessionToken,
     respostas,
     etapa_atual: parcial.etapa_atual ?? 0,
-    ultima_pergunta_id: parcial.ultima_pergunta_respondida === undefined || parcial.ultima_pergunta_respondida === null ? null : String(parcial.ultima_pergunta_respondida),
+    ultima_pergunta_id:
+      parcial.ultima_pergunta_respondida === undefined ||
+      parcial.ultima_pergunta_respondida === null
+        ? null
+        : String(parcial.ultima_pergunta_respondida),
     percentual_concluido: parcial.percentual_concluido ?? 0,
-    status: parcial.status || 'EM_ANDAMENTO',
+    status: parcial.status || "EM_ANDAMENTO",
     iniciado_em: parcial.data_inicio || now,
     ultimo_acesso_em: now,
-    finalizado_em: parcial.data_finalizacao || null
+    finalizado_em: parcial.data_finalizacao || null,
   };
 
   const { data: existingDraft, error: findError } = await supabase
-    .from('questionario_rascunhos')
-    .select('id')
-    .eq('status', 'EM_ANDAMENTO')
+    .from("questionario_rascunhos")
+    .select("id")
+    .eq("status", "EM_ANDAMENTO")
     .or(`participante_id.eq.${participanteId},session_token.eq.${sessionToken}`)
-    .order('ultimo_acesso_em', { ascending: false })
+    .order("ultimo_acesso_em", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (findError) {
-    console.warn('[questionario_rascunhos] Nao foi possivel localizar rascunho existente:', findError.message);
+    console.warn(
+      "[questionario_rascunhos] Nao foi possivel localizar rascunho existente:",
+      findError.message,
+    );
     return false;
   }
 
   const query = existingDraft?.id
-    ? supabase.from('questionario_rascunhos').update(payload).eq('id', existingDraft.id)
-    : supabase.from('questionario_rascunhos').insert(payload);
+    ? supabase
+        .from("questionario_rascunhos")
+        .update(payload)
+        .eq("id", existingDraft.id)
+    : supabase.from("questionario_rascunhos").insert(payload);
 
   const { error } = await query;
 
   if (!error) return true;
 
-  console.warn('[questionario_rascunhos] Nao foi possivel salvar rascunho:', error.message);
+  console.warn(
+    "[questionario_rascunhos] Nao foi possivel salvar rascunho:",
+    error.message,
+  );
   return false;
 }
 
-export async function concluirRascunhoQuestionario(usuario: Usuario, respostas: Record<string, string | string[]>, totalPerguntas = Object.keys(respostas || {}).length): Promise<boolean> {
+export async function concluirRascunhoQuestionario(
+  usuario: Usuario,
+  respostas: Record<string, string | string[]>,
+  totalPerguntas = Object.keys(respostas || {}).length,
+): Promise<boolean> {
   return salvarRascunhoQuestionario(usuario, {
     respostas,
     etapa_atual: totalPerguntas,
     ultima_pergunta_respondida: totalPerguntas,
     percentual_concluido: 100,
-    status: 'CONCLUIDO',
-    data_finalizacao: new Date().toISOString()
+    status: "CONCLUIDO",
+    data_finalizacao: new Date().toISOString(),
   });
 }
 
-export async function abandonarRascunhoQuestionario(usuario: Usuario): Promise<boolean> {
+export async function abandonarRascunhoQuestionario(
+  usuario: Usuario,
+): Promise<boolean> {
   const authUserId = await getSupabaseAuthUserId();
   if (!authUserId) return false;
   const sessionToken = getDraftSessionToken();
   const participanteId = authUserId;
   const { error } = await supabase
-    .from('questionario_rascunhos')
+    .from("questionario_rascunhos")
     .update({
-      status: 'ABANDONADO',
-      ultimo_acesso_em: new Date().toISOString()
+      status: "ABANDONADO",
+      ultimo_acesso_em: new Date().toISOString(),
     })
     .or(`participante_id.eq.${participanteId},session_token.eq.${sessionToken}`)
-    .eq('status', 'EM_ANDAMENTO');
+    .eq("status", "EM_ANDAMENTO");
 
   if (error) {
-    console.warn('[questionario_rascunhos] Não foi possível abandonar rascunho:', error.message);
+    console.warn(
+      "[questionario_rascunhos] Não foi possível abandonar rascunho:",
+      error.message,
+    );
     return false;
   }
 
@@ -750,23 +924,31 @@ export async function abandonarRascunhoQuestionario(usuario: Usuario): Promise<b
 function mapDbEmpresaToEmpresa(item: any): Empresa | null {
   if (!item) return null;
   return {
-    id: String(item.id_empresa || item.id || ''),
-    nome: item.nome || '',
-    data_criacao: item.data_criacao || item.created_at || ''
+    id: String(item.id_empresa || item.id || ""),
+    nome: item.nome || "",
+    data_criacao: item.data_criacao || item.created_at || "",
   };
 }
 
-function mapDbUsuarioToUsuario(item: any, fallbackUid?: string): Usuario | null {
+function mapDbUsuarioToUsuario(
+  item: any,
+  fallbackUid?: string,
+): Usuario | null {
   if (!item) return null;
-  const emailVal = item.email || '';
-  const resolvedRole = emailVal === 'nomura.eduardo@gmail.com' ? 'admin' : (item.role || 'user');
+  const emailVal = item.email || "";
+  const resolvedRole =
+    emailVal === "nomura.eduardo@gmail.com" ? "admin" : item.role || "user";
   return {
-    uid: item.uid || item.id || fallbackUid || '',
+    uid: item.uid || item.id || fallbackUid || "",
     email: emailVal,
-    nome: item.nome || '',
-    empresa_id: String(item.id_empresa === 0 || item.id_empresa ? item.id_empresa : (item.empresa_id || '')),
-    empresa_nome: item.empresa_nome || '',
-    role: resolvedRole
+    nome: item.nome || "",
+    empresa_id: String(
+      item.id_empresa === 0 || item.id_empresa
+        ? item.id_empresa
+        : item.empresa_id || "",
+    ),
+    empresa_nome: item.empresa_nome || "",
+    role: resolvedRole,
   };
 }
 
@@ -774,7 +956,7 @@ const styleMappings: Record<string, string> = {
   Direto: "Assertivo",
   Expressivo: "Participativo",
   Amavel: "Integrador",
-  Analitico: "Analítico"
+  Analitico: "Analítico",
 };
 
 function computeResultProfilesAndScores(scores: Scores) {
@@ -782,21 +964,21 @@ function computeResultProfilesAndScores(scores: Scores) {
     .map(([key, value]) => ({
       key,
       name: styleMappings[key] || key,
-      score: Number(value) || 0
+      score: Number(value) || 0,
     }))
     .sort((a, b) => b.score - a.score);
 
-  const ranking = sortedStyles.map(item => ({
+  const ranking = sortedStyles.map((item) => ({
     style: item.name,
-    score: item.score
+    score: item.score,
   }));
 
   const scoresAny = scores as any;
   const pontuacoes_comportamentais = {
-    "Assertivo": scores?.Assertivo ?? scoresAny?.Direto ?? 0,
-    "Participativo": scores?.Participativo ?? scoresAny?.Expressivo ?? 0,
-    "Integrador": scores?.Integrador ?? scoresAny?.Amavel ?? 0,
-    "Analítico": scores?.Analitico ?? 0
+    Assertivo: scores?.Assertivo ?? scoresAny?.Direto ?? 0,
+    Participativo: scores?.Participativo ?? scoresAny?.Expressivo ?? 0,
+    Integrador: scores?.Integrador ?? scoresAny?.Amavel ?? 0,
+    Analítico: scores?.Analitico ?? 0,
   };
 
   return {
@@ -805,44 +987,56 @@ function computeResultProfilesAndScores(scores: Scores) {
     perfil_secundario: sortedStyles[1]?.name || null,
     perfil_terciario: sortedStyles[2]?.name || null,
     perfil_menos_utilizado: sortedStyles[3]?.name || null,
-    pontuacoes_comportamentais
+    pontuacoes_comportamentais,
   };
 }
 
 function computeDetailedAnswers(answers?: Record<string, string | string[]>) {
   if (!answers) return null;
-  const detailed: Array<{ question_id: number; question_text: string; user_answer: any }> = [];
+  const detailed: Array<{
+    question_id: number;
+    question_text: string;
+    user_answer: any;
+  }> = [];
   try {
     Object.entries(answers).forEach(([key, val]) => {
       const qId = Number(key);
       detailed.push({
         question_id: qId,
         question_text: `Questao ${qId}`,
-        user_answer: val
+        user_answer: val,
       });
     });
   } catch (err) {
-    console.error('Error computing detailed answers:', err);
+    console.error("Error computing detailed answers:", err);
   }
   return detailed;
 }
 
 function normalizeProfileName(value: any): string {
-  if (!value) return '';
+  if (!value) return "";
   const profile = String(value).trim();
-  const normalized = profile.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  const normalized = profile
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
 
-  if (normalized.includes('conserv') || normalized.includes('agreg') || normalized.includes('integ') || normalized.includes('amav')) {
-    return 'Integrador';
+  if (
+    normalized.includes("conserv") ||
+    normalized.includes("agreg") ||
+    normalized.includes("integ") ||
+    normalized.includes("amav")
+  ) {
+    return "Integrador";
   }
-  if (normalized.includes('assert') || normalized.includes('direto')) {
-    return 'Assertivo';
+  if (normalized.includes("assert") || normalized.includes("direto")) {
+    return "Assertivo";
   }
-  if (normalized.includes('particip') || normalized.includes('express')) {
-    return 'Participativo';
+  if (normalized.includes("particip") || normalized.includes("express")) {
+    return "Participativo";
   }
-  if (normalized.includes('analit')) {
-    return 'Analitico';
+  if (normalized.includes("analit")) {
+    return "Analitico";
   }
 
   return profile;
@@ -850,19 +1044,22 @@ function normalizeProfileName(value: any): string {
 
 function mapDbResultadoToResultado(item: any): any {
   if (!item) return null;
-  
+
   let parsedScores = {};
   if (item.scores) {
     try {
-      parsedScores = typeof item.scores === 'string' ? JSON.parse(item.scores) : (item.scores || {});
+      parsedScores =
+        typeof item.scores === "string"
+          ? JSON.parse(item.scores)
+          : item.scores || {};
     } catch (e) {
-      console.error('Error parsing scores:', e);
+      console.error("Error parsing scores:", e);
     }
   }
 
   const readNumericScore = (...values: any[]): number => {
     for (const value of values) {
-      if (value !== undefined && value !== null && value !== '') {
+      if (value !== undefined && value !== null && value !== "") {
         const parsed = Number(value);
         return Number.isFinite(parsed) ? parsed : 0;
       }
@@ -871,52 +1068,113 @@ function mapDbResultadoToResultado(item: any): any {
   };
 
   const hasScoreValue = (...values: any[]): boolean => {
-    return values.some(value => value !== undefined && value !== null && value !== '');
+    return values.some(
+      (value) => value !== undefined && value !== null && value !== "",
+    );
   };
 
   const columnScores: Scores = {
     Assertivo: readNumericScore(item.score_assertivo, item.assertivo),
-    Participativo: readNumericScore(item.score_participativo, item.participativo),
-    Integrador: readNumericScore(item.score_integrador, item.score_conservador_agregador, item.integrador, item.conservador_agregador),
-    Analitico: readNumericScore(item.score_analitico, item.score_analitico_sem_acento, item.analitico)
+    Participativo: readNumericScore(
+      item.score_participativo,
+      item.participativo,
+    ),
+    Integrador: readNumericScore(
+      item.score_integrador,
+      item.score_conservador_agregador,
+      item.integrador,
+      item.conservador_agregador,
+    ),
+    Analitico: readNumericScore(
+      item.score_analitico,
+      item.score_analitico_sem_acento,
+      item.analitico,
+    ),
   };
 
   const hasColumnScore = {
     Assertivo: hasScoreValue(item.score_assertivo, item.assertivo),
     Participativo: hasScoreValue(item.score_participativo, item.participativo),
-    Integrador: hasScoreValue(item.score_integrador, item.score_conservador_agregador, item.integrador, item.conservador_agregador),
-    Analitico: hasScoreValue(item.score_analitico, item.score_analitico_sem_acento, item.analitico)
+    Integrador: hasScoreValue(
+      item.score_integrador,
+      item.score_conservador_agregador,
+      item.integrador,
+      item.conservador_agregador,
+    ),
+    Analitico: hasScoreValue(
+      item.score_analitico,
+      item.score_analitico_sem_acento,
+      item.analitico,
+    ),
   };
 
   const scoresAny = parsedScores as any;
   parsedScores = {
-    Assertivo: hasColumnScore.Assertivo ? columnScores.Assertivo : readNumericScore(scoresAny.Assertivo, scoresAny.assertivo, scoresAny.Direto),
-    Participativo: hasColumnScore.Participativo ? columnScores.Participativo : readNumericScore(scoresAny.Participativo, scoresAny.participativo, scoresAny.Expressivo),
-    Integrador: hasColumnScore.Integrador ? columnScores.Integrador : readNumericScore(scoresAny.Integrador, scoresAny.integrador, scoresAny.Amavel, scoresAny["Conservador agregador"], scoresAny.conservador_agregador),
-    Analitico: hasColumnScore.Analitico ? columnScores.Analitico : readNumericScore(scoresAny.Analitico, scoresAny["Analítico"], scoresAny.analitico)
+    Assertivo: hasColumnScore.Assertivo
+      ? columnScores.Assertivo
+      : readNumericScore(
+          scoresAny.Assertivo,
+          scoresAny.assertivo,
+          scoresAny.Direto,
+        ),
+    Participativo: hasColumnScore.Participativo
+      ? columnScores.Participativo
+      : readNumericScore(
+          scoresAny.Participativo,
+          scoresAny.participativo,
+          scoresAny.Expressivo,
+        ),
+    Integrador: hasColumnScore.Integrador
+      ? columnScores.Integrador
+      : readNumericScore(
+          scoresAny.Integrador,
+          scoresAny.integrador,
+          scoresAny.Amavel,
+          scoresAny["Conservador agregador"],
+          scoresAny.conservador_agregador,
+        ),
+    Analitico: hasColumnScore.Analitico
+      ? columnScores.Analitico
+      : readNumericScore(
+          scoresAny.Analitico,
+          scoresAny["Analítico"],
+          scoresAny.analitico,
+        ),
   };
-  
+
   // Ensure scores is a valid object with expected keys
-  if (!parsedScores || typeof parsedScores !== 'object' || Object.keys(parsedScores).length === 0) {
-    parsedScores = { Assertivo: 0, Participativo: 0, Integrador: 0, Analitico: 0 };
+  if (
+    !parsedScores ||
+    typeof parsedScores !== "object" ||
+    Object.keys(parsedScores).length === 0
+  ) {
+    parsedScores = {
+      Assertivo: 0,
+      Participativo: 0,
+      Integrador: 0,
+      Analitico: 0,
+    };
   }
 
   let parsedInsights = undefined;
   if (item.ai_insights) {
     try {
-      parsedInsights = typeof item.ai_insights === 'string' ? JSON.parse(item.ai_insights) : item.ai_insights;
+      parsedInsights =
+        typeof item.ai_insights === "string"
+          ? JSON.parse(item.ai_insights)
+          : item.ai_insights;
     } catch (e) {
-      console.error('Error parsing AI insights:', e);
+      console.error("Error parsing AI insights:", e);
     }
   }
 
   const safeParseJSON = (val: any) => {
     if (!val) return null;
-    if (typeof val === 'string') {
+    if (typeof val === "string") {
       try {
         return JSON.parse(val);
       } catch (e) {
-        console.error('Error parsing custom JSON column:', e);
+        console.error("Error parsing custom JSON column:", e);
         return null;
       }
     }
@@ -925,22 +1183,39 @@ function mapDbResultadoToResultado(item: any): any {
 
   const parsedMetadata = safeParseJSON(item.metadata) || {};
   const parsedReportData = safeParseJSON(item.relatorio) || {};
-  const parsedReportOutput = safeParseJSON(item.relatorio_pronto_para_app) || {};
+  const parsedReportOutput =
+    safeParseJSON(item.relatorio_pronto_para_app) || {};
 
   const reconstructedAnswers: Record<string, string | string[]> = {};
   try {
-    const q1Options = [item.q1_opcao_1, item.q1_opcao_2, item.q1_opcao_3, item.q1_opcao_4, item.q1_opcao_5].filter(Boolean);
-    if (q1Options.length > 0) reconstructedAnswers['1'] = q1Options as string[];
+    const q1Options = [
+      item.q1_opcao_1,
+      item.q1_opcao_2,
+      item.q1_opcao_3,
+      item.q1_opcao_4,
+      item.q1_opcao_5,
+    ].filter(Boolean);
+    if (q1Options.length > 0) reconstructedAnswers["1"] = q1Options as string[];
 
-    if (item.q2_resposta) reconstructedAnswers['2'] = String(item.q2_resposta);
-    if (item.q3_resposta) reconstructedAnswers['3'] = String(item.q3_resposta);
-    if (item.q4_resposta) reconstructedAnswers['4'] = String(item.q4_resposta);
+    if (item.q2_resposta) reconstructedAnswers["2"] = String(item.q2_resposta);
+    if (item.q3_resposta) reconstructedAnswers["3"] = String(item.q3_resposta);
+    if (item.q4_resposta) reconstructedAnswers["4"] = String(item.q4_resposta);
 
-    const q5Options = [item.q5_opcao_1, item.q5_opcao_2, item.q5_opcao_3, item.q5_opcao_4, item.q5_opcao_5].filter(Boolean);
-    if (q5Options.length > 0) reconstructedAnswers['5'] = q5Options as string[];
+    const q5Options = [
+      item.q5_opcao_1,
+      item.q5_opcao_2,
+      item.q5_opcao_3,
+      item.q5_opcao_4,
+      item.q5_opcao_5,
+    ].filter(Boolean);
+    if (q5Options.length > 0) reconstructedAnswers["5"] = q5Options as string[];
 
     for (let q = 6; q <= 13; q++) {
-      if (item[`q${q}_resposta`] !== undefined && item[`q${q}_resposta`] !== null && item[`q${q}_resposta`] !== "") {
+      if (
+        item[`q${q}_resposta`] !== undefined &&
+        item[`q${q}_resposta`] !== null &&
+        item[`q${q}_resposta`] !== ""
+      ) {
         reconstructedAnswers[String(q)] = String(item[`q${q}_resposta`]);
       }
     }
@@ -948,26 +1223,35 @@ function mapDbResultadoToResultado(item: any): any {
     console.error("Error reconstructing answers:", err);
   }
 
-  const rawAnswersParsed = safeParseJSON(item.respostas_questionario) || item.answers || {};
-  const finalAnswersObj = Object.keys(rawAnswersParsed).length > 0 ? rawAnswersParsed : reconstructedAnswers;
+  const rawAnswersParsed =
+    safeParseJSON(item.respostas_questionario) || item.answers || {};
+  const finalAnswersObj =
+    Object.keys(rawAnswersParsed).length > 0
+      ? rawAnswersParsed
+      : reconstructedAnswers;
 
   // Calculate perfilDominante from scores if not present
   let effectivePerfilDominante = normalizeProfileName(
     item.perfil_dominante ||
-    item.perfilDominante ||
-    item.perfil_predominante ||
-    item.dominant_profile ||
-    parsedMetadata.perfil_dominante ||
-    parsedMetadata.perfilDominante ||
-    parsedMetadata.dominantProfile ||
-    parsedMetadata.estilo_identificado ||
-    parsedMetadata.profile
+      item.perfilDominante ||
+      item.perfil_predominante ||
+      item.dominant_profile ||
+      parsedMetadata.perfil_dominante ||
+      parsedMetadata.perfilDominante ||
+      parsedMetadata.dominantProfile ||
+      parsedMetadata.estilo_identificado ||
+      parsedMetadata.profile,
   );
   if (!effectivePerfilDominante && parsedScores) {
-    const scoreKeys: (keyof Scores)[] = ['Assertivo', 'Participativo', 'Integrador', 'Analitico'];
+    const scoreKeys: (keyof Scores)[] = [
+      "Assertivo",
+      "Participativo",
+      "Integrador",
+      "Analitico",
+    ];
     let maxScore = -1;
-    let maxStyle = '';
-    scoreKeys.forEach(style => {
+    let maxStyle = "";
+    scoreKeys.forEach((style) => {
       if (((parsedScores as any)[style] || 0) > maxScore) {
         maxScore = (parsedScores as any)[style] || 0;
         maxStyle = style;
@@ -976,9 +1260,17 @@ function mapDbResultadoToResultado(item: any): any {
     effectivePerfilDominante = normalizeProfileName(maxStyle) || undefined;
   }
 
-  const resultadoId = String(item.resultado_id || item.id_resultado || item.id || '');
-  const relatorioUuid = item.relatorio_uuid ? String(item.relatorio_uuid) : '';
-  const contractVersion = item.contract_version || parsedMetadata.contract_version || parsedMetadata.contractVersion || parsedReportOutput.contract_version || parsedReportOutput.contractVersion || '';
+  const resultadoId = String(
+    item.resultado_id || item.id_resultado || item.id || "",
+  );
+  const relatorioUuid = item.relatorio_uuid ? String(item.relatorio_uuid) : "";
+  const contractVersion =
+    item.contract_version ||
+    parsedMetadata.contract_version ||
+    parsedMetadata.contractVersion ||
+    parsedReportOutput.contract_version ||
+    parsedReportOutput.contractVersion ||
+    "";
 
   return {
     id: resultadoId,
@@ -986,25 +1278,44 @@ function mapDbResultadoToResultado(item: any): any {
     resultado_id: resultadoId,
     relatorio_uuid: relatorioUuid,
     contract_version: contractVersion,
-    id_usuario: item.id_usuario || item.user_id || item.uid || '',
-    nome_usuario: item.user_name || item.nome_usuario || item.usuario_nome || item.nome || parsedMetadata.userName || parsedMetadata.name || parsedMetadata.nome || 'Usuário Desconhecido',
-    empresa_id: String(item.id_empresa === 0 || item.id_empresa ? item.id_empresa : mapUuidToCompanyId(item.empresa_id)),
-    empresa_nome: item.company_name || item.empresa_nome || parsedMetadata.companyName || parsedMetadata.empresa || '',
+    id_usuario: item.id_usuario || item.user_id || item.uid || "",
+    nome_usuario:
+      item.user_name ||
+      item.nome_usuario ||
+      item.usuario_nome ||
+      item.nome ||
+      parsedMetadata.userName ||
+      parsedMetadata.name ||
+      parsedMetadata.nome ||
+      "Usuário Desconhecido",
+    empresa_id: String(
+      item.id_empresa === 0 || item.id_empresa
+        ? item.id_empresa
+        : mapUuidToCompanyId(item.empresa_id),
+    ),
+    empresa_nome:
+      item.company_name ||
+      item.empresa_nome ||
+      parsedMetadata.companyName ||
+      parsedMetadata.empresa ||
+      "",
     scores: parsedScores,
     perfil_dominante: effectivePerfilDominante,
-    data_conclusao: item.generated_at || item.data_conclusao || item.created_at || '',
+    data_conclusao:
+      item.generated_at || item.data_conclusao || item.created_at || "",
     ai_insights: parsedInsights,
     answers: finalAnswersObj,
-    
+
     // Modern extra columns mapped dynamically
-    user_name: item.user_name || '',
-    company_name: item.company_name || '',
+    user_name: item.user_name || "",
+    company_name: item.company_name || "",
     metadata: parsedMetadata,
-    generated_at: item.generated_at || '',
+    generated_at: item.generated_at || "",
     ranking: safeParseJSON(item.ranking),
-    perfil_secundario: item.perfil_secundario || '',
-    perfil_terciario: item.perfil_terciario || '',
-    perfil_menos_utilizado: item.perfil_menos_utili || item.perfil_menos_utilizado || '',
+    perfil_secundario: item.perfil_secundario || "",
+    perfil_terciario: item.perfil_terciario || "",
+    perfil_menos_utilizado:
+      item.perfil_menos_utili || item.perfil_menos_utilizado || "",
     pontuacoes_comportamentais: safeParseJSON(item.pontuacoes_comportamentais),
     respostas_questionario: safeParseJSON(item.respostas_questionario),
     respostas_detalhadas: safeParseJSON(item.respostas_detalhadas),
@@ -1020,7 +1331,7 @@ function mapDbResultadoToResultado(item: any): any {
     potencializacao_talentos: safeParseJSON(item.potencializacao_talentos),
     pdi: safeParseJSON(item.pdi),
     visibility_config: safeParseJSON(item.visibility_config),
-    raw_payload: safeParseJSON(item.raw_payload)
+    raw_payload: safeParseJSON(item.raw_payload),
   };
 }
 
@@ -1032,7 +1343,10 @@ function mapDbResultadoToResultado(item: any): any {
  * Criar Empresa
  */
 export async function criarEmpresa(nome: string): Promise<Empresa> {
-  const { data, error } = await supabase.from('empresas').insert({ nome }).select();
+  const { data, error } = await supabase
+    .from("empresas")
+    .insert({ nome })
+    .select();
   if (error) {
     handleSupabaseError(error, OperationType.CREATE, `criar_empresa: ${nome}`);
   }
@@ -1040,7 +1354,9 @@ export async function criarEmpresa(nome: string): Promise<Empresa> {
   const item = Array.isArray(raw) ? raw[0] : raw;
   const mapped = mapDbEmpresaToEmpresa(item);
   if (!mapped) {
-    throw new Error(`Falha ao obter os dados mapeados da empresa criada: ${nome}`);
+    throw new Error(
+      `Falha ao obter os dados mapeados da empresa criada: ${nome}`,
+    );
   }
   return mapped;
 }
@@ -1049,22 +1365,32 @@ export async function criarEmpresa(nome: string): Promise<Empresa> {
  * Listar Empresas
  */
 export async function listarEmpresas(): Promise<Empresa[]> {
-  const { data, error } = await supabase.from('empresas').select('*');
+  const { data, error } = await supabase.from("empresas").select("*");
   if (error) {
-    handleSupabaseError(error, OperationType.LIST, 'listar_empresas');
+    handleSupabaseError(error, OperationType.LIST, "listar_empresas");
   }
-  const rawArray = Array.isArray(data) ? data : (data ? [data] : []);
+  const rawArray = Array.isArray(data) ? data : data ? [data] : [];
   return rawArray.map(mapDbEmpresaToEmpresa).filter(Boolean) as Empresa[];
 }
 
 /**
  * Buscar Empresa
  */
-export async function buscarEmpresa(idEmpresa: string): Promise<Empresa | null> {
+export async function buscarEmpresa(
+  idEmpresa: string,
+): Promise<Empresa | null> {
   const parsedId = parseBigIntId(idEmpresa);
-  const { data, error } = await supabase.from('empresas').select('*').eq('id_empresa', parsedId).maybeSingle();
+  const { data, error } = await supabase
+    .from("empresas")
+    .select("*")
+    .eq("id_empresa", parsedId)
+    .maybeSingle();
   if (error) {
-    handleSupabaseError(error, OperationType.GET, `buscar_empresa: ${idEmpresa}`);
+    handleSupabaseError(
+      error,
+      OperationType.GET,
+      `buscar_empresa: ${idEmpresa}`,
+    );
   }
   return mapDbEmpresaToEmpresa(data);
 }
@@ -1072,11 +1398,21 @@ export async function buscarEmpresa(idEmpresa: string): Promise<Empresa | null> 
 /**
  * Atualizar Empresa
  */
-export async function atualizarEmpresa(idEmpresa: string, nome: string): Promise<boolean> {
+export async function atualizarEmpresa(
+  idEmpresa: string,
+  nome: string,
+): Promise<boolean> {
   const parsedId = parseBigIntId(idEmpresa);
-  const { error } = await supabase.from('empresas').update({ nome }).eq('id_empresa', parsedId);
+  const { error } = await supabase
+    .from("empresas")
+    .update({ nome })
+    .eq("id_empresa", parsedId);
   if (error) {
-    handleSupabaseError(error, OperationType.UPDATE, `atualizar_empresa: ${idEmpresa}`);
+    handleSupabaseError(
+      error,
+      OperationType.UPDATE,
+      `atualizar_empresa: ${idEmpresa}`,
+    );
   }
   return true;
 }
@@ -1086,9 +1422,16 @@ export async function atualizarEmpresa(idEmpresa: string, nome: string): Promise
  */
 export async function excluirEmpresa(idEmpresa: string): Promise<boolean> {
   const parsedId = parseBigIntId(idEmpresa);
-  const { error } = await supabase.from('empresas').delete().eq('id_empresa', parsedId);
+  const { error } = await supabase
+    .from("empresas")
+    .delete()
+    .eq("id_empresa", parsedId);
   if (error) {
-    handleSupabaseError(error, OperationType.DELETE, `excluir_empresa: ${idEmpresa}`);
+    handleSupabaseError(
+      error,
+      OperationType.DELETE,
+      `excluir_empresa: ${idEmpresa}`,
+    );
   }
   return true;
 }
@@ -1105,25 +1448,32 @@ export async function criarUsuario(
   email: string,
   nome: string,
   idEmpresa: string,
-  role: string = 'user',
-  perfilDominante?: string | null
+  role: string = "user",
+  perfilDominante?: string | null,
 ): Promise<any> {
   const mappedUid = mapFirebaseUidToUuid(uid);
   const parsedIdEmpresa = parseBigIntId(idEmpresa);
-  
+
   // We strictly insert only existing database columns:
   // uid, email, nome, id_empresa, and the recently added role column.
   // We completely omit 'perfil_dominante' since it should not be in the 'usuarios' table.
-  const { data, error } = await supabase.from('usuarios').insert({
-    uid: mappedUid,
-    email: email,
-    nome: nome,
-    id_empresa: parsedIdEmpresa,
-    role: role
-  }).select();
+  const { data, error } = await supabase
+    .from("usuarios")
+    .insert({
+      uid: mappedUid,
+      email: email,
+      nome: nome,
+      id_empresa: parsedIdEmpresa,
+      role: role,
+    })
+    .select();
 
   if (error) {
-    handleSupabaseError(error, OperationType.CREATE, `criar_usuario: ${mappedUid}`);
+    handleSupabaseError(
+      error,
+      OperationType.CREATE,
+      `criar_usuario: ${mappedUid}`,
+    );
   }
   const raw = data as any;
   const item = Array.isArray(raw) ? raw[0] : raw;
@@ -1134,51 +1484,69 @@ export async function criarUsuario(
  * Listar Usuários
  */
 export async function listarUsuarios(): Promise<Usuario[]> {
-  const { data: usersData, error } = await supabase.from('usuarios').select('*');
+  const { data: usersData, error } = await supabase
+    .from("usuarios")
+    .select("*");
   if (error) {
-    handleSupabaseError(error, OperationType.LIST, 'listar_usuarios');
+    handleSupabaseError(error, OperationType.LIST, "listar_usuarios");
   }
   if (!usersData || usersData.length === 0) return [];
-  
+
   // Resiliently fetch companies to correctly map names
-  const { data: empsData } = await supabase.from('empresas').select('id_empresa, nome');
+  const { data: empsData } = await supabase
+    .from("empresas")
+    .select("id_empresa, nome");
   const empMap: Record<string, string> = {};
   if (empsData) {
     empsData.forEach((e: any) => {
-      empMap[String(e.id_empresa)] = e.nome || '';
+      empMap[String(e.id_empresa)] = e.nome || "";
     });
   }
 
-  return usersData.map((item: any) => {
-    const u = mapDbUsuarioToUsuario(item);
-    if (u) {
-      u.empresa_nome = empMap[u.empresa_id] || '';
-    }
-    return u;
-  }).filter(Boolean) as Usuario[];
+  return usersData
+    .map((item: any) => {
+      const u = mapDbUsuarioToUsuario(item);
+      if (u) {
+        u.empresa_nome = empMap[u.empresa_id] || "";
+      }
+      return u;
+    })
+    .filter(Boolean) as Usuario[];
 }
 
 /**
  * Buscar Usuário
  */
 export async function buscarUsuario(uid: string): Promise<Usuario | null> {
-  const trimmedUid = String(uid || '').trim();
+  const trimmedUid = String(uid || "").trim();
   if (!trimmedUid) return null;
 
   const mappedUid = mapFirebaseUidToUuid(trimmedUid);
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  const candidateUids = Array.from(new Set([
-    mappedUid,
-    ...(uuidRegex.test(trimmedUid) ? [trimmedUid] : [])
-  ].filter(Boolean)));
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const candidateUids = Array.from(
+    new Set(
+      [mappedUid, ...(uuidRegex.test(trimmedUid) ? [trimmedUid] : [])].filter(
+        Boolean,
+      ),
+    ),
+  );
 
   let data: any = null;
 
   for (const candidateUid of candidateUids) {
-    const result = await supabase.from('usuarios').select('*').eq('uid', candidateUid).maybeSingle();
+    const result = await supabase
+      .from("usuarios")
+      .select("*")
+      .eq("uid", candidateUid)
+      .maybeSingle();
 
     if (result.error) {
-      handleSupabaseError(result.error, OperationType.GET, `buscar_usuario: ${candidateUid}`);
+      handleSupabaseError(
+        result.error,
+        OperationType.GET,
+        `buscar_usuario: ${candidateUid}`,
+      );
     }
 
     if (result.data) {
@@ -1188,32 +1556,52 @@ export async function buscarUsuario(uid: string): Promise<Usuario | null> {
   }
 
   if (!data) return null;
-  
+
   const user = mapDbUsuarioToUsuario(data, mappedUid);
   if (user && user.empresa_id) {
-    const { data: empData } = await supabase.from('empresas').select('nome').eq('id_empresa', parseBigIntId(user.empresa_id)).maybeSingle();
+    const { data: empData } = await supabase
+      .from("empresas")
+      .select("nome")
+      .eq("id_empresa", parseBigIntId(user.empresa_id))
+      .maybeSingle();
     if (empData) {
-      user.empresa_nome = empData.nome || '';
+      user.empresa_nome = empData.nome || "";
     }
   }
   return user;
 }
 
-export async function buscarUsuarioPorEmail(email: string): Promise<Usuario | null> {
-  const normalizedEmail = String(email || '').trim().toLowerCase();
+export async function buscarUsuarioPorEmail(
+  email: string,
+): Promise<Usuario | null> {
+  const normalizedEmail = String(email || "")
+    .trim()
+    .toLowerCase();
   if (!normalizedEmail) return null;
 
-  const { data, error } = await supabase.from('usuarios').select('*').ilike('email', normalizedEmail).maybeSingle();
+  const { data, error } = await supabase
+    .from("usuarios")
+    .select("*")
+    .ilike("email", normalizedEmail)
+    .maybeSingle();
   if (error) {
-    handleSupabaseError(error, OperationType.GET, `buscar_usuario_por_email: ${normalizedEmail}`);
+    handleSupabaseError(
+      error,
+      OperationType.GET,
+      `buscar_usuario_por_email: ${normalizedEmail}`,
+    );
   }
   if (!data) return null;
 
   const user = mapDbUsuarioToUsuario(data);
   if (user && user.empresa_id) {
-    const { data: empData } = await supabase.from('empresas').select('nome').eq('id_empresa', parseBigIntId(user.empresa_id)).maybeSingle();
+    const { data: empData } = await supabase
+      .from("empresas")
+      .select("nome")
+      .eq("id_empresa", parseBigIntId(user.empresa_id))
+      .maybeSingle();
     if (empData) {
-      user.empresa_nome = empData.nome || '';
+      user.empresa_nome = empData.nome || "";
     }
   }
   return user;
@@ -1228,20 +1616,27 @@ export async function atualizarUsuario(
   nome: string,
   idEmpresa: string,
   role: string,
-  perfilDominante?: string | null
+  perfilDominante?: string | null,
 ): Promise<boolean> {
   const mappedUid = mapFirebaseUidToUuid(uid);
   const parsedIdEmpresa = parseBigIntId(idEmpresa);
-  
-  const { error } = await supabase.from('usuarios').update({
-    email: email,
-    nome: nome,
-    id_empresa: parsedIdEmpresa,
-    role: role
-  }).eq('uid', mappedUid);
+
+  const { error } = await supabase
+    .from("usuarios")
+    .update({
+      email: email,
+      nome: nome,
+      id_empresa: parsedIdEmpresa,
+      role: role,
+    })
+    .eq("uid", mappedUid);
 
   if (error) {
-    handleSupabaseError(error, OperationType.UPDATE, `atualizar_usuario: ${mappedUid}`);
+    handleSupabaseError(
+      error,
+      OperationType.UPDATE,
+      `atualizar_usuario: ${mappedUid}`,
+    );
   }
   return true;
 }
@@ -1251,9 +1646,16 @@ export async function atualizarUsuario(
  */
 export async function excluirUsuario(uid: string): Promise<boolean> {
   const mappedUid = mapFirebaseUidToUuid(uid);
-  const { error } = await supabase.from('usuarios').delete().eq('uid', mappedUid);
+  const { error } = await supabase
+    .from("usuarios")
+    .delete()
+    .eq("uid", mappedUid);
   if (error) {
-    handleSupabaseError(error, OperationType.DELETE, `excluir_usuario: ${mappedUid}`);
+    handleSupabaseError(
+      error,
+      OperationType.DELETE,
+      `excluir_usuario: ${mappedUid}`,
+    );
   }
   return true;
 }
@@ -1274,79 +1676,113 @@ export async function criarResultado(
   param6?: any, // answers OR companyNameOpt (string)
   param7?: string, // userNameOpt
   param8?: string, // companyNameOpt
-  param9?: AnswerDetail[] // answersDetailed
+  param9?: AnswerDetail[], // answersDetailed
 ): Promise<any> {
   const mappedUid = mapFirebaseUidToUuid(uid);
   const parsedIdEmpresa = parseBigIntId(idEmpresa);
 
-  let scores: Scores = { Assertivo: 0, Participativo: 0, Integrador: 0, Analitico: 0 };
-  let perfilDominante = '';
+  let scores: Scores = {
+    Assertivo: 0,
+    Participativo: 0,
+    Integrador: 0,
+    Analitico: 0,
+  };
+  let perfilDominante = "";
   let aiInsights: any = null;
   let answers: Record<string, string | string[]> | undefined = undefined;
-  let userName = '';
-  let companyName = '';
+  let userName = "";
+  let companyName = "";
   let finalAnswersDetailed: AnswerDetail[] | undefined = undefined;
 
   // Detect which signature overload has been used
-  const isStructuredReportPayload = param3 && (param3.report_data || param3.metadata || param3.questionnaire);
+  const isStructuredReportPayload =
+    param3 && (param3.report_data || param3.metadata || param3.questionnaire);
 
   if (isStructuredReportPayload) {
     aiInsights = param3;
     answers = param4;
-    userName = typeof param5 === 'string' ? param5 : '';
-    companyName = typeof param6 === 'string' ? param6 : '';
-    
+    userName = typeof param5 === "string" ? param5 : "";
+    companyName = typeof param6 === "string" ? param6 : "";
+
     const reportData = aiInsights?.report_data || {};
-    scores = reportData.resultado?.scores || { Assertivo: 0, Participativo: 0, Integrador: 0, Analitico: 0 };
-    perfilDominante = reportData.resultado?.perfil_dominante || '';
-    
+    scores = reportData.resultado?.scores || {
+      Assertivo: 0,
+      Participativo: 0,
+      Integrador: 0,
+      Analitico: 0,
+    };
+    perfilDominante = reportData.resultado?.perfil_dominante || "";
+
     // If perfil_dominante is empty, calculate it from scores
     if (!perfilDominante && scores) {
-      const scoreKeys: (keyof Scores)[] = ['Assertivo', 'Participativo', 'Integrador', 'Analitico'];
+      const scoreKeys: (keyof Scores)[] = [
+        "Assertivo",
+        "Participativo",
+        "Integrador",
+        "Analitico",
+      ];
       let maxScore = -1;
-      let maxStyle = '';
-      scoreKeys.forEach(style => {
+      let maxStyle = "";
+      scoreKeys.forEach((style) => {
         if ((scores[style] || 0) > maxScore) {
           maxScore = scores[style] || 0;
           maxStyle = style;
         }
       });
-      perfilDominante = maxStyle || '';
+      perfilDominante = maxStyle || "";
     }
   } else {
-    scores = param3 || { Assertivo: 0, Participativo: 0, Integrador: 0, Analitico: 0 };
-    perfilDominante = param4 || '';
+    scores = param3 || {
+      Assertivo: 0,
+      Participativo: 0,
+      Integrador: 0,
+      Analitico: 0,
+    };
+    perfilDominante = param4 || "";
     aiInsights = param5 || null;
     answers = param6;
-    userName = param7 || '';
-    companyName = param8 || '';
+    userName = param7 || "";
+    companyName = param8 || "";
     finalAnswersDetailed = param9;
-    
+
     // If perfil_dominante is empty, calculate it from scores
     if (!perfilDominante && scores) {
-      const scoreKeys: (keyof Scores)[] = ['Assertivo', 'Participativo', 'Integrador', 'Analitico'];
+      const scoreKeys: (keyof Scores)[] = [
+        "Assertivo",
+        "Participativo",
+        "Integrador",
+        "Analitico",
+      ];
       let maxScore = -1;
-      let maxStyle = '';
-      scoreKeys.forEach(style => {
+      let maxStyle = "";
+      scoreKeys.forEach((style) => {
         if ((scores[style] || 0) > maxScore) {
           maxScore = scores[style] || 0;
           maxStyle = style;
         }
       });
-      perfilDominante = maxStyle || '';
+      perfilDominante = maxStyle || "";
     }
   }
 
   if (!userName || !companyName) {
     try {
-      const { data: userData } = await supabase.from('usuarios').select('nome, id_empresa').eq('uid', mappedUid).maybeSingle();
+      const { data: userData } = await supabase
+        .from("usuarios")
+        .select("nome, id_empresa")
+        .eq("uid", mappedUid)
+        .maybeSingle();
       if (userData) {
-        if (!userName) userName = userData.nome || '';
+        if (!userName) userName = userData.nome || "";
         const resolvedEmp = parsedIdEmpresa || userData.id_empresa;
         if (resolvedEmp && !companyName) {
-          const { data: empData } = await supabase.from('empresas').select('nome').eq('id_empresa', parseBigIntId(String(resolvedEmp))).maybeSingle();
+          const { data: empData } = await supabase
+            .from("empresas")
+            .select("nome")
+            .eq("id_empresa", parseBigIntId(String(resolvedEmp)))
+            .maybeSingle();
           if (empData) {
-            companyName = empData.nome || '';
+            companyName = empData.nome || "";
           }
         }
       }
@@ -1360,14 +1796,14 @@ export async function criarResultado(
 
   // Normalize or construct raw_payload
   let rawPayload = aiInsights || {};
-  if (typeof rawPayload === 'string') {
+  if (typeof rawPayload === "string") {
     try {
       rawPayload = JSON.parse(rawPayload);
     } catch {
       rawPayload = {};
     }
   }
-  if (typeof rawPayload !== 'object' || rawPayload === null) {
+  if (typeof rawPayload !== "object" || rawPayload === null) {
     rawPayload = {};
   }
 
@@ -1385,36 +1821,69 @@ export async function criarResultado(
   }
 
   const cp = rawPayload.contextoQuestionario;
-  if (!cp.userName) cp.userName = metadata.userName || userName || '';
-  if (!cp.companyName) cp.companyName = metadata.companyName || companyName || '';
-  if (!cp.completedAt) cp.completedAt = metadata.completedAt || new Date().toISOString();
-  if (!cp.generatedAt) cp.generatedAt = metadata.generatedAt || new Date().toISOString();
+  if (!cp.userName) cp.userName = metadata.userName || userName || "";
+  if (!cp.companyName)
+    cp.companyName = metadata.companyName || companyName || "";
+  if (!cp.completedAt)
+    cp.completedAt = metadata.completedAt || new Date().toISOString();
+  if (!cp.generatedAt)
+    cp.generatedAt = metadata.generatedAt || new Date().toISOString();
   if (!cp.scores) cp.scores = assessment.scores || scores;
   if (!cp.ranking) cp.ranking = assessment.ranking || ext.ranking;
-  if (!cp.perfilPredominante) cp.perfilPredominante = assessment.dominantProfile || ext.perfil_dominante || perfilDominante;
-  if (!cp.perfilSecundario) cp.perfilSecundario = assessment.secondaryProfile || ext.perfil_secundario;
-  if (!cp.perfilTerciario) cp.perfilTerciario = assessment.thirdProfile || ext.perfil_terciario;
-  if (!cp.perfilMenosUtilizado) cp.perfilMenosUtilizado = assessment.lowestProfile || ext.perfil_menos_utilizado;
+  if (!cp.perfilPredominante)
+    cp.perfilPredominante =
+      assessment.dominantProfile || ext.perfil_dominante || perfilDominante;
+  if (!cp.perfilSecundario)
+    cp.perfilSecundario = assessment.secondaryProfile || ext.perfil_secundario;
+  if (!cp.perfilTerciario)
+    cp.perfilTerciario = assessment.thirdProfile || ext.perfil_terciario;
+  if (!cp.perfilMenosUtilizado)
+    cp.perfilMenosUtilizado =
+      assessment.lowestProfile || ext.perfil_menos_utilizado;
   if (!cp.respostasDetalhadas) cp.respostasDetalhadas = detailedAnswers;
 
   const rel = rawPayload.relatorio;
-  if (!rel.parecer_executivo) rel.parecer_executivo = participantReport.executiveSummary || aiInsights?.resumo || aiInsights?.parecer_executivo || '';
-  if (!rel.oportunidades_alavancas) rel.oportunidades_alavancas = participantReport.opportunities || aiInsights?.oportunidades || aiInsights?.oportunidades_alavancas || [];
-  if (!rel.pontos_criticos_desafios) rel.pontos_criticos_desafios = participantReport.developmentPoints || aiInsights?.desafios || aiInsights?.pontos_criticos_desafios || [];
-  if (!rel.conselho_alta_performance) rel.conselho_alta_performance = participantReport.highPerformanceAdvice || aiInsights?.insights || aiInsights?.conselho_alta_performance || '';
-  
+  if (!rel.parecer_executivo)
+    rel.parecer_executivo =
+      participantReport.executiveSummary ||
+      aiInsights?.resumo ||
+      aiInsights?.parecer_executivo ||
+      "";
+  if (!rel.oportunidades_alavancas)
+    rel.oportunidades_alavancas =
+      participantReport.opportunities ||
+      aiInsights?.oportunidades ||
+      aiInsights?.oportunidades_alavancas ||
+      [];
+  if (!rel.pontos_criticos_desafios)
+    rel.pontos_criticos_desafios =
+      participantReport.developmentPoints ||
+      aiInsights?.desafios ||
+      aiInsights?.pontos_criticos_desafios ||
+      [];
+  if (!rel.conselho_alta_performance)
+    rel.conselho_alta_performance =
+      participantReport.highPerformanceAdvice ||
+      aiInsights?.insights ||
+      aiInsights?.conselho_alta_performance ||
+      "";
+
   if (!rel.analise_comportamental) {
     rel.analise_comportamental = {
       estilo_identificado: cp.perfilPredominante,
-      descricao: participantReport.profileSummary || '',
+      descricao: participantReport.profileSummary || "",
       pontos_fortes_talentos: participantReport.strengths || [],
-      pontos_desenvolvimento: participantReport.developmentPoints || []
+      pontos_desenvolvimento: participantReport.developmentPoints || [],
     };
   }
 
-  if (!rel.metodologia_potenciar_ativada) rel.metodologia_potenciar_ativada = aiInsights?.conhecimento_aplicado || '';
-  if (!rel.sobre_metodologia) rel.sobre_metodologia = "Metodologia Potenciar de Diagnóstico de Socioestilos.";
-  if (!rawPayload.respostasQuestionario) rawPayload.respostasQuestionario = answers || {};
+  if (!rel.metodologia_potenciar_ativada)
+    rel.metodologia_potenciar_ativada = aiInsights?.conhecimento_aplicado || "";
+  if (!rel.sobre_metodologia)
+    rel.sobre_metodologia =
+      "Metodologia Potenciar de Diagnóstico de Socioestilos.";
+  if (!rawPayload.respostasQuestionario)
+    rawPayload.respostasQuestionario = answers || {};
   if (finalAnswersDetailed) {
     if (!rawPayload.questionnaire) rawPayload.questionnaire = {};
     rawPayload.questionnaire.answersDetailed = finalAnswersDetailed;
@@ -1426,28 +1895,31 @@ export async function criarResultado(
   if (answers) {
     try {
       // Q1 (multi) - up to 5 options
-      const q1Ans = answers['1'];
+      const q1Ans = answers["1"];
       if (Array.isArray(q1Ans)) {
         for (let i = 0; i < 5; i++) {
           questionAnswersPayload[`q1_opcao_${i + 1}`] = q1Ans[i] || null;
         }
-      } else if (typeof q1Ans === 'string') {
-        questionAnswersPayload['q1_opcao_1'] = q1Ans;
+      } else if (typeof q1Ans === "string") {
+        questionAnswersPayload["q1_opcao_1"] = q1Ans;
       }
 
       // Q2, Q3, Q4 (single)
-      if (answers['2']) questionAnswersPayload['q2_resposta'] = String(answers['2']);
-      if (answers['3']) questionAnswersPayload['q3_resposta'] = String(answers['3']);
-      if (answers['4']) questionAnswersPayload['q4_resposta'] = String(answers['4']);
+      if (answers["2"])
+        questionAnswersPayload["q2_resposta"] = String(answers["2"]);
+      if (answers["3"])
+        questionAnswersPayload["q3_resposta"] = String(answers["3"]);
+      if (answers["4"])
+        questionAnswersPayload["q4_resposta"] = String(answers["4"]);
 
       // Q5 (multi) - up to 5 options
-      const q5Ans = answers['5'];
+      const q5Ans = answers["5"];
       if (Array.isArray(q5Ans)) {
         for (let i = 0; i < 5; i++) {
           questionAnswersPayload[`q5_opcao_${i + 1}`] = q5Ans[i] || null;
         }
-      } else if (typeof q5Ans === 'string') {
-        questionAnswersPayload['q5_opcao_1'] = q5Ans;
+      } else if (typeof q5Ans === "string") {
+        questionAnswersPayload["q5_opcao_1"] = q5Ans;
       }
 
       // Q6 to Q13 (single)
@@ -1461,13 +1933,19 @@ export async function criarResultado(
     }
   }
 
-  const rawIdEmpresa = rawPayload.db_record?.id_empresa || rawPayload.db_record?.empresa_id || metadata.companyId || idEmpresa;
+  const rawIdEmpresa =
+    rawPayload.db_record?.id_empresa ||
+    rawPayload.db_record?.empresa_id ||
+    metadata.companyId ||
+    idEmpresa;
   const parsedEmpresaId = parseBigIntId(rawIdEmpresa);
 
   // Dynamically resolve the active Supabase Auth user id to satisfy rigid Row Level Security policies
   let activeSupaUserId: string | null = null;
   try {
-    const { data: { user: authUser } } = await supabase.auth.getUser();
+    const {
+      data: { user: authUser },
+    } = await supabase.auth.getUser();
     if (authUser?.id) {
       activeSupaUserId = authUser.id;
     }
@@ -1476,42 +1954,125 @@ export async function criarResultado(
   }
 
   const scoresForColumns = scores as any;
-  const scoreAssertivo = Number(scoresForColumns.Assertivo ?? scoresForColumns.assertivo ?? scoresForColumns.Direto ?? 0) || 0;
-  const scoreParticipativo = Number(scoresForColumns.Participativo ?? scoresForColumns.participativo ?? scoresForColumns.Expressivo ?? 0) || 0;
-  const scoreIntegrador = Number(scoresForColumns.Integrador ?? scoresForColumns.integrador ?? scoresForColumns.Amavel ?? scoresForColumns["Conservador agregador"] ?? scoresForColumns.conservador_agregador ?? 0) || 0;
-  const scoreAnalitico = Number(scoresForColumns.Analitico ?? scoresForColumns["Analítico"] ?? scoresForColumns.analitico ?? 0) || 0;
+  const scoreAssertivo =
+    Number(
+      scoresForColumns.Assertivo ??
+        scoresForColumns.assertivo ??
+        scoresForColumns.Direto ??
+        0,
+    ) || 0;
+  const scoreParticipativo =
+    Number(
+      scoresForColumns.Participativo ??
+        scoresForColumns.participativo ??
+        scoresForColumns.Expressivo ??
+        0,
+    ) || 0;
+  const scoreIntegrador =
+    Number(
+      scoresForColumns.Integrador ??
+        scoresForColumns.integrador ??
+        scoresForColumns.Amavel ??
+        scoresForColumns["Conservador agregador"] ??
+        scoresForColumns.conservador_agregador ??
+        0,
+    ) || 0;
+  const scoreAnalitico =
+    Number(
+      scoresForColumns.Analitico ??
+        scoresForColumns["Analítico"] ??
+        scoresForColumns.analitico ??
+        0,
+    ) || 0;
 
   const rawInsertPayload: any = {
     user_id: activeSupaUserId || rawPayload.db_record?.user_id || mappedUid,
-    id_usuario: rawPayload.db_record?.id_usuario || rawPayload.db_record?.user_id || mappedUid,
+    id_usuario:
+      rawPayload.db_record?.id_usuario ||
+      rawPayload.db_record?.user_id ||
+      mappedUid,
     id_empresa: parsedEmpresaId || null,
     empresa_id: parsedEmpresaId || null,
-    user_name: rawPayload.db_record?.user_name || metadata.userName || userName || null,
-    company_name: rawPayload.db_record?.company_name || metadata.companyName || companyName || null,
-    perfil_dominante: rawPayload.db_record?.perfil_dominante || assessment.dominantProfile || cp.perfilPredominante || null,
-    perfil_secundario: rawPayload.db_record?.perfil_secundario || assessment.secondaryProfile || cp.perfilSecundario || null,
-    perfil_terciario: rawPayload.db_record?.perfil_terciario || assessment.thirdProfile || cp.perfilTerciario || null,
-    perfil_menos_utili: rawPayload.db_record?.perfil_menos_utilizado || rawPayload.db_record?.perfil_menos_utili || assessment.lowestProfile || cp.perfilMenosUtilizado || null,
-    perfil_menos_utilizado: rawPayload.db_record?.perfil_menos_utilizado || rawPayload.db_record?.perfil_menos_utili || assessment.lowestProfile || cp.perfilMenosUtilizado || null,
-    scores: rawPayload.db_record?.scores || assessment.scores || cp.scores || scores || null,
+    user_name:
+      rawPayload.db_record?.user_name || metadata.userName || userName || null,
+    company_name:
+      rawPayload.db_record?.company_name ||
+      metadata.companyName ||
+      companyName ||
+      null,
+    perfil_dominante:
+      rawPayload.db_record?.perfil_dominante ||
+      assessment.dominantProfile ||
+      cp.perfilPredominante ||
+      null,
+    perfil_secundario:
+      rawPayload.db_record?.perfil_secundario ||
+      assessment.secondaryProfile ||
+      cp.perfilSecundario ||
+      null,
+    perfil_terciario:
+      rawPayload.db_record?.perfil_terciario ||
+      assessment.thirdProfile ||
+      cp.perfilTerciario ||
+      null,
+    perfil_menos_utili:
+      rawPayload.db_record?.perfil_menos_utilizado ||
+      rawPayload.db_record?.perfil_menos_utili ||
+      assessment.lowestProfile ||
+      cp.perfilMenosUtilizado ||
+      null,
+    perfil_menos_utilizado:
+      rawPayload.db_record?.perfil_menos_utilizado ||
+      rawPayload.db_record?.perfil_menos_utili ||
+      assessment.lowestProfile ||
+      cp.perfilMenosUtilizado ||
+      null,
+    scores:
+      rawPayload.db_record?.scores ||
+      assessment.scores ||
+      cp.scores ||
+      scores ||
+      null,
     score_assertivo: rawPayload.db_record?.score_assertivo ?? scoreAssertivo,
-    score_participativo: rawPayload.db_record?.score_participativo ?? scoreParticipativo,
-    score_integrador: rawPayload.db_record?.score_integrador ?? rawPayload.db_record?.score_conservador_agregador ?? scoreIntegrador,
+    score_participativo:
+      rawPayload.db_record?.score_participativo ?? scoreParticipativo,
+    score_integrador:
+      rawPayload.db_record?.score_integrador ??
+      rawPayload.db_record?.score_conservador_agregador ??
+      scoreIntegrador,
     score_analitico: rawPayload.db_record?.score_analitico ?? scoreAnalitico,
-    total_pontos: rawPayload.db_record?.total_pontos ?? (scoreAssertivo + scoreParticipativo + scoreIntegrador + scoreAnalitico),
+    total_pontos:
+      rawPayload.db_record?.total_pontos ??
+      scoreAssertivo + scoreParticipativo + scoreIntegrador + scoreAnalitico,
     raw_payload: rawPayload, // Stores full structured report JSON
     ai_insights: rawPayload, // Stores full structured report payload as requested to protect all report sections
-    ...(rawPayload.report_output ? { relatorio_pronto_para_app: rawPayload.report_output } : {}),
-    ...(rawPayload.resultado_id ? { id_resultado: rawPayload.resultado_id } : {}),
-    ...(rawPayload.relatorio_uuid ? { relatorio_uuid: rawPayload.relatorio_uuid } : {}),
-    ...(rawPayload.contract_version ? { contract_version: rawPayload.contract_version } : {}),
-    data_conclusao: rawPayload.db_record?.data_conclusao || metadata.completedAt || cp.completedAt || null,
-    generated_at: rawPayload.db_record?.generated_at || metadata.generatedAt || cp.generatedAt || null,
+    ...(rawPayload.report_output
+      ? { relatorio_pronto_para_app: rawPayload.report_output }
+      : {}),
+    ...(rawPayload.resultado_id
+      ? { id_resultado: rawPayload.resultado_id }
+      : {}),
+    ...(rawPayload.relatorio_uuid
+      ? { relatorio_uuid: rawPayload.relatorio_uuid }
+      : {}),
+    ...(rawPayload.contract_version
+      ? { contract_version: rawPayload.contract_version }
+      : {}),
+    data_conclusao:
+      rawPayload.db_record?.data_conclusao ||
+      metadata.completedAt ||
+      cp.completedAt ||
+      null,
+    generated_at:
+      rawPayload.db_record?.generated_at ||
+      metadata.generatedAt ||
+      cp.generatedAt ||
+      null,
     answers: answers || {},
     respostas_questionario: answers || {},
     answers_detailed: finalAnswersDetailed || null,
     respostas_detalhadas: finalAnswersDetailed || null,
-    ...questionAnswersPayload
+    ...questionAnswersPayload,
   };
 
   let attempt = 0;
@@ -1520,24 +2081,36 @@ export async function criarResultado(
   const currentPayload = { ...rawInsertPayload };
 
   while (attempt < 60) {
-    console.log(`[criarResultado] Tentando inserção no banco (tentativa ${attempt + 1})...`);
-    const { data, error } = await supabase.from('resultados').insert(currentPayload).select();
+    console.log(
+      `[criarResultado] Tentando inserção no banco (tentativa ${attempt + 1})...`,
+    );
+    const { data, error } = await supabase
+      .from("resultados")
+      .insert(currentPayload)
+      .select();
 
     if (!error) {
-      console.log("[criarResultado] Gravação na tabela resultados efetuada com sucesso!");
+      console.log(
+        "[criarResultado] Gravação na tabela resultados efetuada com sucesso!",
+      );
       successData = data;
       break;
     }
 
     lastError = error;
-    console.log(`[criarResultado] Integridade na gravação (tentativa ${attempt + 1}):`, error.message, error);
+    console.log(
+      `[criarResultado] Integridade na gravação (tentativa ${attempt + 1}):`,
+      error.message,
+      error,
+    );
 
     const offendingColumn = (() => {
-      const msg = error.message || '';
-      const m1 = msg.match(/column "([^"]+)" of relation "resultados" does not exist/) || 
-                 msg.match(/column "([^"]+)" does not exist/);
+      const msg = error.message || "";
+      const m1 =
+        msg.match(/column "([^"]+)" of relation "resultados" does not exist/) ||
+        msg.match(/column "([^"]+)" does not exist/);
       if (m1 && m1[1]) return m1[1];
-      
+
       const m2 = msg.match(/Could not find the ['"]([^'"]+)['"] column/i);
       if (m2 && m2[1]) return m2[1];
 
@@ -1548,7 +2121,9 @@ export async function criarResultado(
     })();
 
     if (offendingColumn) {
-      console.log(`[criarResultado] Removendo coluna inexistente do payload e tentando novamente: "${offendingColumn}"`);
+      console.log(
+        `[criarResultado] Removendo coluna inexistente do payload e tentando novamente: "${offendingColumn}"`,
+      );
       delete currentPayload[offendingColumn];
       attempt++;
     } else {
@@ -1557,7 +2132,11 @@ export async function criarResultado(
   }
 
   if (lastError && !successData) {
-    handleSupabaseError(lastError, OperationType.CREATE, `criar_resultado: ${mappedUid}`);
+    handleSupabaseError(
+      lastError,
+      OperationType.CREATE,
+      `criar_resultado: ${mappedUid}`,
+    );
   }
 
   const raw = successData as any;
@@ -1569,9 +2148,12 @@ export async function criarResultado(
  * Listar Resultados
  */
 export async function listarResultados(): Promise<Resultado[]> {
-  let { data: rawData, error } = await supabase.from('resultados').select('*');
+  let { data: rawData, error } = await supabase.from("resultados").select("*");
   if (error) {
-    console.warn('[listarResultados] Direct Supabase read failed, trying backend fallback:', error.message);
+    console.warn(
+      "[listarResultados] Direct Supabase read failed, trying backend fallback:",
+      error.message,
+    );
     rawData = await fetchBackendResultados();
   }
   const backendRawData = await fetchBackendResultados();
@@ -1580,42 +2162,58 @@ export async function listarResultados(): Promise<Resultado[]> {
   }
   if (!rawData || rawData.length === 0) return [];
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[listarResultados] Raw count from DB:', rawData.length);
+  if (process.env.NODE_ENV === "development") {
+    console.log("[listarResultados] Raw count from DB:", rawData.length);
   }
 
   // Fetch all users and companies to map names easily and perfectly
-  const { data: usersData } = await supabase.from('usuarios').select('uid, nome');
-  const { data: empsData } = await supabase.from('empresas').select('id_empresa, nome');
+  const { data: usersData } = await supabase
+    .from("usuarios")
+    .select("uid, nome");
+  const { data: empsData } = await supabase
+    .from("empresas")
+    .select("id_empresa, nome");
 
   const userMap: Record<string, string> = {};
   if (usersData) {
     usersData.forEach((u: any) => {
-      userMap[String(u.uid)] = u.nome || '';
+      userMap[String(u.uid)] = u.nome || "";
     });
   }
 
   const empMap: Record<string, string> = {};
   if (empsData) {
     empsData.forEach((e: any) => {
-      empMap[String(e.id_empresa)] = e.nome || '';
+      empMap[String(e.id_empresa)] = e.nome || "";
     });
   }
 
-  const mapped = rawData.map((item: any) => {
-    const mapped = mapDbResultadoToResultado(item);
-    if (mapped) {
-      mapped.nome_usuario = mapped.nome_usuario || mapped.user_name || userMap[mapped.id_usuario] || 'Usuário Desconhecido';
-      mapped.empresa_nome = mapped.empresa_nome || mapped.company_name || empMap[mapped.empresa_id] || '';
-    }
-    return mapped;
-  }).filter(Boolean) as Resultado[];
+  const mapped = rawData
+    .map((item: any) => {
+      const mapped = mapDbResultadoToResultado(item);
+      if (mapped) {
+        mapped.nome_usuario =
+          mapped.nome_usuario ||
+          mapped.user_name ||
+          userMap[mapped.id_usuario] ||
+          "Usuário Desconhecido";
+        mapped.empresa_nome =
+          mapped.empresa_nome ||
+          mapped.company_name ||
+          empMap[mapped.empresa_id] ||
+          "";
+      }
+      return mapped;
+    })
+    .filter(Boolean) as Resultado[];
 
-  if (process.env.NODE_ENV === 'development') {
-    console.log('[listarResultados] Mapped count:', mapped.length);
+  if (process.env.NODE_ENV === "development") {
+    console.log("[listarResultados] Mapped count:", mapped.length);
     // Log items that got filtered out
     if (mapped.length < rawData.length) {
-      console.warn(`[listarResultados] ${rawData.length - mapped.length} items filtered by mapDbResultadoToResultado`);
+      console.warn(
+        `[listarResultados] ${rawData.length - mapped.length} items filtered by mapDbResultadoToResultado`,
+      );
     }
   }
 
@@ -1625,21 +2223,33 @@ export async function listarResultados(): Promise<Resultado[]> {
 /**
  * Buscar Resultado
  */
-export async function buscarResultado(idResultado: string): Promise<Resultado | null> {
+export async function buscarResultado(
+  idResultado: string,
+): Promise<Resultado | null> {
   const parsedId = parseResultId(idResultado);
-  const idCandidates = Array.from(new Set([parsedId, String(idResultado)].filter(Boolean)));
+  const idCandidates = Array.from(
+    new Set([parsedId, String(idResultado)].filter(Boolean)),
+  );
   let rawData: any = null;
   let lastError: any = null;
 
   for (const candidate of idCandidates) {
-    const byId = await supabase.from('resultados').select('*').eq('id', candidate).maybeSingle();
+    const byId = await supabase
+      .from("resultados")
+      .select("*")
+      .eq("id", candidate)
+      .maybeSingle();
     if (!byId.error && byId.data) {
       rawData = byId.data;
       break;
     }
     if (byId.error) lastError = byId.error;
 
-    const byIdResultado = await supabase.from('resultados').select('*').eq('id_resultado', String(candidate)).maybeSingle();
+    const byIdResultado = await supabase
+      .from("resultados")
+      .select("*")
+      .eq("id_resultado", String(candidate))
+      .maybeSingle();
     if (!byIdResultado.error && byIdResultado.data) {
       rawData = byIdResultado.data;
       break;
@@ -1648,20 +2258,31 @@ export async function buscarResultado(idResultado: string): Promise<Resultado | 
   }
 
   if (!rawData && lastError) {
-    console.warn(`[buscarResultado] Nao foi possivel localizar por id/id_resultado: ${idResultado}`, lastError.message);
+    console.warn(
+      `[buscarResultado] Nao foi possivel localizar por id/id_resultado: ${idResultado}`,
+      lastError.message,
+    );
   }
   if (!rawData) return null;
 
   const mapped = mapDbResultadoToResultado(rawData);
   if (mapped && mapped.id_usuario) {
-    const { data: userData } = await supabase.from('usuarios').select('nome, id_empresa').eq('uid', mapped.id_usuario).maybeSingle();
+    const { data: userData } = await supabase
+      .from("usuarios")
+      .select("nome, id_empresa")
+      .eq("uid", mapped.id_usuario)
+      .maybeSingle();
     if (userData) {
-      mapped.nome_usuario = userData.nome || '';
+      mapped.nome_usuario = userData.nome || "";
       const resolvedEmp = mapped.empresa_id || userData.id_empresa;
       if (resolvedEmp) {
-        const { data: empData } = await supabase.from('empresas').select('nome').eq('id_empresa', parseBigIntId(resolvedEmp)).maybeSingle();
+        const { data: empData } = await supabase
+          .from("empresas")
+          .select("nome")
+          .eq("id_empresa", parseBigIntId(resolvedEmp))
+          .maybeSingle();
         if (empData) {
-          mapped.empresa_nome = empData.nome || '';
+          mapped.empresa_nome = empData.nome || "";
         }
       }
     }
@@ -1672,30 +2293,41 @@ export async function buscarResultado(idResultado: string): Promise<Resultado | 
 /**
  * Listar Resultados do Usuário
  */
-export async function listarResultadosUsuario(uid: string): Promise<Resultado[]> {
-  const trimmedUid = String(uid || '').trim();
+export async function listarResultadosUsuario(
+  uid: string,
+): Promise<Resultado[]> {
+  const trimmedUid = String(uid || "").trim();
   if (!trimmedUid) return [];
 
   const mappedUid = mapFirebaseUidToUuid(trimmedUid);
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-  const dbUserIds = Array.from(new Set([
-    mappedUid,
-    ...(uuidRegex.test(trimmedUid) ? [trimmedUid] : [])
-  ].filter(Boolean)));
-  const allCandidateIds = Array.from(new Set([mappedUid, trimmedUid].filter(Boolean).map(String)));
+  const uuidRegex =
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  const dbUserIds = Array.from(
+    new Set(
+      [mappedUid, ...(uuidRegex.test(trimmedUid) ? [trimmedUid] : [])].filter(
+        Boolean,
+      ),
+    ),
+  );
+  const allCandidateIds = Array.from(
+    new Set([mappedUid, trimmedUid].filter(Boolean).map(String)),
+  );
 
   let rawData: any[] = [];
   let directError: any = null;
 
   if (dbUserIds.length > 0) {
     const { data, error } = await supabase
-      .from('resultados')
-      .select('*')
-      .in('user_id', dbUserIds);
+      .from("resultados")
+      .select("*")
+      .in("user_id", dbUserIds);
 
     if (error) {
       directError = error;
-      console.warn('[listarResultadosUsuario] Consulta por resultados.user_id falhou; tentando fallback:', error.message);
+      console.warn(
+        "[listarResultadosUsuario] Consulta por resultados.user_id falhou; tentando fallback:",
+        error.message,
+      );
     } else {
       rawData = data || [];
     }
@@ -1707,37 +2339,49 @@ export async function listarResultadosUsuario(uid: string): Promise<Resultado[]>
       const ids = [item.user_id, item.id_usuario, item.uid]
         .filter(Boolean)
         .map(String);
-      return ids.some(id => allCandidateIds.includes(id));
+      return ids.some((id) => allCandidateIds.includes(id));
     });
   }
 
   if (!rawData || rawData.length === 0) return [];
 
   // Fetch user name and company name
-  const { data: userData } = await supabase.from('usuarios').select('nome, id_empresa').eq('uid', mappedUid).maybeSingle();
-  const userName = userData ? userData.nome : '';
-  const empId = userData ? String(userData.id_empresa || '') : '';
+  const { data: userData } = await supabase
+    .from("usuarios")
+    .select("nome, id_empresa")
+    .eq("uid", mappedUid)
+    .maybeSingle();
+  const userName = userData ? userData.nome : "";
+  const empId = userData ? String(userData.id_empresa || "") : "";
 
-  let companyName = '';
+  let companyName = "";
   if (empId) {
-    const { data: empData } = await supabase.from('empresas').select('nome').eq('id_empresa', parseBigIntId(empId)).maybeSingle();
+    const { data: empData } = await supabase
+      .from("empresas")
+      .select("nome")
+      .eq("id_empresa", parseBigIntId(empId))
+      .maybeSingle();
     if (empData) {
-      companyName = empData.nome || '';
+      companyName = empData.nome || "";
     }
   }
 
-  return rawData.map((item: any) => {
-    const mapped = mapDbResultadoToResultado(item);
-    if (mapped) {
-      mapped.nome_usuario = userName || mapped.nome_usuario || 'Usuario Desconhecido';
-      mapped.empresa_nome = companyName || mapped.empresa_nome || '';
-    }
-    return mapped;
-  }).filter(Boolean) as Resultado[];
+  return rawData
+    .map((item: any) => {
+      const mapped = mapDbResultadoToResultado(item);
+      if (mapped) {
+        mapped.nome_usuario =
+          userName || mapped.nome_usuario || "Usuario Desconhecido";
+        mapped.empresa_nome = companyName || mapped.empresa_nome || "";
+      }
+      return mapped;
+    })
+    .filter(Boolean) as Resultado[];
 }
 
-
-export async function listarOrientadorRelatoriosUsuario(uid: string): Promise<Resultado[]> {
+export async function listarOrientadorRelatoriosUsuario(
+  uid: string,
+): Promise<Resultado[]> {
   return listarResultadosUsuario(uid);
 }
 
@@ -1748,14 +2392,40 @@ export async function atualizarResultado(
   idResultado: string,
   scores: Scores,
   perfilDominante: string,
-  aiInsights: any
+  aiInsights: any,
 ): Promise<boolean> {
   const ext = computeResultProfilesAndScores(scores);
   const scoresForColumns = scores as any;
-  const scoreAssertivo = Number(scoresForColumns.Assertivo ?? scoresForColumns.assertivo ?? scoresForColumns.Direto ?? 0) || 0;
-  const scoreParticipativo = Number(scoresForColumns.Participativo ?? scoresForColumns.participativo ?? scoresForColumns.Expressivo ?? 0) || 0;
-  const scoreIntegrador = Number(scoresForColumns.Integrador ?? scoresForColumns.integrador ?? scoresForColumns.Amavel ?? scoresForColumns["Conservador agregador"] ?? scoresForColumns.conservador_agregador ?? 0) || 0;
-  const scoreAnalitico = Number(scoresForColumns.Analitico ?? scoresForColumns["Analítico"] ?? scoresForColumns.analitico ?? 0) || 0;
+  const scoreAssertivo =
+    Number(
+      scoresForColumns.Assertivo ??
+        scoresForColumns.assertivo ??
+        scoresForColumns.Direto ??
+        0,
+    ) || 0;
+  const scoreParticipativo =
+    Number(
+      scoresForColumns.Participativo ??
+        scoresForColumns.participativo ??
+        scoresForColumns.Expressivo ??
+        0,
+    ) || 0;
+  const scoreIntegrador =
+    Number(
+      scoresForColumns.Integrador ??
+        scoresForColumns.integrador ??
+        scoresForColumns.Amavel ??
+        scoresForColumns["Conservador agregador"] ??
+        scoresForColumns.conservador_agregador ??
+        0,
+    ) || 0;
+  const scoreAnalitico =
+    Number(
+      scoresForColumns.Analitico ??
+        scoresForColumns["Analítico"] ??
+        scoresForColumns.analitico ??
+        0,
+    ) || 0;
 
   const rawUpdatePayload: any = {
     scores: scores,
@@ -1765,7 +2435,8 @@ export async function atualizarResultado(
     score_participativo: scoreParticipativo,
     score_integrador: scoreIntegrador,
     score_analitico: scoreAnalitico,
-    total_pontos: scoreAssertivo + scoreParticipativo + scoreIntegrador + scoreAnalitico,
+    total_pontos:
+      scoreAssertivo + scoreParticipativo + scoreIntegrador + scoreAnalitico,
 
     ranking: ext.ranking,
     perfil_secundario: ext.perfil_secundario,
@@ -1774,8 +2445,9 @@ export async function atualizarResultado(
     perfil_menos_utilizado: ext.perfil_menos_utilizado,
     pontuacoes_comportamentais: ext.pontuacoes_comportamentais,
     relatorio: aiInsights || null,
-    relatorio_pronto_para_app: aiInsights?.relatorio_pronto_para_app || aiInsights || null,
-    raw_payload: aiInsights?.raw_payload || aiInsights || null
+    relatorio_pronto_para_app:
+      aiInsights?.relatorio_pronto_para_app || aiInsights || null,
+    raw_payload: aiInsights?.raw_payload || aiInsights || null,
   };
 
   let attempt = 0;
@@ -1784,27 +2456,36 @@ export async function atualizarResultado(
   const currentPayload = { ...rawUpdatePayload };
 
   while (attempt < 60) {
-    console.log(`[atualizarResultado] Tentando atualização no banco (tentativa ${attempt + 1})...`);
+    console.log(
+      `[atualizarResultado] Tentando atualização no banco (tentativa ${attempt + 1})...`,
+    );
     const { error } = await supabase
-      .from('resultados')
+      .from("resultados")
       .update(currentPayload)
-      .eq('id', parseResultId(idResultado));
+      .eq("id", parseResultId(idResultado));
 
     if (!error) {
-      console.log("[atualizarResultado] Atualização na tabela resultados efetuada com sucesso!");
+      console.log(
+        "[atualizarResultado] Atualização na tabela resultados efetuada com sucesso!",
+      );
       success = true;
       break;
     }
 
     lastError = error;
-    console.warn(`[atualizarResultado] Erro na atualização (tentativa ${attempt + 1}):`, error.message, error);
+    console.warn(
+      `[atualizarResultado] Erro na atualização (tentativa ${attempt + 1}):`,
+      error.message,
+      error,
+    );
 
     const offendingColumn = (() => {
-      const msg = error.message || '';
-      const m1 = msg.match(/column "([^"]+)" of relation "resultados" does not exist/) || 
-                 msg.match(/column "([^"]+)" does not exist/);
+      const msg = error.message || "";
+      const m1 =
+        msg.match(/column "([^"]+)" of relation "resultados" does not exist/) ||
+        msg.match(/column "([^"]+)" does not exist/);
       if (m1 && m1[1]) return m1[1];
-      
+
       const m2 = msg.match(/Could not find the ['"]([^'"]+)['"] column/i);
       if (m2 && m2[1]) return m2[1];
 
@@ -1815,7 +2496,9 @@ export async function atualizarResultado(
     })();
 
     if (offendingColumn) {
-      console.log(`[atualizarResultado] Removendo coluna inexistente do payload e tentando novamente: "${offendingColumn}"`);
+      console.log(
+        `[atualizarResultado] Removendo coluna inexistente do payload e tentando novamente: "${offendingColumn}"`,
+      );
       delete currentPayload[offendingColumn];
       attempt++;
     } else {
@@ -1824,7 +2507,11 @@ export async function atualizarResultado(
   }
 
   if (lastError && !success) {
-    handleSupabaseError(lastError, OperationType.UPDATE, `atualizar_resultado: ${idResultado}`);
+    handleSupabaseError(
+      lastError,
+      OperationType.UPDATE,
+      `atualizar_resultado: ${idResultado}`,
+    );
   }
 
   return true;
@@ -1837,9 +2524,16 @@ export async function excluirResultado(idResultado: string): Promise<boolean> {
   const deletedByBackend = await deleteBackendResultado(idResultado);
   if (deletedByBackend) return true;
 
-  const { error } = await supabase.from('resultados').delete().eq('id', parseResultId(idResultado));
+  const { error } = await supabase
+    .from("resultados")
+    .delete()
+    .eq("id", parseResultId(idResultado));
   if (error) {
-    handleSupabaseError(error, OperationType.DELETE, `excluir_resultado: ${idResultado}`);
+    handleSupabaseError(
+      error,
+      OperationType.DELETE,
+      `excluir_resultado: ${idResultado}`,
+    );
   }
   return true;
 }
