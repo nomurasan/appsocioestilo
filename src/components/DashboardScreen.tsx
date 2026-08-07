@@ -1,16 +1,16 @@
 ﻿import React, { useState, useEffect } from 'react';
-import { 
-  Award, 
-  Briefcase, 
-  Users, 
-  LayoutDashboard, 
-  UserCheck, 
-  CheckCircle2, 
-  AlertCircle, 
+import {
+  Award,
+  Briefcase,
+  Users,
+  LayoutDashboard,
+  UserCheck,
+  CheckCircle2,
+  AlertCircle,
   AlertTriangle,
-  RefreshCw, 
-  Bot, 
-  Printer, 
+  RefreshCw,
+  Bot,
+  Printer,
   BookOpen,
   FileText,
   TrendingUp,
@@ -324,7 +324,7 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     if (typeof activeResult.ai_insights === 'string') {
       try {
         aiInsightsObj = JSON.parse(activeResult.ai_insights);
-      } catch {}
+      } catch { }
     } else if (typeof activeResult.ai_insights === 'object') {
       aiInsightsObj = activeResult.ai_insights;
     }
@@ -383,9 +383,9 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
   // Priority 2: activeResult.report_data (previously saved report_data)
   // Priority 3: activeResult.raw_payload.report_data (fallback to raw payload
   // Priority 4: Only then use legacy fallbacks (google_studio, relatorio, etc.)
-  
+
   let report_data: any = null;
-  
+
   // Primary source: report_data from normPayload (current webhook response)
   if (normPayload?.report_data && typeof normPayload.report_data === 'object') {
     report_data = normPayload.report_data;
@@ -462,13 +462,13 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     if (!report_data.identificacao) report_data.identificacao = {};
     if (gsData.nome && !report_data.identificacao.nome) report_data.identificacao.nome = gsData.nome;
     if (gsData.empresa && !report_data.identificacao.empresa) report_data.identificacao.empresa = gsData.empresa;
-    
+
     if (!report_data.resultado) report_data.resultado = {};
     if (gsData.perfil_dominante && !report_data.resultado.perfil_dominante) report_data.resultado.perfil_dominante = gsData.perfil_dominante;
     if (gsData.perfil_secundario && !report_data.resultado.perfil_secundario) report_data.resultado.perfil_secundario = gsData.perfil_secundario;
     if (gsData.perfil_terciario && !report_data.resultado.perfil_terciario) report_data.resultado.perfil_terciario = gsData.perfil_terciario;
     if (gsData.perfil_menos_utilizado && !report_data.resultado.perfil_menos_utilizado) report_data.resultado.perfil_menos_utilizado = gsData.perfil_menos_utilizado;
-    
+
     // Scores
     if (!report_data.resultado.scores) report_data.resultado.scores = {};
     if (gsData.score_assertivo !== undefined && report_data.resultado.scores.Assertivo === undefined) report_data.resultado.scores.Assertivo = gsData.score_assertivo;
@@ -481,14 +481,14 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     if (!report_data.narrativa) report_data.narrativa = {};
     if (gsData.parecer_executivo && !report_data.narrativa.parecer_executivo) report_data.narrativa.parecer_executivo = gsData.parecer_executivo;
     if (gsData.conselho_alta_performance && !report_data.narrativa.conselho_alta_performance) report_data.narrativa.conselho_alta_performance = gsData.conselho_alta_performance;
-    
+
     if (gsData.oportunidades_texto && !report_data.narrativa.oportunidades) {
       report_data.narrativa.oportunidades = gsData.oportunidades_texto.split(/\n+/).map((line: string) => line.trim().replace(/^-\s*/, '')).filter(Boolean);
     }
     if (gsData.desafios_texto && !report_data.narrativa.desafios) {
       report_data.narrativa.desafios = gsData.desafios_texto.split(/\n+/).map((line: string) => line.trim().replace(/^-\s*/, '')).filter(Boolean);
     }
-    
+
     // Dinamica dos estilos
     if (!report_data.dinamica_dos_estilos) report_data.dinamica_dos_estilos = {};
     if (gsData.lado_luz_descricao && !report_data.dinamica_dos_estilos.lado_luz) {
@@ -496,13 +496,13 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     } else if (gsData.lado_luz && !report_data.dinamica_dos_estilos.lado_luz) {
       report_data.dinamica_dos_estilos.lado_luz = gsData.lado_luz;
     }
-    
+
     if (gsData.lado_sombra_descricao && !report_data.dinamica_dos_estilos.lado_sombra) {
       report_data.dinamica_dos_estilos.lado_sombra = gsData.lado_sombra_descricao;
     } else if (gsData.lado_sombra && !report_data.dinamica_dos_estilos.lado_sombra) {
       report_data.dinamica_dos_estilos.lado_sombra = gsData.lado_sombra;
     }
-    
+
     if (gsData.estilo_apoio && !report_data.dinamica_dos_estilos.estilo_apoio) report_data.dinamica_dos_estilos.estilo_apoio = gsData.estilo_apoio;
     if (gsData.estilo_a_desenvolver && !report_data.dinamica_dos_estilos.estilo_a_desenvolver) report_data.dinamica_dos_estilos.estilo_a_desenvolver = gsData.estilo_a_desenvolver;
 
@@ -561,7 +561,7 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     if (totalPoints === 0) {
       return rawName ? normalizeName(rawName) : "Não identificado";
     }
-    
+
     if (!rawName) {
       const entry = sortedStyles[fallbackIdx];
       return entry ? entry[0] : "Não identificado";
@@ -876,38 +876,38 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     narrativa: {
       parecer_executivo: report_data.narrativa?.parecer_executivo || report_data.parecer_executivo || report_data.resumo_participante || report_data.resumo_executivo || normPayload?.participantReport?.executiveSummary || normPayload?.executiveReport?.executiveSummary || activeResult?.relatorio?.parecer_executivo || activeResult?.ai_insights?.resumo || activeResult?.ai_insights?.parecer_executivo || "O parecer executivo detalhado da banca está sendo gerado pela inteligência analítica.",
       oportunidades: cleanArrayItems(
-        report_data.narrativa?.oportunidades || 
-        report_data.oportunidades || 
-        report_data.oportunidades_alavancas || 
-        normPayload?.participantReport?.opportunities || 
-        activeResult?.relatorio?.oportunidades_alavancas || 
+        report_data.narrativa?.oportunidades ||
+        report_data.oportunidades ||
+        report_data.oportunidades_alavancas ||
+        normPayload?.participantReport?.opportunities ||
+        activeResult?.relatorio?.oportunidades_alavancas ||
         activeResult?.ai_insights?.oportunidades ||
         activeResult?.ai_insights?.oportunidades_alavancas
       ).length > 0 ? cleanArrayItems(
-        report_data.narrativa?.oportunidades || 
-        report_data.oportunidades || 
-        report_data.oportunidades_alavancas || 
-        normPayload?.participantReport?.opportunities || 
-        activeResult?.relatorio?.oportunidades_alavancas || 
+        report_data.narrativa?.oportunidades ||
+        report_data.oportunidades ||
+        report_data.oportunidades_alavancas ||
+        normPayload?.participantReport?.opportunities ||
+        activeResult?.relatorio?.oportunidades_alavancas ||
         activeResult?.ai_insights?.oportunidades ||
         activeResult?.ai_insights?.oportunidades_alavancas
       ) : backupDetails.opps,
       desafios: cleanArrayItems(
-        report_data.narrativa?.desafios || 
-        report_data.desafios || 
-        report_data.pontos_criticos_desafios || 
-        normPayload?.participantReport?.developmentPoints || 
-        normPayload?.executiveReport?.attentionPoints || 
-        activeResult?.relatorio?.pontos_criticos_desafios || 
+        report_data.narrativa?.desafios ||
+        report_data.desafios ||
+        report_data.pontos_criticos_desafios ||
+        normPayload?.participantReport?.developmentPoints ||
+        normPayload?.executiveReport?.attentionPoints ||
+        activeResult?.relatorio?.pontos_criticos_desafios ||
         activeResult?.ai_insights?.desafios ||
         activeResult?.ai_insights?.pontos_criticos_desafios
       ).length > 0 ? cleanArrayItems(
-        report_data.narrativa?.desafios || 
-        report_data.desafios || 
-        report_data.pontos_criticos_desafios || 
-        normPayload?.participantReport?.developmentPoints || 
-        normPayload?.executiveReport?.attentionPoints || 
-        activeResult?.relatorio?.pontos_criticos_desafios || 
+        report_data.narrativa?.desafios ||
+        report_data.desafios ||
+        report_data.pontos_criticos_desafios ||
+        normPayload?.participantReport?.developmentPoints ||
+        normPayload?.executiveReport?.attentionPoints ||
+        activeResult?.relatorio?.pontos_criticos_desafios ||
         activeResult?.ai_insights?.desafios ||
         activeResult?.ai_insights?.pontos_criticos_desafios
       ) : backupDetails.growth,
@@ -923,60 +923,60 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       scores: styleValues,
       ranking: (report_data.resultado?.ranking && Array.isArray(report_data.resultado.ranking))
         ? report_data.resultado.ranking.map((item: any, idx: number) => {
-            let rawEstilo = item.estilo || item.style || "Informação não disponível.";
-            if (typeof rawEstilo === 'object' && rawEstilo !== null) {
-              rawEstilo = rawEstilo.estilo || rawEstilo.name || rawEstilo.title || "Informação não disponível.";
-            }
-            return {
-              posicao: item.posicao !== undefined ? item.posicao : (item.posição !== undefined ? item.posição : (idx + 1)),
-              estilo: String(rawEstilo),
-              pontos: item.pontos !== undefined ? item.pontos : (item.pontuacao !== undefined ? item.pontuacao : (item.pontuação !== undefined ? item.pontuação : "0")),
-              pontuacao: item.pontuacao !== undefined ? item.pontuacao : (item.pontos !== undefined ? item.pontos : (item.pontuação !== undefined ? item.pontuação : "0")),
-              percentual: item.percentual !== undefined ? item.percentual : "0"
-            };
-          })
+          let rawEstilo = item.estilo || item.style || "Informação não disponível.";
+          if (typeof rawEstilo === 'object' && rawEstilo !== null) {
+            rawEstilo = rawEstilo.estilo || rawEstilo.name || rawEstilo.title || "Informação não disponível.";
+          }
+          return {
+            posicao: item.posicao !== undefined ? item.posicao : (item.posição !== undefined ? item.posição : (idx + 1)),
+            estilo: String(rawEstilo),
+            pontos: item.pontos !== undefined ? item.pontos : (item.pontuacao !== undefined ? item.pontuacao : (item.pontuação !== undefined ? item.pontuação : "0")),
+            pontuacao: item.pontuacao !== undefined ? item.pontuacao : (item.pontos !== undefined ? item.pontos : (item.pontuação !== undefined ? item.pontuação : "0")),
+            percentual: item.percentual !== undefined ? item.percentual : "0"
+          };
+        })
         : sortedStyles.map(([style, score], idx) => ({
-            posicao: idx + 1,
-            estilo: style,
-            pontuacao: score,
-            percentual: totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0
-          }))
+          posicao: idx + 1,
+          estilo: style,
+          pontuacao: score,
+          percentual: totalPoints > 0 ? Math.round((score / totalPoints) * 100) : 0
+        }))
     },
     analise_comportamental: {
       estilo_identificado: safeStringVal(report_data.analise_comportamental?.estilo_identificado || report_data.estilo_identificado || activeResult?.relatorio?.analise_comportamental?.estilo_identificado || normPayload?.participantReport?.profileSummary?.title || finalDom),
       descricao: safeDescVal(report_data.analise_comportamental?.descricao || report_data.descricao || activeResult?.relatorio?.analise_comportamental?.descricao || normPayload?.participantReport?.profileSummary?.description || backupDetails.desc),
       pontos_fortes_talentos: cleanArrayItems(
-        report_data.analise_comportamental?.pontos_fortes_talentos || 
-        report_data.pontos_fortes_talentos || 
-        report_data.pontos_fortes || 
-        normPayload?.participantReport?.strengths || 
-        normPayload?.executiveReport?.strengths || 
-        activeResult?.relatorio?.analise_comportamental?.pontos_fortes_talentos || 
+        report_data.analise_comportamental?.pontos_fortes_talentos ||
+        report_data.pontos_fortes_talentos ||
+        report_data.pontos_fortes ||
+        normPayload?.participantReport?.strengths ||
+        normPayload?.executiveReport?.strengths ||
+        activeResult?.relatorio?.analise_comportamental?.pontos_fortes_talentos ||
         activeResult?.ai_insights?.pontos_fortes
       ).length > 0 ? cleanArrayItems(
-        report_data.analise_comportamental?.pontos_fortes_talentos || 
-        report_data.pontos_fortes_talentos || 
-        report_data.pontos_fortes || 
-        normPayload?.participantReport?.strengths || 
-        normPayload?.executiveReport?.strengths || 
-        activeResult?.relatorio?.analise_comportamental?.pontos_fortes_talentos || 
+        report_data.analise_comportamental?.pontos_fortes_talentos ||
+        report_data.pontos_fortes_talentos ||
+        report_data.pontos_fortes ||
+        normPayload?.participantReport?.strengths ||
+        normPayload?.executiveReport?.strengths ||
+        activeResult?.relatorio?.analise_comportamental?.pontos_fortes_talentos ||
         activeResult?.ai_insights?.pontos_fortes
       ) : backupDetails.strengths,
       pontos_desenvolvimento: cleanArrayItems(
-        report_data.analise_comportamental?.pontos_desenvolvimento || 
-        report_data.pontos_desenvolvimento || 
-        normPayload?.participantReport?.developmentPoints || 
-        normPayload?.executiveReport?.attentionPoints || 
-        activeResult?.relatorio?.analise_comportamental?.pontos_desenvolvimento || 
+        report_data.analise_comportamental?.pontos_desenvolvimento ||
+        report_data.pontos_desenvolvimento ||
+        normPayload?.participantReport?.developmentPoints ||
+        normPayload?.executiveReport?.attentionPoints ||
+        activeResult?.relatorio?.analise_comportamental?.pontos_desenvolvimento ||
         activeResult?.ai_insights?.pontos_desenvolvimento ||
         activeResult?.ai_insights?.desafios ||
         activeResult?.ai_insights?.pontos_criticos_desafios
       ).length > 0 ? cleanArrayItems(
-        report_data.analise_comportamental?.pontos_desenvolvimento || 
-        report_data.pontos_desenvolvimento || 
-        normPayload?.participantReport?.developmentPoints || 
-        normPayload?.executiveReport?.attentionPoints || 
-        activeResult?.relatorio?.analise_comportamental?.pontos_desenvolvimento || 
+        report_data.analise_comportamental?.pontos_desenvolvimento ||
+        report_data.pontos_desenvolvimento ||
+        normPayload?.participantReport?.developmentPoints ||
+        normPayload?.executiveReport?.attentionPoints ||
+        activeResult?.relatorio?.analise_comportamental?.pontos_desenvolvimento ||
         activeResult?.ai_insights?.pontos_desenvolvimento ||
         activeResult?.ai_insights?.desafios ||
         activeResult?.ai_insights?.pontos_criticos_desafios
@@ -1111,24 +1111,24 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
     fontes_consultadas_texto: (() => {
       const val = report_data.fundamentacao?.fontes_consultadas_texto
         || (Array.isArray(report_data.fundamentacao?.fontes_consultadas) && report_data.fundamentacao.fontes_consultadas.length > 0
-            ? report_data.fundamentacao.fontes_consultadas.map((f: any) => typeof f === 'object' ? (f.documento || f.documento_recuperado || f.source || String(f)) : String(f)).join('\n')
-            : '')
+          ? report_data.fundamentacao.fontes_consultadas.map((f: any) => typeof f === 'object' ? (f.documento || f.documento_recuperado || f.source || String(f)) : String(f)).join('\n')
+          : '')
         || report_data.fontes_consultadas_texto
         || (Array.isArray(report_data.fontes_consultadas) && report_data.fontes_consultadas.length > 0
-            ? report_data.fontes_consultadas.map((f: any) => typeof f === 'object' ? (f.documento || f.documento_recuperado || f.source || String(f)) : String(f)).join('\n')
-            : '')
+          ? report_data.fontes_consultadas.map((f: any) => typeof f === 'object' ? (f.documento || f.documento_recuperado || f.source || String(f)) : String(f)).join('\n')
+          : '')
         || '';
       return typeof val === 'string' ? val : '';
     })(),
     chunks_recuperados_texto: (() => {
       const val = report_data.fundamentacao?.chunks_recuperados_texto
         || (Array.isArray(report_data.fundamentacao?.chunks_recuperados) && report_data.fundamentacao.chunks_recuperados.length > 0
-            ? report_data.fundamentacao.chunks_recuperados.map((c: any) => typeof c === 'object' ? `${c.documento || c.documento_recuperado || c.document || ''} - Chunk ${c.chunk !== undefined ? c.chunk : (c.chunk_idx !== undefined ? c.chunk_idx : '')}` : String(c)).join('\n')
-            : '')
+          ? report_data.fundamentacao.chunks_recuperados.map((c: any) => typeof c === 'object' ? `${c.documento || c.documento_recuperado || c.document || ''} - Chunk ${c.chunk !== undefined ? c.chunk : (c.chunk_idx !== undefined ? c.chunk_idx : '')}` : String(c)).join('\n')
+          : '')
         || report_data.chunks_recuperados_texto
         || (Array.isArray(report_data.chunks_recuperados) && report_data.chunks_recuperados.length > 0
-            ? report_data.chunks_recuperados.map((c: any) => typeof c === 'object' ? `${c.documento || c.documento_recuperado || c.document || ''} - Chunk ${c.chunk !== undefined ? c.chunk : (c.chunk_idx !== undefined ? c.chunk_idx : '')}` : String(c)).join('\n')
-            : '')
+          ? report_data.chunks_recuperados.map((c: any) => typeof c === 'object' ? `${c.documento || c.documento_recuperado || c.document || ''} - Chunk ${c.chunk !== undefined ? c.chunk : (c.chunk_idx !== undefined ? c.chunk_idx : '')}` : String(c)).join('\n')
+          : '')
         || '';
       return typeof val === 'string' ? val : '';
     })(),
@@ -1144,19 +1144,19 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
         || report_data.referencias_metodologicas?.referenciais_teoricos_texto
         || report_data.referenciais_teoricos_texto
         || (Array.isArray(report_data.fundamentacao?.referenciais_teoricos) && report_data.fundamentacao.referenciais_teoricos.length > 0
-            ? buildFromArray(report_data.fundamentacao.referenciais_teoricos) : '')
+          ? buildFromArray(report_data.fundamentacao.referenciais_teoricos) : '')
         || (Array.isArray(report_data.referencias_metodologicas?.referenciais_teoricos) && report_data.referencias_metodologicas.referenciais_teoricos.length > 0
-            ? buildFromArray(report_data.referencias_metodologicas.referenciais_teoricos) : '')
+          ? buildFromArray(report_data.referencias_metodologicas.referenciais_teoricos) : '')
         || (Array.isArray(report_data.referenciais_teoricos) && report_data.referenciais_teoricos.length > 0
-            ? buildFromArray(report_data.referenciais_teoricos) : '')
+          ? buildFromArray(report_data.referenciais_teoricos) : '')
         || '';
       return typeof val === 'string' ? val : '';
     })(),
     evidencias_observadas: cleanArrayItems(
-      report_data.evidencias_observadas || 
+      report_data.evidencias_observadas ||
       report_data.evidencias
     ).length > 0 ? cleanArrayItems(
-      report_data.evidencias_observadas || 
+      report_data.evidencias_observadas ||
       report_data.evidencias
     ) : backupEvidencias,
     potencializacao_talentos: {
@@ -1209,23 +1209,23 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
       )
     },
     potencial_desenvolvimento: cleanArrayItems(
-      report_data.potencial_desenvolvimento || 
+      report_data.potencial_desenvolvimento ||
       report_data.potencial ||
       report_data.analise_comportamental?.pontos_desenvolvimento ||
       report_data.pontos_desenvolvimento
     ).length > 0 ? cleanArrayItems(
-      report_data.potencial_desenvolvimento || 
+      report_data.potencial_desenvolvimento ||
       report_data.potencial ||
       report_data.analise_comportamental?.pontos_desenvolvimento ||
       report_data.pontos_desenvolvimento
     ) : backupPotencial,
     recomendacoes_praticas: cleanArrayItems(
-      report_data.recomendacoes_praticas || 
+      report_data.recomendacoes_praticas ||
       report_data.recomendacoes ||
       report_data.narrativa?.oportunidades ||
       report_data.oportunidades
     ).length > 0 ? cleanArrayItems(
-      report_data.recomendacoes_praticas || 
+      report_data.recomendacoes_praticas ||
       report_data.recomendacoes ||
       report_data.narrativa?.oportunidades ||
       report_data.oportunidades
@@ -1258,17 +1258,17 @@ function normalizeN8nPayload(rawPayload: any, activeResult: any, usuario: Usuari
         // ÚNICA FONTE: memoria_respostas do n8n workflow
         // Estrutura: { questionId, question, answer, socioStyle, points }
         // Sem agregações, sem recalcular, sem fallbacks para estruturas legadas
-        
+
         const memoriaRespostas = report_data.memoria_respostas;
-        
+
         if (!Array.isArray(memoriaRespostas)) {
           return [];
         }
-        
+
         // Mapear diretamente os dados do n8n, sem modificações de lógica
         return memoriaRespostas.map((item: any) => {
           if (!item) return null;
-          
+
           return {
             pergunta: item.question || `Questão ${item.questionId || '?'}`,
             resposta_escolhida: item.answer || '',
@@ -1454,10 +1454,10 @@ interface DashboardScreenProps {
   onTabChange?: (tab: 'individual' | 'team') => void;
 }
 
-export default function DashboardScreen({ 
-  usuario, 
-  myResult, 
-  adminSelectedCompanyId, 
+export default function DashboardScreen({
+  usuario,
+  myResult,
+  adminSelectedCompanyId,
   adminSelectedCompanyName,
   onGoBackFromAdmin,
   onTabChange
@@ -1472,7 +1472,7 @@ export default function DashboardScreen({
   useEffect(() => {
     onTabChange?.(activeTab);
   }, [activeTab, onTabChange]);
-  
+
   const [teamResults, setTeamResults] = useState<Resultado[]>([]);
   const [loadingTeam, setLoadingTeam] = useState(false);
   const [teamError, setTeamError] = useState<string | null>(null);
@@ -1692,15 +1692,15 @@ export default function DashboardScreen({
 
   // Calculations for individual scores using the normalized variables
   const scoreKeys: Array<keyof Scores> = ['Assertivo', 'Participativo', 'Integrador', 'Analitico'];
-  
-  const totalMyPoints = hasIndividualResult 
-    ? scoreKeys.reduce((acc, style) => acc + (scores[style] || 0), 0) 
+
+  const totalMyPoints = hasIndividualResult
+    ? scoreKeys.reduce((acc, style) => acc + (scores[style] || 0), 0)
     : 0;
-  
-  const dominantStyle = hasIndividualResult 
-    ? getDominantStyle(scores) 
+
+  const dominantStyle = hasIndividualResult
+    ? getDominantStyle(scores)
     : 'Assertivo';
-  
+
   const dominantProfile = PROFILE_DETAILS[dominantStyle || 'Assertivo'] || PROFILE_DETAILS['Assertivo'];
 
   // Helper to filter and keep only the latest result per unique user
@@ -1718,14 +1718,14 @@ export default function DashboardScreen({
         result.id_usuario
       );
       if (!userKey) return;
-      
+
       // Only include results with valid scores (at least one score > 0)
       if (!result.scores || typeof result.scores !== 'object') {
         if (process.env.NODE_ENV === 'development') {
-          console.warn('[DashboardScreen] Result filtered: invalid scores', { 
-            id: result.id, 
-            scores: result.scores, 
-            scoresType: typeof result.scores 
+          console.warn('[DashboardScreen] Result filtered: invalid scores', {
+            id: result.id,
+            scores: result.scores,
+            scoresType: typeof result.scores
           });
         }
         return;
@@ -1734,8 +1734,8 @@ export default function DashboardScreen({
       const hasValidScores = scoreValues.length > 0 && scoreValues.some(s => typeof s === 'number' && s > 0);
       if (!hasValidScores) {
         if (process.env.NODE_ENV === 'development') {
-          console.warn('[DashboardScreen] Result filtered: no valid scores > 0', { 
-            id: result.id, 
+          console.warn('[DashboardScreen] Result filtered: no valid scores > 0', {
+            id: result.id,
             scores: result.scores,
             scoreValues,
             userKey
@@ -1743,7 +1743,7 @@ export default function DashboardScreen({
         }
         return;
       }
-      
+
       const existing = latestMap[userKey];
       if (!existing || new Date(result.data_conclusao) > new Date(existing.data_conclusao)) {
         latestMap[userKey] = result;
@@ -1791,7 +1791,7 @@ export default function DashboardScreen({
         .replace(/,/g, ' ')
         .replace(/\s+/g, ' ')
         .replace(/\//g, ' ');
-        
+
       const match = cleaned.match(/oklch\s*\(\s*([\d.%]+)\s+([\d.%]+)\s+([\d.%\w]+)(?:\s+([\d.%]+))?\s*\)/i);
       if (!match) return oklchStr; // Fallback to original string if match fails, avoiding breaking rendering
 
@@ -1859,7 +1859,7 @@ export default function DashboardScreen({
         .replace(/,/g, ' ')
         .replace(/\s+/g, ' ')
         .replace(/\//g, ' ');
-        
+
       const match = cleaned.match(/oklab\s*\(\s*([\d.%]+)\s+([-\d.%]+)\s+([-\d.%\w]+)(?:\s+([\d.%]+))?\s*\)/i);
       if (!match) return oklabStr;
 
@@ -1980,8 +1980,8 @@ export default function DashboardScreen({
                     if (!computed) return;
 
                     const colorProps = [
-                      'color', 'backgroundColor', 'borderColor', 'borderTopColor', 
-                      'borderRightColor', 'borderBottomColor', 'borderLeftColor', 
+                      'color', 'backgroundColor', 'borderColor', 'borderTopColor',
+                      'borderRightColor', 'borderBottomColor', 'borderLeftColor',
                       'outlineColor', 'fill', 'stroke'
                     ];
 
@@ -2077,15 +2077,15 @@ export default function DashboardScreen({
           }
         }
       `}</style>
-      
+
       {/* EXCLUSIVE PRINT PROFILE HEADER & METADATA ACCENT - HIDDEN ON SCREEN */}
       <div id="pdf-print-header" className="hidden print:block border-b-2 border-gray-150 pb-5 mb-8 font-sans">
         <div className="flex justify-between items-center">
           <div className="flex items-center space-x-4">
-            <img 
-              src="/logo-big.png" 
-              alt="POTENCIAR" 
-              className="h-12 w-auto object-contain" 
+            <img
+              src="/logo-big.png"
+              alt="POTENCIAR"
+              className="h-12 w-auto object-contain"
               referrerPolicy="no-referrer"
             />
             <div>
@@ -2098,7 +2098,7 @@ export default function DashboardScreen({
             <p className="text-[#D80E2A] font-extrabold">Data de Geração: {new Date().toLocaleDateString('pt-BR')}</p>
           </div>
         </div>
-        
+
         <div className="mt-4 grid grid-cols-2 gap-4 bg-gray-50 p-4 rounded-xl border border-gray-150 text-xs">
           <div>
             <p className="text-[10px] text-gray-400 font-bold uppercase">Empresa / Turma</p>
@@ -2142,7 +2142,7 @@ export default function DashboardScreen({
             )}
           </p>
         </div>
-        
+
         {/* Navigation / Action controls displayed ONLY for Individual Report */}
         {activeTab === 'individual' && (
           <div className="flex flex-col sm:flex-row gap-3 self-start md:self-center items-stretch sm:items-center">
@@ -2159,24 +2159,22 @@ export default function DashboardScreen({
               setSelectedMemberResult(null);
               setActiveTab('individual');
             }}
-            className={`min-w-0 flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'individual' && !selectedMemberResult
+            className={`min-w-0 flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === 'individual' && !selectedMemberResult
                 ? 'bg-white text-[#112363] shadow-xs'
                 : 'text-slate-500 hover:text-[#112363] hover:bg-slate-50/50'
-            }`}
+              }`}
             id="tab-btn-individual"
           >
             <UserCheck className="w-3.5 h-3.5" />
             <span className="truncate">Meu Relatório</span>
           </button>
-          
+
           <button
             onClick={() => setActiveTab('team')}
-            className={`min-w-0 flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-              activeTab === 'team'
+            className={`min-w-0 flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === 'team'
                 ? 'bg-white text-[#112363] shadow-xs'
                 : 'text-slate-500 hover:text-[#112363] hover:bg-slate-50/50'
-            }`}
+              }`}
             id="tab-btn-team"
           >
             <Users className="w-3.5 h-3.5" />
@@ -2192,7 +2190,7 @@ export default function DashboardScreen({
             <UserCheck className="w-12 h-12 text-[#D80E2A] mx-auto animate-pulse" />
             <h3 className="text-lg font-black text-[#112363]">Nenhum Colaborador Selecionado</h3>
             <p className="text-xs text-gray-500 leading-relaxed">
-              Você está na visão corporativa. Para analisar o relatório individual detalhado de um integrante, 
+              Você está na visão corporativa. Para analisar o relatório individual detalhado de um integrante,
               clique na aba <strong className="text-[#112363]">Dashboard da Empresa</strong> e selecione qualquer colaborador da lista lateral <strong className="text-gray-800">"Colaboradores Concluídos"</strong>.
             </p>
             <button
@@ -2205,7 +2203,7 @@ export default function DashboardScreen({
         ) : (
           /* 1. INDIVIDUAL DASHBOARD */
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 min-w-0 max-w-full" id="individual-dashboard">
-            
+
             {/* Visual warning/banner indicating who is being inspected */}
             {(selectedMemberResult || isViewingAsAdmin) && (
               <div className="lg:col-span-3 bg-red-50/55 border border-red-100 rounded-2xl p-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs animate-fade-in print:hidden">
@@ -2220,7 +2218,7 @@ export default function DashboardScreen({
                     </p>
                   </div>
                 </div>
-                
+
                 {selectedMemberResult && (
                   <button
                     onClick={() => {
@@ -2325,14 +2323,14 @@ export default function DashboardScreen({
                   const cleanedEv = ev.trim();
                   if (cleanedEv.startsWith('{') && cleanedEv.endsWith('}')) {
                     const parsed = JSON.parse(cleanedEv);
-                    const hasShadowKeywords = parsed.interpretacao?.toLowerCase().includes('sombra') || 
-                                              parsed.interpretacao?.toLowerCase().includes('sobrecarregado') ||
-                                              parsed.interpretacao?.toLowerCase().includes('evitar') ||
-                                              parsed.interpretacao?.toLowerCase().includes('compensar') ||
-                                              parsed.interpretacao?.toLowerCase().includes('desvio') ||
-                                              parsed.interpretacao?.toLowerCase().includes('dispersão');
+                    const hasShadowKeywords = parsed.interpretacao?.toLowerCase().includes('sombra') ||
+                      parsed.interpretacao?.toLowerCase().includes('sobrecarregado') ||
+                      parsed.interpretacao?.toLowerCase().includes('evitar') ||
+                      parsed.interpretacao?.toLowerCase().includes('compensar') ||
+                      parsed.interpretacao?.toLowerCase().includes('desvio') ||
+                      parsed.interpretacao?.toLowerCase().includes('dispersão');
                     const isShadow = hasShadowKeywords || parsed.bloco?.toLowerCase().includes('foco') || parsed.bloco?.toLowerCase().includes('sombra') || parsed.bloco?.toLowerCase().includes('pressão');
-                    
+
                     return (
                       <div key={idx} className={`p-4 rounded-xl border ${isShadow ? 'bg-red-50/20 border-red-100/50' : 'bg-slate-50/50 border-slate-200/60'} space-y-3 shadow-3xs hover:shadow-2xs transition-all`} id={`ev-json-card-${idx}`}>
                         <div className="flex items-center justify-between border-b pb-1.5 border-slate-100">
@@ -2345,7 +2343,7 @@ export default function DashboardScreen({
                             </span>
                           )}
                         </div>
-                        
+
                         {parsed.respostas_utilizadas && Array.isArray(parsed.respostas_utilizadas) && (
                           <div className="space-y-1.5 animate-fade-in">
                             <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest block">Respostas Registradas:</span>
@@ -2359,7 +2357,7 @@ export default function DashboardScreen({
                             </div>
                           </div>
                         )}
-                        
+
                         {parsed.interpretacao && (
                           <div className={`p-3 rounded-lg border ${isShadow ? 'bg-red-50/45 border-red-150 text-slate-800' : 'bg-emerald-50/30 border-emerald-100 text-slate-800'} text-xs font-semibold leading-relaxed whitespace-pre-line`}>
                             <strong className={`block text-[9px] font-black uppercase tracking-widest mb-1 ${isShadow ? 'text-[#D80E2A]' : 'text-emerald-700'}`}>
@@ -2385,14 +2383,14 @@ export default function DashboardScreen({
 
               return (
                 <ReportErrorBoundary>
-                <div className="lg:col-span-3 min-w-0 max-w-full space-y-6 md:space-y-8">
-                  <div className="min-w-0 max-w-full space-y-6 md:space-y-8" id="participant-report-doc">
-                      
+                  <div className="lg:col-span-3 min-w-0 max-w-full space-y-6 md:space-y-8">
+                    <div className="min-w-0 max-w-full space-y-6 md:space-y-8" id="participant-report-doc">
+
                       {/* Page 1: CAPA (Seção 1) */}
                       <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-6 md:p-10 min-h-[580px] flex flex-col justify-between relative overflow-hidden transition-all hover:shadow-sm ${!isReportFieldVisible('capa', 'identificacao') ? 'hidden' : ''}`} id="p-page-1">
                         <div className="absolute top-0 right-0 w-80 h-80 bg-red-50/10 rounded-full translate-x-24 -translate-y-24 shrink-0 pointer-events-none" />
                         <div className="absolute bottom-0 left-0 w-64 h-64 bg-slate-50/15 rounded-full -translate-x-12 translate-y-12 shrink-0 pointer-events-none" />
-                        
+
                         <div className="flex justify-between items-center border-b border-gray-100 pb-6 relative z-10 w-full">
                           <div className="flex items-center space-x-3">
                             <span className="font-black text-sm text-[#112363] tracking-tight">POTENCIAR</span>
@@ -2523,7 +2521,7 @@ export default function DashboardScreen({
 
                               const maxScore = Math.max(1, assertivoVal, participativoVal, conservadorVal, analiticoVal);
                               const scale = 65 / maxScore;
-                              
+
                               const rAssertivo = assertivoVal * scale;
                               const rParticipativo = participativoVal * scale;
                               const rConservador = conservadorVal * scale;
@@ -2538,7 +2536,7 @@ export default function DashboardScreen({
                               const ptAnalitico = { x: cx - rAnalitico, y: cy };
 
                               const polyStr = `${ptAssertivo.x.toFixed(1)},${ptAssertivo.y.toFixed(1)} ${ptParticipativo.x.toFixed(1)},${ptParticipativo.y.toFixed(1)} ${ptConservador.x.toFixed(1)},${ptConservador.y.toFixed(1)} ${ptAnalitico.x.toFixed(1)},${ptAnalitico.y.toFixed(1)}`;
-                              
+
                               const levels = [0.25, 0.50, 0.75, 1.0];
 
                               return (
@@ -2554,11 +2552,11 @@ export default function DashboardScreen({
                                       const p2 = { x: cx, y: cy + r };
                                       const p3 = { x: cx - r, y: cy };
                                       return (
-                                        <polygon 
+                                        <polygon
                                           key={lidx}
                                           points={`${p0.x},${p0.y} ${p1.x},${p1.y} ${p2.x},${p2.y} ${p3.x},${p3.y}`}
-                                          fill="none" 
-                                          stroke="#e2e8f0" 
+                                          fill="none"
+                                          stroke="#e2e8f0"
                                           strokeWidth="1"
                                           strokeDasharray="2,2"
                                         />
@@ -2566,21 +2564,21 @@ export default function DashboardScreen({
                                     })}
                                     <line x1={cx} y1={cy - 65} x2={cx} y2={cy + 65} stroke="#e2e8f0" strokeWidth="1" />
                                     <line x1={cx - 65} y1={cy} x2={cx + 65} y2={cy} stroke="#e2e8f0" strokeWidth="1" />
-                                    
+
                                     {polyStr && (
-                                      <polygon 
+                                      <polygon
                                         points={polyStr}
-                                        fill="rgba(17, 35, 99, 0.18)" 
-                                        stroke="#112363" 
+                                        fill="rgba(17, 35, 99, 0.18)"
+                                        stroke="#112363"
                                         strokeWidth="2.5"
                                       />
                                     )}
-                                    
+
                                     <circle cx={ptAssertivo.x} cy={ptAssertivo.y} r="3.5" fill="#f59e0b" stroke="#ffffff" strokeWidth="1" />
                                     <circle cx={ptParticipativo.x} cy={ptParticipativo.y} r="3.5" fill="#D80E2A" stroke="#ffffff" strokeWidth="1" />
                                     <circle cx={ptConservador.x} cy={ptConservador.y} r="3.5" fill="#10b981" stroke="#ffffff" strokeWidth="1" />
                                     <circle cx={ptAnalitico.x} cy={ptAnalitico.y} r="3.5" fill="#112363" stroke="#ffffff" strokeWidth="1" />
-                                    
+
                                     <text x={cx} y={cy - 65 - 4} textAnchor="middle" className="text-[7px] font-black fill-[#112363] uppercase">Assertivo</text>
                                     <text x={cx + 65 + 4} y={cy + 2.5} textAnchor="start" className="text-[7px] font-black fill-[#112363] uppercase">Participativo</text>
                                     <text x={cx} y={cy + 65 + 8} textAnchor="middle" className="text-[7px] font-black fill-[#112363] uppercase">Integrador</text>
@@ -2596,7 +2594,7 @@ export default function DashboardScreen({
                               const participativoVal = getScoreVal(scoresObj, 'Participativo');
                               const conservadorVal = getScoreVal(scoresObj, 'Integrador');
                               const analiticoVal = getScoreVal(scoresObj, 'Analítico');
-                              
+
                               const totalVal = (assertivoVal + participativoVal + conservadorVal + analiticoVal) || 1;
                               const maxScoreVal = Math.max(1, assertivoVal, participativoVal, conservadorVal, analiticoVal);
 
@@ -2625,8 +2623,8 @@ export default function DashboardScreen({
                                               <span className="font-black text-[#112363]">{st.val} pts ({pct}%)</span>
                                             </div>
                                             <div className="w-full bg-slate-200 h-2.5 rounded-full overflow-hidden">
-                                              <div 
-                                                className={`${st.progressColor} h-full rounded-full transition-all`} 
+                                              <div
+                                                className={`${st.progressColor} h-full rounded-full transition-all`}
                                                 style={{ width: `${widthPct}%` }}
                                               />
                                             </div>
@@ -2725,608 +2723,608 @@ export default function DashboardScreen({
                             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-100">
                               <Zap className="w-4 h-4 text-amber-500 fill-amber-300" /> 2.7 Lente Situacional & Dinâmica dos Estilos
                             </h4>
-                              <div className="bg-amber-50/20 p-3.5 rounded-xl border border-amber-200/60 shadow-3xs">
-                                <h5 className="font-black text-amber-800 uppercase tracking-wider text-[9px] mb-1 flex items-center gap-1">
-                                  ☀️ Lado Luz
-                                </h5>
-                                <p className="text-slate-750 leading-relaxed font-semibold text-[11px]">
-                                  {renderSafeValue(reportData.dinamica_dos_estilos?.lado_luz, 'lado_luz')}
-                                </p>
-                              </div>
-                              
-                              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-3xs">
-                                <h5 className="font-black text-slate-800 uppercase tracking-wider text-[9px] mb-1 flex items-center gap-1">
-                                  🌙 Lado Sombra
-                                </h5>
-                                <p className="text-slate-755 leading-relaxed font-semibold text-[11px]">
-                                  {renderSafeValue(reportData.dinamica_dos_estilos?.lado_sombra, 'lado_sombra')}
-                                </p>
-                              </div>
+                            <div className="bg-amber-50/20 p-3.5 rounded-xl border border-amber-200/60 shadow-3xs">
+                              <h5 className="font-black text-amber-800 uppercase tracking-wider text-[9px] mb-1 flex items-center gap-1">
+                                ☀️ Lado Luz
+                              </h5>
+                              <p className="text-slate-750 leading-relaxed font-semibold text-[11px]">
+                                {renderSafeValue(reportData.dinamica_dos_estilos?.lado_luz, 'lado_luz')}
+                              </p>
+                            </div>
 
-                              <div className="bg-emerald-50/20 p-3.5 rounded-xl border border-emerald-200/60 shadow-3xs">
-                                <h5 className="font-black text-emerald-800 uppercase tracking-wider text-[9px] mb-1 flex items-center gap-1">
-                                  🤝 Estilo de Apoio
-                                </h5>
-                                <p className="text-slate-750 leading-relaxed font-semibold text-[11px]">
-                                  {renderSafeValue(reportData.dinamica_dos_estilos?.estilo_apoio, 'estilo_apoio')}
-                                </p>
-                              </div>
+                            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 shadow-3xs">
+                              <h5 className="font-black text-slate-800 uppercase tracking-wider text-[9px] mb-1 flex items-center gap-1">
+                                🌙 Lado Sombra
+                              </h5>
+                              <p className="text-slate-755 leading-relaxed font-semibold text-[11px]">
+                                {renderSafeValue(reportData.dinamica_dos_estilos?.lado_sombra, 'lado_sombra')}
+                              </p>
+                            </div>
 
-                              <div className="bg-[#D80E2A]/5 p-3.5 rounded-xl border border-[#D80E2A]/10 shadow-3xs">
-                                <h5 className="font-black text-[#D80E2A] uppercase tracking-wider text-[9px] mb-1 flex items-center gap-1">
-                                  🌱 Estilo a Desenvolver
-                                </h5>
-                                <p className="text-slate-750 leading-relaxed font-semibold text-[11px]">
-                                  {renderSafeValue(reportData.dinamica_dos_estilos?.estilo_a_desenvolver, 'estilo_a_desenvolver')}
-                                </p>
-                              </div>
+                            <div className="bg-emerald-50/20 p-3.5 rounded-xl border border-emerald-200/60 shadow-3xs">
+                              <h5 className="font-black text-emerald-800 uppercase tracking-wider text-[9px] mb-1 flex items-center gap-1">
+                                🤝 Estilo de Apoio
+                              </h5>
+                              <p className="text-slate-750 leading-relaxed font-semibold text-[11px]">
+                                {renderSafeValue(reportData.dinamica_dos_estilos?.estilo_apoio, 'estilo_apoio')}
+                              </p>
+                            </div>
+
+                            <div className="bg-[#D80E2A]/5 p-3.5 rounded-xl border border-[#D80E2A]/10 shadow-3xs">
+                              <h5 className="font-black text-[#D80E2A] uppercase tracking-wider text-[9px] mb-1 flex items-center gap-1">
+                                🌱 Estilo a Desenvolver
+                              </h5>
+                              <p className="text-slate-750 leading-relaxed font-semibold text-[11px]">
+                                {renderSafeValue(reportData.dinamica_dos_estilos?.estilo_a_desenvolver, 'estilo_a_desenvolver')}
+                              </p>
                             </div>
                           </div>
                         </div>
-
-                        {renderFooter(3)}
                       </div>
 
-                      {/* Page 4: ANÁLISE DO PERFIL E RELAÇÕES ENTRE ESTILOS */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['analise', 'perfil_predominante'], ['analise', 'perfil_secundario'], ['analise', 'lado_luz'], ['analise', 'lado_sombra'], ['analise', 'estilo_a_desenvolver'], ['analise', 'relacoes_entre_estilos']]) ? 'hidden' : ''}`} id="p-page-4">
-                        <div className="space-y-4 w-full font-sans">
-                          <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
-                            <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <Sun className="w-4 h-4 text-amber-500 fill-amber-500" /> 03. Perfil Predominante, Secundário e Relações
-                            </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 04 do Participante</span>
-                          </div>
+                      {renderFooter(3)}
+                    </div>
 
-                          <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${!isReportFieldVisible('analise', 'perfil_predominante') ? 'hidden' : ''}`}>
-                            {[
-                              { view: reportVm.fields.predominant, subtitle: 'Perfil Predominante', tone: 'amber' },
-                              { view: reportVm.fields.secondary, subtitle: 'Perfil Secundário', tone: 'red' }
-                            ].map(({ view, subtitle, tone }) => (
-                              <section key={view.id} className={`rounded-2xl border p-4 ${tone === 'amber' ? 'bg-amber-50/30 border-amber-200' : 'bg-red-50/20 border-red-200'}`}>
-                                <div className="flex items-center justify-between gap-3 mb-2">
-                                  <h4 className="text-[11px] font-black uppercase tracking-wider text-[#112363]">{subtitle}</h4>
-                                  <span className="text-[10px] font-bold text-slate-500 uppercase">{view.style || 'Integrador'}</span>
-                                </div>
-                                <p className="text-xs leading-7 text-slate-700 whitespace-pre-line">{view.text || 'Não foram recuperadas evidências suficientes para gerar esta seção com segurança.'}</p>
-                              </section>
-                            ))}
-                          </div>
-
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            {[
-                              { view: reportVm.fields.light, title: '05. Lado Luz', subtitle: 'Quando você atua no seu melhor', tone: 'emerald' },
-                              { view: reportVm.fields.shadow, title: '06. Lado Sombra', subtitle: 'Quando o excesso pode limitar seus resultados', tone: 'slate' },
-                              { view: reportVm.fields.development, title: '07. Estilo a Desenvolver', subtitle: 'Competência complementar para ampliar repertório', tone: 'amber' }
-                            ].map(({ view, title, subtitle, tone }) => (
-                              <section key={view.id} className={`rounded-2xl border p-4 ${tone === 'emerald' ? 'bg-emerald-50/20 border-emerald-200' : tone === 'slate' ? 'bg-slate-50 border-slate-200' : 'bg-amber-50/20 border-amber-200'}`}>
-                                <h4 className="text-[11px] font-black uppercase tracking-wider text-[#112363]">{title}</h4>
-                                <p className="text-[10px] uppercase tracking-widest text-slate-400 mt-1">{subtitle}</p>
-                                <p className="mt-3 text-xs leading-7 text-slate-700 whitespace-pre-line">{view.text || 'Não foram recuperadas evidências suficientes para gerar esta seção com segurança.'}</p>
-                              </section>
-                            ))}
-                          </div>
-
-                          <section className={`rounded-2xl border p-4 bg-white shadow-3xs ${!isReportFieldVisible('analise', 'relacoes_entre_estilos') ? 'hidden' : ''}`}>
-                            <div className="flex items-center justify-between gap-3 mb-3">
-                              <h4 className="text-[11px] font-black uppercase tracking-wider text-[#112363]">08. Relações entre Estilos</h4>
-                              <span className="text-[10px] font-bold text-slate-400 uppercase">Casos e situações integrados</span>
-                            </div>
-                            <p className="text-xs leading-7 text-slate-700 whitespace-pre-line">{reportVm.fields.relations.text || 'Não foram recuperadas evidências suficientes para gerar esta seção com segurança.'}</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-xs">
-                              {reportVm.fields.relations.combinations.length > 0 && (
-                                <div>
-                                  <h5 className="font-black text-[#112363] uppercase tracking-wider text-[10px] mb-2">Combinações analisadas</h5>
-                                  <ul className="list-disc pl-5 space-y-1 text-slate-700">
-                                    {reportVm.fields.relations.combinations.map((item, idx) => <li key={`${item}-${idx}`}>{item}</li>)}
-                                  </ul>
-                                </div>
-                              )}
-                              {reportVm.fields.relations.practicalSituations.length > 0 && (
-                                <div>
-                                  <h5 className="font-black text-[#112363] uppercase tracking-wider text-[10px] mb-2">Como aparece na prática</h5>
-                                  <ul className="list-disc pl-5 space-y-1 text-slate-700">
-                                    {reportVm.fields.relations.practicalSituations.map((item, idx) => <li key={`${item}-${idx}`}>{item}</li>)}
-                                  </ul>
-                                </div>
-                              )}
-                              {reportVm.fields.relations.cautions.length > 0 && (
-                                <div>
-                                  <h5 className="font-black text-[#112363] uppercase tracking-wider text-[10px] mb-2">Cuidados</h5>
-                                  <ul className="list-disc pl-5 space-y-1 text-slate-700">
-                                    {reportVm.fields.relations.cautions.map((item, idx) => <li key={`${item}-${idx}`}>{item}</li>)}
-                                  </ul>
-                                </div>
-                              )}
-                              {reportVm.fields.relations.opportunities.length > 0 && (
-                                <div>
-                                  <h5 className="font-black text-[#112363] uppercase tracking-wider text-[10px] mb-2">Oportunidades</h5>
-                                  <ul className="list-disc pl-5 space-y-1 text-slate-700">
-                                    {reportVm.fields.relations.opportunities.map((item, idx) => <li key={`${item}-${idx}`}>{item}</li>)}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          </section>
+                    {/* Page 4: ANÁLISE DO PERFIL E RELAÇÕES ENTRE ESTILOS */}
+                    <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['analise', 'perfil_predominante'], ['analise', 'perfil_secundario'], ['analise', 'lado_luz'], ['analise', 'lado_sombra'], ['analise', 'estilo_a_desenvolver'], ['analise', 'relacoes_entre_estilos']]) ? 'hidden' : ''}`} id="p-page-4">
+                      <div className="space-y-4 w-full font-sans">
+                        <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
+                          <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
+                            <Sun className="w-4 h-4 text-amber-500 fill-amber-500" /> 03. Perfil Predominante, Secundário e Relações
+                          </h3>
+                          <span className="text-[10px] font-bold text-gray-400 italic">Pág. 04 do Participante</span>
                         </div>
 
-                        {renderFooter(4)}
-                      </div>
+                        <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 ${!isReportFieldVisible('analise', 'perfil_predominante') ? 'hidden' : ''}`}>
+                          {[
+                            { view: reportVm.fields.predominant, subtitle: 'Perfil Predominante', tone: 'amber' },
+                            { view: reportVm.fields.secondary, subtitle: 'Perfil Secundário', tone: 'red' }
+                          ].map(({ view, subtitle, tone }) => (
+                            <section key={view.id} className={`rounded-2xl border p-4 ${tone === 'amber' ? 'bg-amber-50/30 border-amber-200' : 'bg-red-50/20 border-red-200'}`}>
+                              <div className="flex items-center justify-between gap-3 mb-2">
+                                <h4 className="text-[11px] font-black uppercase tracking-wider text-[#112363]">{subtitle}</h4>
+                                <span className="text-[10px] font-bold text-slate-500 uppercase">{view.style || 'Integrador'}</span>
+                              </div>
+                              <p className="text-xs leading-7 text-slate-700 whitespace-pre-line">{view.text || 'Não foram recuperadas evidências suficientes para gerar esta seção com segurança.'}</p>
+                            </section>
+                          ))}
+                        </div>
 
-                      {/* Page 5: RECOMENDAÇÕES E PDI */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['recomendacoes', 'potencializacao_talentos'], ['recomendacoes', 'pdi'], ['recomendacoes', 'primeiros_passos']]) ? 'hidden' : ''}`} id="p-page-5">
-                        <div className="space-y-4 w-full font-sans">
-                          <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
-                            <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <BookOpen className="w-4 h-4 text-emerald-500" /> 09. Recomendações e Plano de Desenvolvimento Individual
-                            </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">Pág. 05 do Participante</span>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                          {[
+                            { view: reportVm.fields.light, title: '05. Lado Luz', subtitle: 'Quando você atua no seu melhor', tone: 'emerald' },
+                            { view: reportVm.fields.shadow, title: '06. Lado Sombra', subtitle: 'Quando o excesso pode limitar seus resultados', tone: 'slate' },
+                            { view: reportVm.fields.development, title: '07. Estilo a Desenvolver', subtitle: 'Competência complementar para ampliar repertório', tone: 'amber' }
+                          ].map(({ view, title, subtitle, tone }) => (
+                            <section key={view.id} className={`rounded-2xl border p-4 ${tone === 'emerald' ? 'bg-emerald-50/20 border-emerald-200' : tone === 'slate' ? 'bg-slate-50 border-slate-200' : 'bg-amber-50/20 border-amber-200'}`}>
+                              <h4 className="text-[11px] font-black uppercase tracking-wider text-[#112363]">{title}</h4>
+                              <p className="text-[10px] uppercase tracking-widest text-slate-400 mt-1">{subtitle}</p>
+                              <p className="mt-3 text-xs leading-7 text-slate-700 whitespace-pre-line">{view.text || 'Não foram recuperadas evidências suficientes para gerar esta seção com segurança.'}</p>
+                            </section>
+                          ))}
+                        </div>
+
+                        <section className={`rounded-2xl border p-4 bg-white shadow-3xs ${!isReportFieldVisible('analise', 'relacoes_entre_estilos') ? 'hidden' : ''}`}>
+                          <div className="flex items-center justify-between gap-3 mb-3">
+                            <h4 className="text-[11px] font-black uppercase tracking-wider text-[#112363]">08. Relações entre Estilos</h4>
+                            <span className="text-[10px] font-bold text-slate-400 uppercase">Casos e situações integrados</span>
                           </div>
-
-                          <section className={`space-y-3 ${!isReportFieldVisible('recomendacoes', 'potencializacao_talentos') ? 'hidden' : ''}`}>
-                            <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">
-                              <CheckCircle2 className="w-4.5 h-4.5 text-[#112363] shrink-0" /> 9.1 Potencialização dos Talentos
-                            </h4>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                              {reportVm.fields.recommendations.talentPotentialization.baseStyle && <div className="p-4 bg-amber-50/30 rounded-xl border border-amber-200"><span className="text-[9px] font-black uppercase tracking-widest text-amber-700 block mb-1">Estilo-base</span><p className="text-slate-800 font-semibold leading-relaxed">{reportVm.fields.recommendations.talentPotentialization.baseStyle}</p></div>}
-                              {reportVm.fields.recommendations.talentPotentialization.identifiedTalent && <div className="p-4 bg-emerald-50/20 rounded-xl border border-emerald-200"><span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 block mb-1">Talento identificado</span><p className="text-slate-800 font-semibold leading-relaxed">{reportVm.fields.recommendations.talentPotentialization.identifiedTalent}</p></div>}
-                              {reportVm.fields.recommendations.talentPotentialization.generatedValue && <div className="p-4 bg-slate-50 rounded-xl border border-slate-200"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block mb-1">Valor gerado</span><p className="text-slate-800 font-semibold leading-relaxed">{reportVm.fields.recommendations.talentPotentialization.generatedValue}</p></div>}
-                              {reportVm.fields.recommendations.talentPotentialization.balancePoint && <div className="p-4 bg-amber-50/30 rounded-xl border border-amber-200"><span className="text-[9px] font-black uppercase tracking-widest text-amber-700 block mb-1">Ponto de equilíbrio</span><p className="text-slate-800 font-semibold leading-relaxed">{reportVm.fields.recommendations.talentPotentialization.balancePoint}</p></div>}
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                              {reportVm.fields.recommendations.talentPotentialization.idealContexts.length > 0 && (
-                                <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2">
-                                  <span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Contextos ideais</span>
-                                  <ul className="space-y-2">
-                                    {reportVm.fields.recommendations.talentPotentialization.idealContexts.map((item, idx) => <li key={`${item}-${idx}`} className="flex items-start gap-2 text-slate-700 font-semibold"><span className="text-emerald-500 mt-0.5">+</span><span>{item}</span></li>)}
-                                  </ul>
-                                </div>
-                              )}
-                              {reportVm.fields.recommendations.talentPotentialization.strategies.length > 0 && (
-                                <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2">
-                                  <span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Estratégias de potencialização</span>
-                                  <ul className="space-y-2">
-                                    {reportVm.fields.recommendations.talentPotentialization.strategies.map((item, idx) => <li key={`${item}-${idx}`} className="flex items-start gap-2 text-slate-700 font-semibold"><span className="text-[#112363] mt-0.5">+</span><span>{item}</span></li>)}
-                                  </ul>
-                                </div>
-                              )}
-                            </div>
-                          </section>
-
-                          <section className={`space-y-3 ${!isReportFieldVisible('recomendacoes', 'pdi') ? 'hidden' : ''}`}>
-                            <h4 className="text-xs font-black text-emerald-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-emerald-100"><BookOpen className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 9.2 Plano de Desenvolvimento Individual</h4>
-                            {reportVm.fields.recommendations.pdi.priorityObjectives.length > 0 && (
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                                {reportVm.fields.recommendations.pdi.priorityObjectives.map((item, idx) => (
-                                  <div key={`${item.objective}-${idx}`} className="p-3 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-1.5">
-                                    <strong className="text-xs text-[#112363] font-black block">{item.objective}</strong>
-                                    {item.expectedBenefit && <p className="text-[11px] text-slate-700 font-semibold leading-relaxed">{item.expectedBenefit}</p>}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-
-                            {reportVm.fields.recommendations.pdi.actionPlan.length > 0 && (
-                              <div className="max-w-full overflow-hidden rounded-2xl border border-slate-150 bg-white shadow-3xs print:break-inside-avoid">
-                                <div className="overflow-x-auto">
-                                  <table className="w-full text-left text-[11px]">
-                                    <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider text-[9px] font-black">
-                                      <tr>
-                                        <th className="px-3 py-2">Ação</th>
-                                        <th className="px-3 py-2">Frequência</th>
-                                        <th className="px-3 py-2">Indicador</th>
-                                        <th className="px-3 py-2">Prazo</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-100">
-                                      {reportVm.fields.recommendations.pdi.actionPlan.map((item, idx) => (
-                                        <tr key={`${item.action}-${idx}`}>
-                                          <td className="px-3 py-2 font-semibold text-slate-800">{item.action || '-'}</td>
-                                          <td className="px-3 py-2 text-slate-700 font-medium">{item.frequency || '-'}</td>
-                                          <td className="px-3 py-2 text-slate-700 font-medium">{item.indicator || '-'}</td>
-                                          <td className="px-3 py-2 text-slate-700 font-medium">{item.suggestedDeadline || '-'}</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            )}
-
-                            {reportVm.fields.recommendations.pdi.evolutionIndicators.length > 0 && (
-                              <div className="space-y-2">
-                                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">9.3 Indicadores de evolução</span>
-                                <ul className="space-y-2">
-                                  {reportVm.fields.recommendations.pdi.evolutionIndicators.map((item, idx) => <li key={`${item}-${idx}`} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-semibold text-xs leading-relaxed">{item}</li>)}
+                          <p className="text-xs leading-7 text-slate-700 whitespace-pre-line">{reportVm.fields.relations.text || 'Não foram recuperadas evidências suficientes para gerar esta seção com segurança.'}</p>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4 text-xs">
+                            {reportVm.fields.relations.combinations.length > 0 && (
+                              <div>
+                                <h5 className="font-black text-[#112363] uppercase tracking-wider text-[10px] mb-2">Combinações analisadas</h5>
+                                <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                                  {reportVm.fields.relations.combinations.map((item, idx) => <li key={`${item}-${idx}`}>{item}</li>)}
                                 </ul>
                               </div>
                             )}
-
-                            {reportVm.fields.recommendations.pdi.developmentCommitment && (
-                              <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-1">
-                                <span className="absolute top-0 right-0 py-1 px-2.5 bg-amber-100 text-amber-800 font-black rounded-bl-lg text-[8px] uppercase tracking-wider">Compromisso</span>
-                                <h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">Compromisso de desenvolvimento</h4>
-                                <p className="text-xs text-slate-850 leading-relaxed font-semibold italic">"{reportVm.fields.recommendations.pdi.developmentCommitment}"</p>
+                            {reportVm.fields.relations.practicalSituations.length > 0 && (
+                              <div>
+                                <h5 className="font-black text-[#112363] uppercase tracking-wider text-[10px] mb-2">Como aparece na prática</h5>
+                                <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                                  {reportVm.fields.relations.practicalSituations.map((item, idx) => <li key={`${item}-${idx}`}>{item}</li>)}
+                                </ul>
                               </div>
                             )}
-                          </section>
+                            {reportVm.fields.relations.cautions.length > 0 && (
+                              <div>
+                                <h5 className="font-black text-[#112363] uppercase tracking-wider text-[10px] mb-2">Cuidados</h5>
+                                <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                                  {reportVm.fields.relations.cautions.map((item, idx) => <li key={`${item}-${idx}`}>{item}</li>)}
+                                </ul>
+                              </div>
+                            )}
+                            {reportVm.fields.relations.opportunities.length > 0 && (
+                              <div>
+                                <h5 className="font-black text-[#112363] uppercase tracking-wider text-[10px] mb-2">Oportunidades</h5>
+                                <ul className="list-disc pl-5 space-y-1 text-slate-700">
+                                  {reportVm.fields.relations.opportunities.map((item, idx) => <li key={`${item}-${idx}`}>{item}</li>)}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </section>
+                      </div>
 
-                          {reportVm.fields.recommendations.firstSteps.length > 0 && (
-                            <section className={`space-y-3 ${!isReportFieldVisible('recomendacoes', 'primeiros_passos') ? 'hidden' : ''}`}>
-                              <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">Primeiros Passos</h4>
-                              <ul className="space-y-2">
-                                {reportVm.fields.recommendations.firstSteps.map((item, idx) => <li key={`${item}-${idx}`} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-semibold text-xs leading-relaxed">{item}</li>)}
-                              </ul>
-                            </section>
+                      {renderFooter(4)}
+                    </div>
+
+                    {/* Page 5: RECOMENDAÇÕES E PDI */}
+                    <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['recomendacoes', 'potencializacao_talentos'], ['recomendacoes', 'pdi'], ['recomendacoes', 'primeiros_passos']]) ? 'hidden' : ''}`} id="p-page-5">
+                      <div className="space-y-4 w-full font-sans">
+                        <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
+                          <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
+                            <BookOpen className="w-4 h-4 text-emerald-500" /> 09. Recomendações e Plano de Desenvolvimento Individual
+                          </h3>
+                          <span className="text-[10px] font-bold text-gray-400 italic">Pág. 05 do Participante</span>
+                        </div>
+
+                        <section className={`space-y-3 ${!isReportFieldVisible('recomendacoes', 'potencializacao_talentos') ? 'hidden' : ''}`}>
+                          <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">
+                            <CheckCircle2 className="w-4.5 h-4.5 text-[#112363] shrink-0" /> 9.1 Potencialização dos Talentos
+                          </h4>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                            {reportVm.fields.recommendations.talentPotentialization.baseStyle && <div className="p-4 bg-amber-50/30 rounded-xl border border-amber-200"><span className="text-[9px] font-black uppercase tracking-widest text-amber-700 block mb-1">Estilo-base</span><p className="text-slate-800 font-semibold leading-relaxed">{reportVm.fields.recommendations.talentPotentialization.baseStyle}</p></div>}
+                            {reportVm.fields.recommendations.talentPotentialization.identifiedTalent && <div className="p-4 bg-emerald-50/20 rounded-xl border border-emerald-200"><span className="text-[9px] font-black uppercase tracking-widest text-emerald-700 block mb-1">Talento identificado</span><p className="text-slate-800 font-semibold leading-relaxed">{reportVm.fields.recommendations.talentPotentialization.identifiedTalent}</p></div>}
+                            {reportVm.fields.recommendations.talentPotentialization.generatedValue && <div className="p-4 bg-slate-50 rounded-xl border border-slate-200"><span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block mb-1">Valor gerado</span><p className="text-slate-800 font-semibold leading-relaxed">{reportVm.fields.recommendations.talentPotentialization.generatedValue}</p></div>}
+                            {reportVm.fields.recommendations.talentPotentialization.balancePoint && <div className="p-4 bg-amber-50/30 rounded-xl border border-amber-200"><span className="text-[9px] font-black uppercase tracking-widest text-amber-700 block mb-1">Ponto de equilíbrio</span><p className="text-slate-800 font-semibold leading-relaxed">{reportVm.fields.recommendations.talentPotentialization.balancePoint}</p></div>}
+                          </div>
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                            {reportVm.fields.recommendations.talentPotentialization.idealContexts.length > 0 && (
+                              <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Contextos ideais</span>
+                                <ul className="space-y-2">
+                                  {reportVm.fields.recommendations.talentPotentialization.idealContexts.map((item, idx) => <li key={`${item}-${idx}`} className="flex items-start gap-2 text-slate-700 font-semibold"><span className="text-emerald-500 mt-0.5">+</span><span>{item}</span></li>)}
+                                </ul>
+                              </div>
+                            )}
+                            {reportVm.fields.recommendations.talentPotentialization.strategies.length > 0 && (
+                              <div className="p-4 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-2">
+                                <span className="text-[9px] font-black uppercase tracking-widest text-[#112363] block">Estratégias de potencialização</span>
+                                <ul className="space-y-2">
+                                  {reportVm.fields.recommendations.talentPotentialization.strategies.map((item, idx) => <li key={`${item}-${idx}`} className="flex items-start gap-2 text-slate-700 font-semibold"><span className="text-[#112363] mt-0.5">+</span><span>{item}</span></li>)}
+                                </ul>
+                              </div>
+                            )}
+                          </div>
+                        </section>
+
+                        <section className={`space-y-3 ${!isReportFieldVisible('recomendacoes', 'pdi') ? 'hidden' : ''}`}>
+                          <h4 className="text-xs font-black text-emerald-600 uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-emerald-100"><BookOpen className="w-4.5 h-4.5 text-emerald-500 shrink-0" /> 9.2 Plano de Desenvolvimento Individual</h4>
+                          {reportVm.fields.recommendations.pdi.priorityObjectives.length > 0 && (
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                              {reportVm.fields.recommendations.pdi.priorityObjectives.map((item, idx) => (
+                                <div key={`${item.objective}-${idx}`} className="p-3 bg-white rounded-xl border border-slate-150 shadow-3xs space-y-1.5">
+                                  <strong className="text-xs text-[#112363] font-black block">{item.objective}</strong>
+                                  {item.expectedBenefit && <p className="text-[11px] text-slate-700 font-semibold leading-relaxed">{item.expectedBenefit}</p>}
+                                </div>
+                              ))}
+                            </div>
                           )}
-                        </div>
 
-                        {renderFooter(5)}
-                      </div>
-
-
-{/* Page 6: MEMÓRIA DO QUESTIONÁRIO & MEMÓRIA DE CÁLCULO (Seção 15 & Seção 16) */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isReportFieldVisible('memoria', 'respostas_questionario') ? 'hidden' : ''}`} id="p-page-6">
-                        <div className="space-y-4 w-full">
-                          <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
-                            <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <FileText className="w-4 h-4 text-[#112363]" /> 06. Memória de Cálculo e Respostas do Questionário
-                            </h3>
-                            <span className="text-[10px] font-bold text-gray-400 italic">P�g. 06 do Participante</span>
-                          </div>
-
-                          <div className="space-y-4">
-                            <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">6.1 Rastreabilidade das Respostas Individuais</h4>
-                            <div className="max-w-full overflow-hidden border border-slate-150 rounded-2xl bg-white shadow-3xs max-h-[280px] overflow-y-auto w-full">
-                              {(() => {
-                                const memoriaRespostas = getMemoriaCalculoRespostas(reportData);
-                                console.log("[PAGINA_07_MEMORIA]", {
-                                  "1_direto(memoria_calculo.respostas)": reportData?.memoria_calculo?.respostas?.length,
-                                  "2_campos_json_type": typeof reportData?.campos?.memoria_calculo_respostas_json,
-                                  "2_campos_json_length": reportData?.campos?.memoria_calculo_respostas_json?.length,
-                                  "3_root_json_type": typeof reportData?.memoria_calculo_respostas_json,
-                                  "3_root_json_length": reportData?.memoria_calculo_respostas_json?.length,
-                                  "4_linhas_resolvidas": memoriaRespostas.length,
-                                  "5_primeira": memoriaRespostas[0]
-                                });
-                                return (
-                                  <table className="w-full table-fixed divide-y divide-slate-150 text-[9px] md:text-[10px]">
-                                    <thead className="bg-slate-100 font-extrabold text-[#112363] uppercase tracking-wider sticky top-0 z-10 text-[8px] md:text-[10px]">
-                                      <tr>
-                                        <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Questão</th>
-                                        <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Resposta Selecionada</th>
-                                        <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Estilo da Resposta</th>
-                                        <th className="px-2 md:px-4 py-2 md:py-2.5 text-right">Pontos</th>
+                          {reportVm.fields.recommendations.pdi.actionPlan.length > 0 && (
+                            <div className="max-w-full overflow-hidden rounded-2xl border border-slate-150 bg-white shadow-3xs print:break-inside-avoid">
+                              <div className="overflow-x-auto">
+                                <table className="w-full text-left text-[11px]">
+                                  <thead className="bg-slate-50 text-slate-600 uppercase tracking-wider text-[9px] font-black">
+                                    <tr>
+                                      <th className="px-3 py-2">Ação</th>
+                                      <th className="px-3 py-2">Frequência</th>
+                                      <th className="px-3 py-2">Indicador</th>
+                                      <th className="px-3 py-2">Prazo</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-100">
+                                    {reportVm.fields.recommendations.pdi.actionPlan.map((item, idx) => (
+                                      <tr key={`${item.action}-${idx}`}>
+                                        <td className="px-3 py-2 font-semibold text-slate-800">{item.action || '-'}</td>
+                                        <td className="px-3 py-2 text-slate-700 font-medium">{item.frequency || '-'}</td>
+                                        <td className="px-3 py-2 text-slate-700 font-medium">{item.indicator || '-'}</td>
+                                        <td className="px-3 py-2 text-slate-700 font-medium">{item.suggestedDeadline || '-'}</td>
                                       </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-slate-150 text-slate-700 font-semibold bg-white">
-                                      {memoriaRespostas.map((item: any, idx: number) => (
-                                        <tr key={idx} className="hover:bg-slate-50/50">
-                                          <td className="px-2 md:px-3 py-1.5 md:py-2 truncate text-[9px] md:text-[10px]" title={item.questao}>{item.questao || `Q${item.questionId}`}</td>
-                                          <td className="px-2 md:px-3 py-1.5 md:py-2 italic font-medium text-[9px] md:text-[10px] break-words">{item.resposta}</td>
-                                          <td className="px-2 md:px-3 py-1.5 md:py-3 font-extrabold text-[#D80E2A] text-[9px] md:text-[10px] break-words">{item.socioEstilo}</td>
-                                          <td className="px-2 md:px-4 py-1.5 md:py-2 text-right font-black text-slate-550 text-[9px] md:text-[10px]">+{item.pontos} pt</td>
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                );
-                              })()}
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
                             </div>
-                          </div>
+                          )}
 
-                          <div className="p-4 bg-slate-50 rounded-xl border border-slate-155 text-[11px] text-slate-600 font-semibold leading-relaxed">
-                            <strong className="text-slate-800 uppercase block mb-1">6.2 Memória Estrita de Cálculo de Pesos Lineares</strong>
-                            A pontuação acumulada é obtida pela somatória linear simples do peso correlacionado correspondente a cada escolha do respondente de acordo com as diretrizes do gabarito oficial da metodologia Potenciar Socioestilos. Não há coeficientes multiplicadores, mantendo uma integridade matemática direta de 100%. Total Pontos Calculados: {rTotal} pontos.
-                          </div>
-                        </div>
+                          {reportVm.fields.recommendations.pdi.evolutionIndicators.length > 0 && (
+                            <div className="space-y-2">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 block">9.3 Indicadores de evolução</span>
+                              <ul className="space-y-2">
+                                {reportVm.fields.recommendations.pdi.evolutionIndicators.map((item, idx) => <li key={`${item}-${idx}`} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-semibold text-xs leading-relaxed">{item}</li>)}
+                              </ul>
+                            </div>
+                          )}
 
-                        {renderFooter(6)}
+                          {reportVm.fields.recommendations.pdi.developmentCommitment && (
+                            <div className="p-4 bg-amber-50/45 rounded-xl border border-amber-200 text-xs shadow-xxs relative overflow-hidden mt-1">
+                              <span className="absolute top-0 right-0 py-1 px-2.5 bg-amber-100 text-amber-800 font-black rounded-bl-lg text-[8px] uppercase tracking-wider">Compromisso</span>
+                              <h4 className="text-[10px] font-black text-amber-700 uppercase tracking-widest block mb-1">Compromisso de desenvolvimento</h4>
+                              <p className="text-xs text-slate-850 leading-relaxed font-semibold italic">"{reportVm.fields.recommendations.pdi.developmentCommitment}"</p>
+                            </div>
+                          )}
+                        </section>
+
+                        {reportVm.fields.recommendations.firstSteps.length > 0 && (
+                          <section className={`space-y-3 ${!isReportFieldVisible('recomendacoes', 'primeiros_passos') ? 'hidden' : ''}`}>
+                            <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider flex items-center gap-1.5 pb-1 border-b border-slate-200">Primeiros Passos</h4>
+                            <ul className="space-y-2">
+                              {reportVm.fields.recommendations.firstSteps.map((item, idx) => <li key={`${item}-${idx}`} className="p-3 bg-slate-50 rounded-xl border border-slate-100 text-slate-700 font-semibold text-xs leading-relaxed">{item}</li>)}
+                            </ul>
+                          </section>
+                        )}
                       </div>
 
-                      {/* Page 7: AUDITORIA DO WORKFLOW n8n (Seção 17 / Admin View / Confidencial Lock) */}
-                      <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['auditoria', 'timeline_processamento'], ['auditoria', 'metadados_integracao'], ['auditoria', 'base_conhecimento'], ['auditoria', 'fundamentacao_teorica'], ['auditoria', 'trilha_rag']]) ? 'hidden' : ''}`} id="p-page-7">
-                        <div className="space-y-4 w-full">
-                          <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
-                            <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
-                              <Bot className="w-4 h-4 text-[#112363]" /> 07. Registro de Auditoria e Conformidade Técnica
-                            </h3>
-                            <span className="text-[10px] font-bold text-gray-400">Pág. 07 / Auditoria</span>
-                          </div>
+                      {renderFooter(5)}
+                    </div>
 
-                          {/* 4. Processing Timeline Progress Flow */}
-                          {(() => {
-                            const scoresObj = reportData.resultado?.scores || {};
-                            const assertivoVal = getScoreVal(scoresObj, 'Assertivo');
-                            const participativoVal = getScoreVal(scoresObj, 'Participativo');
-                            const conservadorVal = getScoreVal(scoresObj, 'Integrador');
-                            const analiticoVal = getScoreVal(scoresObj, 'Analítico');
-                            const rTotalVal = (assertivoVal + participativoVal + conservadorVal + analiticoVal) || 0;
 
-                            return (
-                              <div className={`space-y-3 ${!isReportFieldVisible('auditoria', 'timeline_processamento') ? 'hidden' : ''}`}>
-                                <h4 className="text-[10.5px] font-black text-[#112363] uppercase tracking-wider">7.1 Linha do Tempo de Processamento Autônomo</h4>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 relative w-full">
-                                  {/* Step 1 */}
-                                  <div className="p-3 bg-white border border-slate-150 rounded-xl relative shadow-3xs flex flex-col justify-between">
-                                    <div className="flex items-center space-x-2">
-                                      <div className="w-6 h-6 bg-indigo-50 border border-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-black text-[10px] shrink-0">
-                                        1
-                                      </div>
-                                      <span className="text-[8px] font-black uppercase text-indigo-800 tracking-wider">Preenchimento</span>
-                                    </div>
-                                    <div className="mt-2 text-[10px]">
-                                      <strong className="text-slate-800 block text-[10px]">Coleta Realizada</strong>
-                                      <p className="text-slate-500 font-medium leading-tight text-[9px]">20 questões finalizadas de socioestilos.</p>
-                                      <span className="text-[8px] font-mono text-slate-400 block mt-1">
-                                        Submetido: {reportData.identificacao?.generated_at ? new Date(reportData.identificacao.generated_at).toLocaleDateString('pt-BR') : ''}
-                                      </span>
-                                    </div>
-                                  </div>
+                    {/* Page 6: MEMÓRIA DO QUESTIONÁRIO & MEMÓRIA DE CÁLCULO (Seção 15 & Seção 16) */}
+                    <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isReportFieldVisible('memoria', 'respostas_questionario') ? 'hidden' : ''}`} id="p-page-6">
+                      <div className="space-y-4 w-full">
+                        <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
+                          <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
+                            <FileText className="w-4 h-4 text-[#112363]" /> 06. Memória de Cálculo e Respostas do Questionário
+                          </h3>
+                          <span className="text-[10px] font-bold text-gray-400 italic">P�g. 06 do Participante</span>
+                        </div>
 
-                                  {/* Step 2 */}
-                                  <div className="p-3 bg-white border border-slate-150 rounded-xl relative shadow-3xs flex flex-col justify-between">
-                                    <div className="flex items-center space-x-2">
-                                      <div className="w-6 h-6 bg-amber-50 border border-amber-100 rounded-full flex items-center justify-center text-amber-700 font-black text-[10px] shrink-0">
-                                        2
-                                      </div>
-                                      <span className="text-[8px] font-black uppercase text-amber-800 tracking-wider">Scoring</span>
-                                    </div>
-                                    <div className="mt-2 text-[10px]">
-                                      <strong className="text-slate-800 block text-[10px]">Matriz Computada</strong>
-                                      <p className="text-slate-500 font-medium leading-tight text-[9px]">Gabarito apurado linearmente no n8n.</p>
-                                      <span className="text-[8px] font-extrabold text-amber-600 block mt-1 bg-amber-50 px-1 py-0.5 rounded w-fit">
-                                        Score: {rTotalVal} pontos
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  {/* Step 3 */}
-                                  <div className="p-3 bg-white border border-slate-150 rounded-xl relative shadow-3xs flex flex-col justify-between">
-                                    <div className="flex items-center space-x-2">
-                                      <div className="w-6 h-6 bg-rose-50 border border-rose-100 rounded-full flex items-center justify-center text-rose-700 font-black text-[10px] shrink-0">
-                                        3
-                                      </div>
-                                      <span className="text-[8px] font-black uppercase text-rose-800 tracking-wider">Processamento IA</span>
-                                    </div>
-                                    <div className="mt-2 text-[10px]">
-                                      <strong className="text-slate-800 block text-[10px]">Cognição Comportamental</strong>
-                                      <p className="text-slate-500 font-medium leading-tight text-[9px]">Narrativa executada sob conformidade.</p>
-                                      <span className="text-[8px] font-mono text-rose-600 font-black block mt-1 truncate" title={safeText(reportData.auditoria?.modelo_llm) || "Gemini 1.5 Pro"}>
-                                        {safeText(reportData.auditoria?.modelo_llm) || "Gemini 1.5 Pro"}
-                                      </span>
-                                    </div>
-                                  </div>
-
-                                  {/* Step 4 */}
-                                  <div className="p-3 bg-white border border-emerald-200 bg-emerald-50/5 rounded-xl relative shadow-3xs flex flex-col justify-between">
-                                    <div className="flex items-center space-x-2">
-                                      <div className="w-6 h-6 bg-emerald-50 border border-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-black text-[10px] shrink-0">
-                                        4
-                                      </div>
-                                      <span className="text-[8px] font-black uppercase text-emerald-800 tracking-wider">Selo e Emissão</span>
-                                    </div>
-                                    <div className="mt-2 text-[10px]">
-                                      <strong className="text-slate-800 block text-[10px]">Mapeamento Prontificado</strong>
-                                      <p className="text-slate-500 font-medium leading-tight text-[9px]">Geração e disponibilização da visualização.</p>
-                                      <span className="text-[8px] font-mono text-emerald-600 font-black block mt-1 hover:underline">
-                                        UUID: {(reportData.identificacao?.relatorio_uuid || "").substring(0, 10).toUpperCase()}...
-                                      </span>
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })()}
-
-                          <div className="space-y-4 text-xs w-full">
-                            <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 w-full ${!isReportFieldVisible('auditoria', 'metadados_integracao') ? 'hidden' : ''}`}>
-                              <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5 shadow-3xs">
-                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block font-sans">Metadados Corporativos</span>
-                                <strong className="text-[#112363] block font-black text-xs leading-none font-sans">n8n Integration Channel</strong>
-                                <p className="text-[10px] text-slate-500 font-medium font-sans">Flow: v{safeText(reportData.auditoria?.workflow_version) || "9.0"} | Engine: {safeText(reportData.auditoria?.prompt_version) || "System_v9"}</p>
-                              </div>
-
-                              <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5 shadow-3xs">
-                                <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block font-sans">Divergências Estritadas</span>
-                                <strong className="text-[#112363] block font-black text-xs leading-none font-sans">
-                                  {reportData.auditoria?.divergencias_scores ? "Sim (Detectado)" : "Não (Perfeitamente Consistente)"}
-                                </strong>
-                                <p className="text-[10px] text-slate-500 font-medium font-sans">Scores do Gabarito vs Parser de Linguagem Natural</p>
-                              </div>
-                            </div>
-
-                            {/* BASE DE CONHECIMENTO CONSULTADA & FUNDAMENTAÇÃO TEÓRICA */}
+                        <div className="space-y-4">
+                          <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">6.1 Rastreabilidade das Respostas Individuais</h4>
+                          <div className="max-w-full overflow-hidden border border-slate-150 rounded-2xl bg-white shadow-3xs max-h-[280px] overflow-y-auto w-full">
                             {(() => {
-                              const fontes = (
-                                reportData.fontes_consultadas_texto
-                                || (Array.isArray(reportData.fontes_consultadas) && reportData.fontes_consultadas.length > 0
-                                    ? reportData.fontes_consultadas.map((f: any) => typeof f === 'object' ? (f.documento || f.documento_recuperado || f.source || String(f)) : String(f)).join('\n')
-                                    : '')
-                              ).trim();
-
-                              const chunks = (
-                                reportData.chunks_recuperados_texto
-                                || (Array.isArray(reportData.chunks_recuperados) && reportData.chunks_recuperados.length > 0
-                                    ? reportData.chunks_recuperados.map((c: any) => typeof c === 'object' ? `${c.documento || c.documento_recuperado || c.document || ''} - Chunk ${c.chunk !== undefined ? c.chunk : (c.chunk_idx !== undefined ? c.chunk_idx : '')}` : String(c)).join('\n')
-                                    : '')
-                              ).trim();
-
+                              const memoriaRespostas = getMemoriaCalculoRespostas(reportData);
+                              console.log("[PAGINA_07_MEMORIA]", {
+                                "1_direto(memoria_calculo.respostas)": reportData?.memoria_calculo?.respostas?.length,
+                                "2_campos_json_type": typeof reportData?.campos?.memoria_calculo_respostas_json,
+                                "2_campos_json_length": reportData?.campos?.memoria_calculo_respostas_json?.length,
+                                "3_root_json_type": typeof reportData?.memoria_calculo_respostas_json,
+                                "3_root_json_length": reportData?.memoria_calculo_respostas_json?.length,
+                                "4_linhas_resolvidas": memoriaRespostas.length,
+                                "5_primeira": memoriaRespostas[0]
+                              });
                               return (
-                                <div className="space-y-4 font-sans w-full">
-                                  
-                                  {/* Sections 7.2 + 7.3 lado a lado */}
-                                  <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-3 ${!isAnyReportFieldVisible([['auditoria', 'base_conhecimento'], ['auditoria', 'fundamentacao_teorica']]) ? 'hidden' : ''}`}>
-
-                                    {/* Section 7.2: Base de Conhecimento Consultada */}
-                                    <div className={`space-y-2 font-sans ${!isReportFieldVisible('auditoria', 'base_conhecimento') ? 'hidden' : ''}`}>
-                                      <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
-                                        <BookOpen className="w-4 h-4 text-[#112363]" /> 7.2 Base de Conhecimento Consultada
-                                      </strong>
-                                      <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-2 shadow-3xs text-xs">
-                                        <div className="flex items-center space-x-1.5 border-b border-slate-200 pb-1.5">
-                                          <span className="w-2 h-2 rounded-full bg-[#D80E2A] shrink-0" />
-                                          <strong className="text-slate-800 font-black uppercase text-[9px] tracking-wider">Documentos Utilizados e Chunks Recuperados</strong>
-                                        </div>
-                                        {!chunks ? (
-                                          <p className="text-[10.5px] text-slate-500 font-semibold pl-1 py-1 italic">
-                                            Nenhum chunk recuperado para esta análise.
-                                          </p>
-                                        ) : (
-                                          <ul className="space-y-1 text-slate-700 pl-1 max-h-[160px] overflow-y-auto font-semibold text-[10.5px]">
-                                            {chunks.split('\n').map((c: string, idx: number) => {
-                                              const chunkLine = c.trim();
-                                              if (!chunkLine) return null;
-                                              const parts = chunkLine.split(/\s*-\s*/);
-                                              if (parts.length > 1) {
-                                                const docPart = parts[0];
-                                                const chunkNumPart = parts.slice(1).join(" - ");
-                                                return (
-                                                  <li key={idx} className="flex items-start gap-1.5">
-                                                    <span className="text-[#D80E2A] mt-0.5">•</span>
-                                                    <span>{docPart} — <strong className="text-amber-700 font-mono text-[9.5px] bg-amber-50 border border-amber-200 px-1 py-0.5 rounded font-black">{chunkNumPart}</strong></span>
-                                                  </li>
-                                                );
-                                              }
-                                              return (
-                                                <li key={idx} className="flex items-start gap-1.5">
-                                                  <span className="text-[#D80E2A] mt-0.5">•</span>
-                                                  <span>{chunkLine}</span>
-                                                </li>
-                                              );
-                                            })}
-                                          </ul>
-                                        )}
-                                      </div>
-                                    </div>
-
-                                    {/* Section 7.3: Fundamentação Teórica */}
-                                    <div className={`space-y-2 font-sans ${!isReportFieldVisible('auditoria', 'fundamentacao_teorica') ? 'hidden' : ''}`}>
-                                      <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
-                                        <BookOpen className="w-4 h-4 text-[#112363]" /> 7.3 Fundamentação Teórica de Sócio Estilos Utilizada
-                                      </strong>
-                                      {(() => {
-                                        const textVal = (reportData.referenciais_teoricos_texto || '').trim();
-                                        const jsonList = Array.isArray(reportData.referenciais_teoricos) ? reportData.referenciais_teoricos : [];
-
-                                        const parseLinhas = (text: string) =>
-                                          text.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
-                                            const colonIdx = line.indexOf(':');
-                                            if (colonIdx > 0) {
-                                              return { autor: line.substring(0, colonIdx).trim(), contribuicao: line.substring(colonIdx + 1).trim() };
-                                            }
-                                            return { autor: line, contribuicao: '' };
-                                          });
-
-                                        const entries: { autor: string; contribuicao: string }[] = textVal
-                                          ? parseLinhas(textVal)
-                                          : jsonList.map((ref: any) => ({
-                                              autor: ref.autor || ref.author || '',
-                                              contribuicao: ref.contribuicao || ref.contribution || ref.conceito_aplicado || ref.conceito || ref.concept || ref.obra || ''
-                                            })).filter((e: any) => e.autor);
-
-                                        if (entries.length > 0) {
-                                          return (
-                                            <div className="space-y-2">
-                                              {entries.map((ref, idx) => (
-                                                <div key={idx} className="p-3 bg-white border border-slate-150 rounded-xl shadow-3xs space-y-1 hover:bg-slate-50/50 transition-colors">
-                                                  <div className="flex items-center gap-1.5">
-                                                    <span className="w-1.5 h-1.5 rounded-full bg-[#112363] shrink-0 mt-0.5" />
-                                                    <strong className="text-[#112363] font-extrabold text-[11px]">{safeText(ref.autor)}</strong>
-                                                  </div>
-                                                  {ref.contribuicao && (
-                                                    <p className="text-slate-600 font-semibold text-[10.5px] leading-relaxed pl-3">{renderSafeValue(ref.contribuicao, 'contribuicao')}</p>
-                                                  )}
-                                                </div>
-                                              ))}
-                                            </div>
-                                          );
-                                        }
-
-                                        return (
-                                          <div className="p-4 bg-slate-50 border border-slate-150 rounded-2xl text-center text-slate-500 font-semibold text-xs py-4">
-                                            Nenhum referencial teórico específico foi identificado.
-                                          </div>
-                                        );
-                                      })()}
-                                    </div>
-
-                                  </div>
-
-                                  {isUserAdminOrNomura && isReportFieldVisible('auditoria', 'trilha_rag') && (() => {
-                                    const audit = getChunkContentAudit(reportData);
-                                    const chunks = audit.chunks_recuperados || [];
-                                    if (chunks.length === 0) return null;
-
-                                    return (
-                                      <div className="space-y-2 font-sans border-t border-slate-100 pt-3">
-                                        <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
-                                          <FileText className="w-4 h-4 text-[#112363]" /> 7.4 Trilha de Auditoria RAG
-                                        </strong>
-                                        <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-3 shadow-3xs">
-                                          <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] text-slate-600 font-semibold">
-                                            {audit.consulta_utilizada && (
-                                              <p><strong className="text-slate-800">Consulta utilizada:</strong> {audit.consulta_utilizada}</p>
-                                            )}
-                                            {audit.finalidade && (
-                                              <p><strong className="text-slate-800">Finalidade:</strong> {audit.finalidade}</p>
-                                            )}
-                                            {audit.retrieved_at && (
-                                              <p><strong className="text-slate-800">Recuperado em:</strong> {new Date(audit.retrieved_at).toLocaleString('pt-BR')}</p>
-                                            )}
-                                          </div>
-
-                                          <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
-                                            {chunks.map((item, index) => {
-                                              const kuCode =
-                                                item.documento ||
-                                                item.ku_code ||
-                                                item.codigo ||
-                                                '';
-
-                                              const titulo = extractChunkTitle(item.conteudo);
-
-                                              const labelParts = [
-                                                kuCode,
-                                                titulo
-                                              ].filter(Boolean);
-
-                                              const label =
-                                                labelParts.length > 0
-                                                  ? labelParts.join(' — ')
-                                                  : `Conteúdo recuperado ${index + 1}`;
-
-                                              return (
-                                                <details
-                                                  key={`${kuCode || 'audit'}-${index}`}
-                                                  className="group bg-white border border-slate-150 rounded-xl overflow-hidden"
-                                                >
-                                                  <summary className="list-none cursor-pointer px-3 py-2 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
-                                                    <span className="text-[10px] font-black text-[#112363] uppercase tracking-wide truncate">
-                                                      {item.ordem || index + 1}. {label}
-                                                    </span>
-                                                    <span className="text-[9px] font-extrabold text-[#D80E2A] shrink-0 group-open:hidden">Ver conteúdo recuperado</span>
-                                                    <span className="text-[9px] font-extrabold text-slate-500 shrink-0 hidden group-open:inline">Ocultar conteúdo</span>
-                                                  </summary>
-                                                  <pre className="whitespace-pre-wrap text-[10px] leading-relaxed text-slate-700 bg-white border-t border-slate-100 p-3 font-mono max-h-[220px] overflow-y-auto">
-                                                    {safeText(item.conteudo, ['texto', 'conteudo', 'descricao', 'resumo', 'content']) || 'Conteúdo recuperado indisponível.'}
-                                                  </pre>
-                                                </details>
-                                              );
-                                            })}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  })()}
-
-                                </div>
+                                <table className="w-full table-fixed divide-y divide-slate-150 text-[9px] md:text-[10px]">
+                                  <thead className="bg-slate-100 font-extrabold text-[#112363] uppercase tracking-wider sticky top-0 z-10 text-[8px] md:text-[10px]">
+                                    <tr>
+                                      <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Questão</th>
+                                      <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Resposta Selecionada</th>
+                                      <th className="px-2 md:px-4 py-2 md:py-2.5 text-left">Estilo da Resposta</th>
+                                      <th className="px-2 md:px-4 py-2 md:py-2.5 text-right">Pontos</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody className="divide-y divide-slate-150 text-slate-700 font-semibold bg-white">
+                                    {memoriaRespostas.map((item: any, idx: number) => (
+                                      <tr key={idx} className="hover:bg-slate-50/50">
+                                        <td className="px-2 md:px-3 py-1.5 md:py-2 truncate text-[9px] md:text-[10px]" title={item.questao}>{item.questao || `Q${item.questionId}`}</td>
+                                        <td className="px-2 md:px-3 py-1.5 md:py-2 italic font-medium text-[9px] md:text-[10px] break-words">{item.resposta}</td>
+                                        <td className="px-2 md:px-3 py-1.5 md:py-3 font-extrabold text-[#D80E2A] text-[9px] md:text-[10px] break-words">{item.socioEstilo}</td>
+                                        <td className="px-2 md:px-4 py-1.5 md:py-2 text-right font-black text-slate-550 text-[9px] md:text-[10px]">+{item.pontos} pt</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
                               );
                             })()}
                           </div>
                         </div>
 
-                        {renderFooter(7)}
+                        <div className="p-4 bg-slate-50 rounded-xl border border-slate-155 text-[11px] text-slate-600 font-semibold leading-relaxed">
+                          <strong className="text-slate-800 uppercase block mb-1">6.2 Memória Estrita de Cálculo de Pesos Lineares</strong>
+                          A pontuação acumulada é obtida pela somatória linear simples do peso correlacionado correspondente a cada escolha do respondente de acordo com as diretrizes do gabarito oficial da metodologia Potenciar Socioestilos. Não há coeficientes multiplicadores, mantendo uma integridade matemática direta de 100%. Total Pontos Calculados: {rTotal} pontos.
+                        </div>
                       </div>
+
+                      {renderFooter(6)}
+                    </div>
+
+                    {/* Page 7: AUDITORIA DO WORKFLOW n8n (Seção 17 / Admin View / Confidencial Lock) */}
+                    <div className={`bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 relative overflow-hidden flex flex-col justify-between min-h-[580px] ${!isAnyReportFieldVisible([['auditoria', 'timeline_processamento'], ['auditoria', 'metadados_integracao'], ['auditoria', 'base_conhecimento'], ['auditoria', 'fundamentacao_teorica'], ['auditoria', 'trilha_rag']]) ? 'hidden' : ''}`} id="p-page-7">
+                      <div className="space-y-4 w-full">
+                        <div className="flex justify-between items-center border-b border-gray-100 pb-3 w-full">
+                          <h3 className="text-sm font-black text-[#112363] uppercase tracking-wider flex items-center gap-2">
+                            <Bot className="w-4 h-4 text-[#112363]" /> 07. Registro de Auditoria e Conformidade Técnica
+                          </h3>
+                          <span className="text-[10px] font-bold text-gray-400">Pág. 07 / Auditoria</span>
+                        </div>
+
+                        {/* 4. Processing Timeline Progress Flow */}
+                        {(() => {
+                          const scoresObj = reportData.resultado?.scores || {};
+                          const assertivoVal = getScoreVal(scoresObj, 'Assertivo');
+                          const participativoVal = getScoreVal(scoresObj, 'Participativo');
+                          const conservadorVal = getScoreVal(scoresObj, 'Integrador');
+                          const analiticoVal = getScoreVal(scoresObj, 'Analítico');
+                          const rTotalVal = (assertivoVal + participativoVal + conservadorVal + analiticoVal) || 0;
+
+                          return (
+                            <div className={`space-y-3 ${!isReportFieldVisible('auditoria', 'timeline_processamento') ? 'hidden' : ''}`}>
+                              <h4 className="text-[10.5px] font-black text-[#112363] uppercase tracking-wider">7.1 Linha do Tempo de Processamento Autônomo</h4>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 relative w-full">
+                                {/* Step 1 */}
+                                <div className="p-3 bg-white border border-slate-150 rounded-xl relative shadow-3xs flex flex-col justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-6 h-6 bg-indigo-50 border border-indigo-100 rounded-full flex items-center justify-center text-indigo-700 font-black text-[10px] shrink-0">
+                                      1
+                                    </div>
+                                    <span className="text-[8px] font-black uppercase text-indigo-800 tracking-wider">Preenchimento</span>
+                                  </div>
+                                  <div className="mt-2 text-[10px]">
+                                    <strong className="text-slate-800 block text-[10px]">Coleta Realizada</strong>
+                                    <p className="text-slate-500 font-medium leading-tight text-[9px]">20 questões finalizadas de socioestilos.</p>
+                                    <span className="text-[8px] font-mono text-slate-400 block mt-1">
+                                      Submetido: {reportData.identificacao?.generated_at ? new Date(reportData.identificacao.generated_at).toLocaleDateString('pt-BR') : ''}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Step 2 */}
+                                <div className="p-3 bg-white border border-slate-150 rounded-xl relative shadow-3xs flex flex-col justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-6 h-6 bg-amber-50 border border-amber-100 rounded-full flex items-center justify-center text-amber-700 font-black text-[10px] shrink-0">
+                                      2
+                                    </div>
+                                    <span className="text-[8px] font-black uppercase text-amber-800 tracking-wider">Scoring</span>
+                                  </div>
+                                  <div className="mt-2 text-[10px]">
+                                    <strong className="text-slate-800 block text-[10px]">Matriz Computada</strong>
+                                    <p className="text-slate-500 font-medium leading-tight text-[9px]">Gabarito apurado linearmente no n8n.</p>
+                                    <span className="text-[8px] font-extrabold text-amber-600 block mt-1 bg-amber-50 px-1 py-0.5 rounded w-fit">
+                                      Score: {rTotalVal} pontos
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Step 3 */}
+                                <div className="p-3 bg-white border border-slate-150 rounded-xl relative shadow-3xs flex flex-col justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-6 h-6 bg-rose-50 border border-rose-100 rounded-full flex items-center justify-center text-rose-700 font-black text-[10px] shrink-0">
+                                      3
+                                    </div>
+                                    <span className="text-[8px] font-black uppercase text-rose-800 tracking-wider">Processamento IA</span>
+                                  </div>
+                                  <div className="mt-2 text-[10px]">
+                                    <strong className="text-slate-800 block text-[10px]">Cognição Comportamental</strong>
+                                    <p className="text-slate-500 font-medium leading-tight text-[9px]">Narrativa executada sob conformidade.</p>
+                                    <span className="text-[8px] font-mono text-rose-600 font-black block mt-1 truncate" title={safeText(reportData.auditoria?.modelo_llm) || "Gemini 1.5 Pro"}>
+                                      {safeText(reportData.auditoria?.modelo_llm) || "Gemini 1.5 Pro"}
+                                    </span>
+                                  </div>
+                                </div>
+
+                                {/* Step 4 */}
+                                <div className="p-3 bg-white border border-emerald-200 bg-emerald-50/5 rounded-xl relative shadow-3xs flex flex-col justify-between">
+                                  <div className="flex items-center space-x-2">
+                                    <div className="w-6 h-6 bg-emerald-50 border border-emerald-100 rounded-full flex items-center justify-center text-emerald-700 font-black text-[10px] shrink-0">
+                                      4
+                                    </div>
+                                    <span className="text-[8px] font-black uppercase text-emerald-800 tracking-wider">Selo e Emissão</span>
+                                  </div>
+                                  <div className="mt-2 text-[10px]">
+                                    <strong className="text-slate-800 block text-[10px]">Mapeamento Prontificado</strong>
+                                    <p className="text-slate-500 font-medium leading-tight text-[9px]">Geração e disponibilização da visualização.</p>
+                                    <span className="text-[8px] font-mono text-emerald-600 font-black block mt-1 hover:underline">
+                                      UUID: {(reportData.identificacao?.relatorio_uuid || "").substring(0, 10).toUpperCase()}...
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
+
+                        <div className="space-y-4 text-xs w-full">
+                          <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 w-full ${!isReportFieldVisible('auditoria', 'metadados_integracao') ? 'hidden' : ''}`}>
+                            <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5 shadow-3xs">
+                              <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block font-sans">Metadados Corporativos</span>
+                              <strong className="text-[#112363] block font-black text-xs leading-none font-sans">n8n Integration Channel</strong>
+                              <p className="text-[10px] text-slate-500 font-medium font-sans">Flow: v{safeText(reportData.auditoria?.workflow_version) || "9.0"} | Engine: {safeText(reportData.auditoria?.prompt_version) || "System_v9"}</p>
+                            </div>
+
+                            <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-xl space-y-1.5 shadow-3xs">
+                              <span className="text-[8px] font-black text-gray-400 uppercase tracking-widest block font-sans">Divergências Estritadas</span>
+                              <strong className="text-[#112363] block font-black text-xs leading-none font-sans">
+                                {reportData.auditoria?.divergencias_scores ? "Sim (Detectado)" : "Não (Perfeitamente Consistente)"}
+                              </strong>
+                              <p className="text-[10px] text-slate-500 font-medium font-sans">Scores do Gabarito vs Parser de Linguagem Natural</p>
+                            </div>
+                          </div>
+
+                          {/* BASE DE CONHECIMENTO CONSULTADA & FUNDAMENTAÇÃO TEÓRICA */}
+                          {(() => {
+                            const fontes = (
+                              reportData.fontes_consultadas_texto
+                              || (Array.isArray(reportData.fontes_consultadas) && reportData.fontes_consultadas.length > 0
+                                ? reportData.fontes_consultadas.map((f: any) => typeof f === 'object' ? (f.documento || f.documento_recuperado || f.source || String(f)) : String(f)).join('\n')
+                                : '')
+                            ).trim();
+
+                            const chunks = (
+                              reportData.chunks_recuperados_texto
+                              || (Array.isArray(reportData.chunks_recuperados) && reportData.chunks_recuperados.length > 0
+                                ? reportData.chunks_recuperados.map((c: any) => typeof c === 'object' ? `${c.documento || c.documento_recuperado || c.document || ''} - Chunk ${c.chunk !== undefined ? c.chunk : (c.chunk_idx !== undefined ? c.chunk_idx : '')}` : String(c)).join('\n')
+                                : '')
+                            ).trim();
+
+                            return (
+                              <div className="space-y-4 font-sans w-full">
+
+                                {/* Sections 7.2 + 7.3 lado a lado */}
+                                <div className={`grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-slate-100 pt-3 ${!isAnyReportFieldVisible([['auditoria', 'base_conhecimento'], ['auditoria', 'fundamentacao_teorica']]) ? 'hidden' : ''}`}>
+
+                                  {/* Section 7.2: Base de Conhecimento Consultada */}
+                                  <div className={`space-y-2 font-sans ${!isReportFieldVisible('auditoria', 'base_conhecimento') ? 'hidden' : ''}`}>
+                                    <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
+                                      <BookOpen className="w-4 h-4 text-[#112363]" /> 7.2 Base de Conhecimento Consultada
+                                    </strong>
+                                    <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-2 shadow-3xs text-xs">
+                                      <div className="flex items-center space-x-1.5 border-b border-slate-200 pb-1.5">
+                                        <span className="w-2 h-2 rounded-full bg-[#D80E2A] shrink-0" />
+                                        <strong className="text-slate-800 font-black uppercase text-[9px] tracking-wider">Documentos Utilizados e Chunks Recuperados</strong>
+                                      </div>
+                                      {!chunks ? (
+                                        <p className="text-[10.5px] text-slate-500 font-semibold pl-1 py-1 italic">
+                                          Nenhum chunk recuperado para esta análise.
+                                        </p>
+                                      ) : (
+                                        <ul className="space-y-1 text-slate-700 pl-1 max-h-[160px] overflow-y-auto font-semibold text-[10.5px]">
+                                          {chunks.split('\n').map((c: string, idx: number) => {
+                                            const chunkLine = c.trim();
+                                            if (!chunkLine) return null;
+                                            const parts = chunkLine.split(/\s*-\s*/);
+                                            if (parts.length > 1) {
+                                              const docPart = parts[0];
+                                              const chunkNumPart = parts.slice(1).join(" - ");
+                                              return (
+                                                <li key={idx} className="flex items-start gap-1.5">
+                                                  <span className="text-[#D80E2A] mt-0.5">•</span>
+                                                  <span>{docPart} — <strong className="text-amber-700 font-mono text-[9.5px] bg-amber-50 border border-amber-200 px-1 py-0.5 rounded font-black">{chunkNumPart}</strong></span>
+                                                </li>
+                                              );
+                                            }
+                                            return (
+                                              <li key={idx} className="flex items-start gap-1.5">
+                                                <span className="text-[#D80E2A] mt-0.5">•</span>
+                                                <span>{chunkLine}</span>
+                                              </li>
+                                            );
+                                          })}
+                                        </ul>
+                                      )}
+                                    </div>
+                                  </div>
+
+                                  {/* Section 7.3: Fundamentação Teórica */}
+                                  <div className={`space-y-2 font-sans ${!isReportFieldVisible('auditoria', 'fundamentacao_teorica') ? 'hidden' : ''}`}>
+                                    <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
+                                      <BookOpen className="w-4 h-4 text-[#112363]" /> 7.3 Fundamentação Teórica de Sócio Estilos Utilizada
+                                    </strong>
+                                    {(() => {
+                                      const textVal = (reportData.referenciais_teoricos_texto || '').trim();
+                                      const jsonList = Array.isArray(reportData.referenciais_teoricos) ? reportData.referenciais_teoricos : [];
+
+                                      const parseLinhas = (text: string) =>
+                                        text.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+                                          const colonIdx = line.indexOf(':');
+                                          if (colonIdx > 0) {
+                                            return { autor: line.substring(0, colonIdx).trim(), contribuicao: line.substring(colonIdx + 1).trim() };
+                                          }
+                                          return { autor: line, contribuicao: '' };
+                                        });
+
+                                      const entries: { autor: string; contribuicao: string }[] = textVal
+                                        ? parseLinhas(textVal)
+                                        : jsonList.map((ref: any) => ({
+                                          autor: ref.autor || ref.author || '',
+                                          contribuicao: ref.contribuicao || ref.contribution || ref.conceito_aplicado || ref.conceito || ref.concept || ref.obra || ''
+                                        })).filter((e: any) => e.autor);
+
+                                      if (entries.length > 0) {
+                                        return (
+                                          <div className="space-y-2">
+                                            {entries.map((ref, idx) => (
+                                              <div key={idx} className="p-3 bg-white border border-slate-150 rounded-xl shadow-3xs space-y-1 hover:bg-slate-50/50 transition-colors">
+                                                <div className="flex items-center gap-1.5">
+                                                  <span className="w-1.5 h-1.5 rounded-full bg-[#112363] shrink-0 mt-0.5" />
+                                                  <strong className="text-[#112363] font-extrabold text-[11px]">{safeText(ref.autor)}</strong>
+                                                </div>
+                                                {ref.contribuicao && (
+                                                  <p className="text-slate-600 font-semibold text-[10.5px] leading-relaxed pl-3">{renderSafeValue(ref.contribuicao, 'contribuicao')}</p>
+                                                )}
+                                              </div>
+                                            ))}
+                                          </div>
+                                        );
+                                      }
+
+                                      return (
+                                        <div className="p-4 bg-slate-50 border border-slate-150 rounded-2xl text-center text-slate-500 font-semibold text-xs py-4">
+                                          Nenhum referencial teórico específico foi identificado.
+                                        </div>
+                                      );
+                                    })()}
+                                  </div>
+
+                                </div>
+
+                                {isUserAdminOrNomura && isReportFieldVisible('auditoria', 'trilha_rag') && (() => {
+                                  const audit = getChunkContentAudit(reportData);
+                                  const chunks = audit.chunks_recuperados || [];
+                                  if (chunks.length === 0) return null;
+
+                                  return (
+                                    <div className="space-y-2 font-sans border-t border-slate-100 pt-3">
+                                      <strong className="text-slate-700 block uppercase text-[10.5px] font-black tracking-wider flex items-center gap-1.5">
+                                        <FileText className="w-4 h-4 text-[#112363]" /> 7.4 Trilha de Auditoria RAG
+                                      </strong>
+                                      <div className="p-3.5 bg-slate-50 border border-slate-150 rounded-2xl space-y-3 shadow-3xs">
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-[10px] text-slate-600 font-semibold">
+                                          {audit.consulta_utilizada && (
+                                            <p><strong className="text-slate-800">Consulta utilizada:</strong> {audit.consulta_utilizada}</p>
+                                          )}
+                                          {audit.finalidade && (
+                                            <p><strong className="text-slate-800">Finalidade:</strong> {audit.finalidade}</p>
+                                          )}
+                                          {audit.retrieved_at && (
+                                            <p><strong className="text-slate-800">Recuperado em:</strong> {new Date(audit.retrieved_at).toLocaleString('pt-BR')}</p>
+                                          )}
+                                        </div>
+
+                                        <div className="space-y-2 max-h-[260px] overflow-y-auto pr-1">
+                                          {chunks.map((item, index) => {
+                                            const kuCode =
+                                              item.documento ||
+                                              item.ku_code ||
+                                              item.codigo ||
+                                              '';
+
+                                            const titulo = extractChunkTitle(item.conteudo);
+
+                                            const labelParts = [
+                                              kuCode,
+                                              titulo
+                                            ].filter(Boolean);
+
+                                            const label =
+                                              labelParts.length > 0
+                                                ? labelParts.join(' — ')
+                                                : `Conteúdo recuperado ${index + 1}`;
+
+                                            return (
+                                              <details
+                                                key={`${kuCode || 'audit'}-${index}`}
+                                                className="group bg-white border border-slate-150 rounded-xl overflow-hidden"
+                                              >
+                                                <summary className="list-none cursor-pointer px-3 py-2 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
+                                                  <span className="text-[10px] font-black text-[#112363] uppercase tracking-wide truncate">
+                                                    {item.ordem || index + 1}. {label}
+                                                  </span>
+                                                  <span className="text-[9px] font-extrabold text-[#D80E2A] shrink-0 group-open:hidden">Ver conteúdo recuperado</span>
+                                                  <span className="text-[9px] font-extrabold text-slate-500 shrink-0 hidden group-open:inline">Ocultar conteúdo</span>
+                                                </summary>
+                                                <pre className="whitespace-pre-wrap text-[10px] leading-relaxed text-slate-700 bg-white border-t border-slate-100 p-3 font-mono max-h-[220px] overflow-y-auto">
+                                                  {safeText(item.conteudo, ['texto', 'conteudo', 'descricao', 'resumo', 'content']) || 'Conteúdo recuperado indisponível.'}
+                                                </pre>
+                                              </details>
+                                            );
+                                          })}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
+
+                              </div>
+                            );
+                          })()}
+                        </div>
+                      </div>
+
+                      {renderFooter(7)}
+                    </div>
 
                   </div>
                 </ReportErrorBoundary>
@@ -3335,10 +3333,10 @@ export default function DashboardScreen({
           </div>
         )
       ) : (
-        
+
         /* 2. TEAM/COMPANY DASHBOARD */
         <div className="min-w-0 max-w-full space-y-8" id="team-dashboard">
-          
+
           {loadingTeam ? (
             <div className="p-12 text-center bg-white rounded-2xl border border-gray-100 shadow-xs flex flex-col items-center justify-center space-y-3">
               <RefreshCw className="w-8 h-8 text-[#112363] animate-spin" />
@@ -3354,10 +3352,10 @@ export default function DashboardScreen({
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 min-w-0 max-w-full">
-              
+
               {/* Aggregated statistics analysis */}
               <div className="lg:col-span-2 min-w-0 space-y-6">
-                
+
                 {/* Stats cards overview */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="bg-white rounded-xl border border-gray-100 p-4 sm:p-5 shadow-2xs flex items-center space-x-4">
@@ -3483,11 +3481,10 @@ export default function DashboardScreen({
                             setSelectedMemberResult(result);
                             setActiveTab('individual');
                           }}
-                          className={`w-full text-left py-3 px-3 rounded-xl flex items-center justify-between gap-3 text-xs hover:bg-gray-100/70 border transition-all active:scale-98 cursor-pointer ${
-                            isCurrentlyActive 
-                              ? 'bg-red-50/40 border-[#D80E2A]/35 shadow-2xs' 
+                          className={`w-full text-left py-3 px-3 rounded-xl flex items-center justify-between gap-3 text-xs hover:bg-gray-100/70 border transition-all active:scale-98 cursor-pointer ${isCurrentlyActive
+                              ? 'bg-red-50/40 border-[#D80E2A]/35 shadow-2xs'
                               : 'border-transparent bg-transparent'
-                          }`}
+                            }`}
                           title="Clique para ver o relatório Socioestilo individual"
                         >
                           <div>

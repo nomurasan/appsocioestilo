@@ -2,7 +2,7 @@
  * Normalizar resposta do webhook n8n para estrutura canônica
  * Fonte principal para o contrato público: response.report_output
  * Fallbacks legados: response.report_data, response.metadata, response.assessment, response.persistence
- * 
+ *
  * Estrutura esperada de memoria_respostas:
  * [{
  *   questionId: number,
@@ -29,7 +29,8 @@ export function normalizeReportResponse(response: any): {
   const persisted = response?.persisted === true;
 
   // Extrair contrato público primeiro, mantendo report_data como fallback rico
-  const reportOutput = response?.report_output || response?.report_data?.report_output || {};
+  const reportOutput =
+    response?.report_output || response?.report_data?.report_output || {};
   const reportData = response?.report_data || {};
 
   // Extrair identificação
@@ -39,8 +40,9 @@ export function normalizeReportResponse(response: any): {
     userName: identificacao.nome || response?.metadata?.userName,
     companyId: identificacao.empresa_id || response?.metadata?.companyId,
     companyName: identificacao.empresa || response?.metadata?.companyName,
-    completedAt: identificacao.data_conclusao || response?.metadata?.completedAt,
-    generatedAt: identificacao.generated_at || response?.metadata?.generatedAt
+    completedAt:
+      identificacao.data_conclusao || response?.metadata?.completedAt,
+    generatedAt: identificacao.generated_at || response?.metadata?.generatedAt,
   };
 
   // Extrair resultado/scores
@@ -48,11 +50,16 @@ export function normalizeReportResponse(response: any): {
   const assessment = {
     scores: resultado.scores || response?.assessment?.scores || {},
     ranking: resultado.ranking || response?.assessment?.ranking || [],
-    totalPoints: resultado.total_pontos || response?.assessment?.totalPoints || 0,
-    dominantProfile: resultado.perfil_dominante || response?.assessment?.dominantProfile,
-    secondaryProfile: resultado.perfil_secundario || response?.assessment?.secondaryProfile,
-    thirdProfile: resultado.perfil_terciario || response?.assessment?.thirdProfile,
-    lowestProfile: resultado.perfil_menos_utilizado || response?.assessment?.lowestProfile
+    totalPoints:
+      resultado.total_pontos || response?.assessment?.totalPoints || 0,
+    dominantProfile:
+      resultado.perfil_dominante || response?.assessment?.dominantProfile,
+    secondaryProfile:
+      resultado.perfil_secundario || response?.assessment?.secondaryProfile,
+    thirdProfile:
+      resultado.perfil_terciario || response?.assessment?.thirdProfile,
+    lowestProfile:
+      resultado.perfil_menos_utilizado || response?.assessment?.lowestProfile,
   };
 
   // Extrair narrativa/resumo para summary
@@ -70,7 +77,7 @@ export function normalizeReportResponse(response: any): {
   // Extrair persistência
   const persistence = response?.persistence || {
     persisted: persisted,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
   };
 
   return {
@@ -82,7 +89,7 @@ export function normalizeReportResponse(response: any): {
     summary,
     metadata,
     assessment,
-    persistence
+    persistence,
   };
 }
 
@@ -90,7 +97,8 @@ export function normalizeReportResponse(response: any): {
  * Extrair apenas o resumo da resposta do webhook
  */
 export function extractReportSummary(response: any): string {
-  const reportOutput = response?.report_output || response?.report_data?.report_output || {};
+  const reportOutput =
+    response?.report_output || response?.report_data?.report_output || {};
   const reportData = response?.report_data || {};
   const narrativa = reportData.narrativa || {};
 
