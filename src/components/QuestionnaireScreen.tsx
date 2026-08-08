@@ -750,7 +750,7 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
       n8n_response: parsed
     };
 
-    if (!parsed.report_data) {
+    if (!parsed.report_data && !parsed.report_output) {
       merged.report_data.resultado = {
         ...localPayload.report_data.resultado,
         ...(relatorio.resultado || {})
@@ -1101,10 +1101,10 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
         <div className="flex items-center space-x-3.5">
           {started && !testCompleted && autosaveStatus !== 'idle' && (
             <span className={`hidden sm:inline-flex text-[10px] font-extrabold px-2.5 py-1 rounded-full border ${autosaveStatus === 'saving'
-                ? 'bg-amber-50 text-amber-700 border-amber-100'
-                : autosaveStatus === 'error'
-                  ? 'bg-red-50 text-[#D80E2A] border-red-100'
-                  : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+              ? 'bg-amber-50 text-amber-700 border-amber-100'
+              : autosaveStatus === 'error'
+                ? 'bg-red-50 text-[#D80E2A] border-red-100'
+                : 'bg-emerald-50 text-emerald-700 border-emerald-100'
               }`}>
               {autosaveStatus === 'saving' ? 'Salvando...' : autosaveStatus === 'error' ? 'Erro ao salvar. Tentando novamente.' : autosaveStatus === 'local' ? 'Salvo neste dispositivo' : 'Salvo automaticamente'}
             </span>
@@ -1185,8 +1185,8 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
                 </div>
                 <div
                   className={`p-4 rounded-2xl shadow-2xs leading-relaxed text-sm ${isBot
-                      ? 'bg-white border border-gray-100 text-gray-800 rounded-tl-none'
-                      : 'bg-[#112363] text-white rounded-tr-none'
+                    ? 'bg-white border border-gray-100 text-gray-800 rounded-tl-none'
+                    : 'bg-[#112363] text-white rounded-tr-none'
                     }`}
                 >
                   {message.text}
@@ -1262,10 +1262,10 @@ export default function QuestionnaireScreen({ usuario, onFinish, onGoBack }: Que
                                 disabled={isLimit}
                                 onClick={() => handleToggleMultiOption(opt.text)}
                                 className={`flex items-center justify-between p-3 rounded-xl border text-left text-xs font-medium transition-all cursor-pointer ${isChecked
-                                    ? 'border-[#112363] bg-[#112363]/5 text-[#112363]'
-                                    : isLimit
-                                      ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
-                                      : 'border-gray-200 bg-white hover:border-gray-300 text-gray-700 hover:bg-gray-50'
+                                  ? 'border-[#112363] bg-[#112363]/5 text-[#112363]'
+                                  : isLimit
+                                    ? 'border-gray-100 bg-gray-50 text-gray-300 cursor-not-allowed'
+                                    : 'border-gray-200 bg-white hover:border-gray-300 text-gray-700 hover:bg-gray-50'
                                   }`}
                               >
                                 <span>{opt.text}</span>

@@ -9,7 +9,7 @@ export const STYLE_NAMES: Record<keyof Scores, string> = {
   Assertivo: "Assertivo",
   Participativo: "Participativo",
   Integrador: "Integrador",
-  Analitico: "Analítico"
+  Analitico: "Analítico",
 };
 
 export interface Empresa {
@@ -59,9 +59,16 @@ export interface Resultado {
   perfil_secundario?: string;
   perfil_terciario?: string;
   perfil_menos_utilizado?: string;
+  report_output?: any;
+  report_data?: any;
+  auditoria?: any;
   pontuacoes_comportamentais?: Record<string, number> | null;
   respostas_questionario?: Record<string, string | string[]> | null;
-  respostas_detalhadas?: Array<{ question_id: number; question_text: string; user_answer: any }> | null;
+  respostas_detalhadas?: Array<{
+    question_id: number;
+    question_text: string;
+    user_answer: any;
+  }> | null;
   relatorio?: any;
   fontes_consultadas?: any;
   relatorio_pronto_para_app?: any;
@@ -99,7 +106,7 @@ export interface Resultado {
   q13_resposta?: string;
 }
 
-export type ReportUserType = 'admin' | 'consultor' | 'participante' | 'usuario';
+export type ReportUserType = "admin" | "consultor" | "participante" | "usuario";
 
 export interface ReportParameter {
   tipo_usuario: ReportUserType;
@@ -120,7 +127,7 @@ export interface QuestionarioRascunho {
   etapa_atual: number;
   ultima_pergunta_respondida?: number | null;
   percentual_concluido: number;
-  status: 'EM_ANDAMENTO' | 'CONCLUIDO' | 'ABANDONADO' | 'EXPIRADO';
+  status: "EM_ANDAMENTO" | "CONCLUIDO" | "ABANDONADO" | "EXPIRADO";
   data_inicio?: string;
   data_ultimo_acesso?: string;
   data_finalizacao?: string | null;
@@ -141,7 +148,7 @@ export interface Option {
 export interface Question {
   id: number;
   text: string;
-  mode: 'single' | 'multi';
+  mode: "single" | "multi";
   maxChoices?: number;
   options: Option[];
 }

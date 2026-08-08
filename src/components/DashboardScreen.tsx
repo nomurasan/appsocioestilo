@@ -34,6 +34,8 @@ import { listarParametrosRelatorio, listarResultados } from '../lib/supabase';
 import { resolveV30Report, V30Content, V30PublicReport } from '../lib/report-v30';
 import { getFullReportData, hasRichSocioEstiloReport } from '../lib/report-integration';
 import { buildReportV36ViewModel } from '../lib/report-v36-view-model';
+import { buildReportV38ViewModel } from '../lib/report-v38';
+import ReportV38Presentation from './ReportV38Presentation';
 
 type ChunkAuditItem = {
   ordem?: number;
@@ -1676,6 +1678,8 @@ export default function DashboardScreen({
       ? { report_data: normalizeRichReportData(fullV30ReportData) }
       : null;
   const reportVm = buildReportV36ViewModel(activeResult || normalizedPayload || {});
+  const reportV38 = buildReportV38ViewModel(activeResult || normalizedPayload || {});
+  const hasV38Snapshot = reportV38.valid && Object.keys(reportV38.reportOutput || {}).length > 0;
 
   const nomeUsuario = normalizedPayload?.metadata?.userName || '';
   const nomeEmpresa = normalizedPayload?.metadata?.companyName || '';
@@ -2160,8 +2164,8 @@ export default function DashboardScreen({
               setActiveTab('individual');
             }}
             className={`min-w-0 flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === 'individual' && !selectedMemberResult
-                ? 'bg-white text-[#112363] shadow-xs'
-                : 'text-slate-500 hover:text-[#112363] hover:bg-slate-50/50'
+              ? 'bg-white text-[#112363] shadow-xs'
+              : 'text-slate-500 hover:text-[#112363] hover:bg-slate-50/50'
               }`}
             id="tab-btn-individual"
           >
@@ -2172,8 +2176,8 @@ export default function DashboardScreen({
           <button
             onClick={() => setActiveTab('team')}
             className={`min-w-0 flex-1 sm:flex-initial flex items-center justify-center space-x-2 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer ${activeTab === 'team'
-                ? 'bg-white text-[#112363] shadow-xs'
-                : 'text-slate-500 hover:text-[#112363] hover:bg-slate-50/50'
+              ? 'bg-white text-[#112363] shadow-xs'
+              : 'text-slate-500 hover:text-[#112363] hover:bg-slate-50/50'
               }`}
             id="tab-btn-team"
           >
@@ -2235,6 +2239,9 @@ export default function DashboardScreen({
 
             {/* Document wrapper */}
             {(() => {
+              if (hasV38Snapshot) {
+                return <ReportErrorBoundary><ReportV38Presentation report={reportV38} /></ReportErrorBoundary>;
+              }
               if (v30Resolution.declared) {
                 if (!v30Resolution.validation.valid || !v30Resolution.validation.report) {
                   return (
@@ -3482,8 +3489,8 @@ export default function DashboardScreen({
                             setActiveTab('individual');
                           }}
                           className={`w-full text-left py-3 px-3 rounded-xl flex items-center justify-between gap-3 text-xs hover:bg-gray-100/70 border transition-all active:scale-98 cursor-pointer ${isCurrentlyActive
-                              ? 'bg-red-50/40 border-[#D80E2A]/35 shadow-2xs'
-                              : 'border-transparent bg-transparent'
+                            ? 'bg-red-50/40 border-[#D80E2A]/35 shadow-2xs'
+                            : 'border-transparent bg-transparent'
                             }`}
                           title="Clique para ver o relatório Socioestilo individual"
                         >

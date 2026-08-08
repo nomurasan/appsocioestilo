@@ -28,10 +28,20 @@ export function normalizeReportResponse(response: any): {
   const reportGenerated = response?.report_generated === true;
   const persisted = response?.persisted === true;
 
+  const parseIfNeeded = (value: any) => {
+    if (typeof value !== "string") return value;
+    try {
+      return JSON.parse(value);
+    } catch {
+      return value;
+    }
+  };
+
   // Extrair contrato público primeiro, mantendo report_data como fallback rico
-  const reportOutput =
-    response?.report_output || response?.report_data?.report_output || {};
-  const reportData = response?.report_data || {};
+  const reportOutput = parseIfNeeded(
+    response?.report_output || response?.report_data?.report_output || {},
+  );
+  const reportData = parseIfNeeded(response?.report_data || {});
 
   // Extrair identificação
   const identificacao = reportData.identificacao || response?.metadata || {};
