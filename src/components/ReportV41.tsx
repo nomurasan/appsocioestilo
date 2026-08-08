@@ -290,7 +290,7 @@ function ReportCalculationMemory({ memoriaCalculo }: { memoriaCalculo: Record<st
 
     return (
         <div className="space-y-4">
-            <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">10.1 Memória de Cálculo e Respostas do Questionário</h4>
+            <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">10.1 Respostas do Questionário</h4>
             {respostas.length > 0 ? (
                 <div className="max-w-full overflow-hidden border border-slate-150 rounded-2xl bg-white shadow-3xs max-h-[280px] overflow-y-auto w-full">
                     <table className="w-full table-fixed divide-y divide-slate-150 text-[9px] md:text-[10px]">
@@ -320,11 +320,6 @@ function ReportCalculationMemory({ memoriaCalculo }: { memoriaCalculo: Record<st
             ) : isDev ? (
                 <p className="text-xs text-amber-700">Conteúdo editorial não disponível.</p>
             ) : null}
-
-            <div className="p-4 bg-slate-50 rounded-xl border border-slate-155 text-[11px] text-slate-600 font-semibold leading-relaxed">
-                <strong className="text-slate-800 uppercase block mb-1">Memória dos pesos e regra de cálculo</strong>
-                <pre className="whitespace-pre-wrap text-[10px] leading-6 text-slate-700">{JSON.stringify(memoriaCalculo, null, 2)}</pre>
-            </div>
         </div>
     );
 }
