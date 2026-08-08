@@ -3,18 +3,19 @@ import test from "node:test";
 import {
   buildAnalyticalReportViewModel,
   buildSyntheticReportViewModel,
+  isReportOutputV42,
   isReportOutputV41,
   parseReportOutputV41,
   validateReportOutputV41,
 } from "./report-v41";
 
 const baseV41 = {
-  contract_version: "socioestilo-report/v41",
+  contract_version: "socioestilo-report/v42",
   report_output: {
-    contractVersion: "V41",
-    contract_version: "socioestilo-report/v41",
-    workflow_version: "n8n-v41-sintetico-detalhado-nova-resultados",
-    report_version: "v41-sintetico-detalhado",
+    contractVersion: "V42",
+    contract_version: "socioestilo-report/v42",
+    workflow_version: "n8n-v42-visao-geral-canonica",
+    report_version: "v42-visao-geral",
     identificacao: {
       nome: "Pessoa Teste",
       empresa: "Empresa Teste",
@@ -66,36 +67,8 @@ const baseV41 = {
         },
       ],
     },
-    relatorio_sintetico: {
+    visao_geral: {
       versao: "1.0",
-      tipo: "sintetico",
-      estrategia: "selecao_editorial_deterministica",
-      secoes: [
-        {
-          codigo: "distribuicao_metrica_energia",
-          titulo: "Distribuição Métrica de Energia",
-          ordem: 2,
-          dados: {
-            exibir_grafico_radial: true,
-            exibir_grafico_barras: true,
-          },
-        },
-        {
-          codigo: "conheca_quatro_socioestilos",
-          titulo: "Conheça os Quatro Sócio Estilos",
-          ordem: 1,
-          tipo: "visual_metodologico",
-          subitens: [
-            { ordem: 2, titulo: "Subitem B", conteudo: "Texto B" },
-            { ordem: 1, titulo: "Subitem A", conteudo: "Texto A" },
-          ],
-        },
-      ],
-    },
-    relatorio_detalhado: {
-      versao: "1.0",
-      tipo: "detalhado",
-      estrategia: "conteudo_editorial_integral",
       secoes: [
         {
           codigo: "perfil_dominante",
@@ -110,6 +83,32 @@ const baseV41 = {
               conteudo: "Conteúdo 3.2",
             },
             { ordem: 1, titulo: "Descrição Geral", conteudo: "Conteúdo 3.1" },
+          ],
+        },
+        {
+          codigo: "distribuicao_metrica_energia",
+          titulo: "Distribuição Métrica de Energia",
+          ordem: 2,
+          dados: {
+            exibir_grafico_radial: true,
+            exibir_grafico_barras: true,
+          },
+        },
+        {
+          codigo: "conheca_quatro_socioestilos",
+          titulo: "Conheça os Quatro Sócio Estilos",
+          ordem: 1,
+          subitens: [
+            {
+              ordem: 2,
+              titulo: "Subitem B",
+              conteudo: "Texto B",
+            },
+            {
+              ordem: 1,
+              titulo: "Subitem A",
+              conteudo: "Texto A",
+            },
           ],
         },
         {
@@ -182,7 +181,8 @@ const baseV41 = {
   },
 };
 
-test("detecta contrato V41 e valida estrutura principal", () => {
+test("detecta contrato V42 e valida estrutura principal", () => {
+  assert.equal(isReportOutputV42(baseV41.report_output, baseV41), true);
   assert.equal(isReportOutputV41(baseV41.report_output, baseV41), true);
   const validation = validateReportOutputV41(baseV41);
   assert.equal(validation.valid, true);
@@ -195,17 +195,22 @@ test("parseReportOutputV41 normaliza ranking e converte Auxiliar para Secundári
   assert.equal(parsed?.resultado_calculado.ranking[1].papel, "Secundário");
 });
 
-test("seleciona variante sintética com seções ordenadas por ordem", () => {
+test("sintético e analítico usam a mesma visao_geral no V42", () => {
   const vm = buildSyntheticReportViewModel(baseV41);
+  const detailed = buildAnalyticalReportViewModel(baseV41);
   assert.ok(vm);
+  assert.ok(detailed);
   assert.equal(vm?.variantKey, "sintetico");
   assert.equal(vm?.variantLabel, "Relatório Sintético");
+  assert.equal(detailed?.variantKey, "detalhado");
+  assert.equal(detailed?.variantLabel, "Relatório Analítico");
+  assert.equal(vm?.sections.length, detailed?.sections.length);
   assert.equal(vm?.sections[0].codigo, "conheca_quatro_socioestilos");
   assert.equal(vm?.sections[1].codigo, "distribuicao_metrica_energia");
   assert.equal(vm?.sections[0].subitens?.[0].titulo, "Subitem A");
 });
 
-test("seleciona variante analítica e ordena subitens/relacoes dinamicamente", () => {
+test("ordena subitens/relacoes dinamicamente a partir da visao_geral", () => {
   const vm = buildAnalyticalReportViewModel(baseV41);
   assert.ok(vm);
   assert.equal(vm?.variantKey, "detalhado");
@@ -255,6 +260,7 @@ test("resultado legado não é tratado como V41", () => {
   };
 
   assert.equal(isReportOutputV41(legacy.report_output, legacy), false);
+  assert.equal(isReportOutputV42(legacy.report_output, legacy), false);
   assert.equal(parseReportOutputV41(legacy), null);
   assert.equal(buildSyntheticReportViewModel(legacy), null);
 });

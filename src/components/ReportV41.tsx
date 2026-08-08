@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Bot, FileText, Radar, BarChart3 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Radar, BarChart3 } from 'lucide-react';
 import {
     buildAnalyticalReportViewModel,
     buildSyntheticReportViewModel,
@@ -9,6 +9,16 @@ import {
     type ReportSubitemV41,
     type ReportVariantViewModelV41
 } from '../lib/report-v41';
+import {
+    applyVisibilityToGeneralView,
+    normalizeViewerRole,
+    resolveReportVisibility,
+    type EffectiveReportVisibility
+} from '../lib/report-visibility-v42';
+import {
+    getAnalyticalReportConfig,
+    getSyntheticReportConfig
+} from '../lib/report-configurations';
 
 const isDev = Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
 
@@ -324,7 +334,7 @@ function ReportCalculationMemory({ memoriaCalculo }: { memoriaCalculo: Record<st
     );
 }
 
-function ReportAuditTrail({ units }: { units: AuditUnitV41[] }) {
+function ReportAuditTrail({ units, canShowUnitContent }: { units: AuditUnitV41[]; canShowUnitContent: boolean }) {
     return (
         <div className="space-y-4">
             <h4 className="text-xs font-black text-[#112363] uppercase tracking-wider">10.2 Trilha de Auditoria das Unidades de Conhecimento</h4>
@@ -340,7 +350,7 @@ function ReportAuditTrail({ units }: { units: AuditUnitV41[] }) {
                             {unit.subitem_relatorio ? <p><strong>Subitem:</strong> {unit.subitem_relatorio}</p> : null}
                             {unit.perfil_principal ? <p><strong>Perfil principal:</strong> {unit.perfil_principal}</p> : null}
                             {unit.perfil_relacionado ? <p><strong>Perfil relacionado:</strong> {unit.perfil_relacionado}</p> : null}
-                            {unit.conteudo ? (
+                            {unit.conteudo && canShowUnitContent ? (
                                 <div className="rounded-lg bg-slate-50 border border-slate-200 p-3">
                                     <p className="text-[11px] font-black uppercase tracking-wider text-[#112363] mb-2">Conteúdo</p>
                                     <p className="text-sm leading-7 whitespace-pre-line text-slate-700">{unit.conteudo}</p>
@@ -354,13 +364,26 @@ function ReportAuditTrail({ units }: { units: AuditUnitV41[] }) {
     );
 }
 
-function ReportComplianceSection({ section, vm }: { section: ReportSectionV41; vm: ReportVariantViewModelV41 }) {
+function ReportComplianceSection({
+    section,
+    vm,
+    effectiveVisibility
+}: {
+    section: ReportSectionV41;
+    vm: ReportVariantViewModelV41;
+    effectiveVisibility: EffectiveReportVisibility;
+}) {
+    const canShowMemory = effectiveVisibility.compliance.calculationMemory;
+    const canShowAudit = effectiveVisibility.compliance.auditTrail;
+    const canShowUnitContent = effectiveVisibility.compliance.auditUnitContent;
+
     return (
         <section className="space-y-5">
             {vm.variantKey === 'detalhado' ? (
                 <>
-                    <ReportCalculationMemory memoriaCalculo={vm.memoriaCalculo} />
-                    <ReportAuditTrail units={vm.auditoria.unidades_utilizadas || []} />
+                    {canShowMemory ? <ReportCalculationMemory memoriaCalculo={vm.memoriaCalculo} /> : null}
+                    {canShowAudit ? <ReportAuditTrail units={vm.auditoria.unidades_utilizadas || []} canShowUnitContent={canShowUnitContent} /> : null}
+                    {!canShowMemory && !canShowAudit ? <ReportEditorialSection section={section} /> : null}
                 </>
             ) : (
                 <ReportEditorialSection section={section} />
@@ -369,7 +392,15 @@ function ReportComplianceSection({ section, vm }: { section: ReportSectionV41; v
     );
 }
 
-function ReportSectionRenderer({ section, vm }: { section: ReportSectionV41; vm: ReportVariantViewModelV41 }) {
+function ReportSectionRenderer({
+    section,
+    vm,
+    effectiveVisibility
+}: {
+    section: ReportSectionV41;
+    vm: ReportVariantViewModelV41;
+    effectiveVisibility: EffectiveReportVisibility;
+}) {
     if (section.status === 'insufficient_evidence') {
         if (isDev) {
             return <p className="text-xs text-amber-700">Conteúdo editorial não disponível.</p>;
@@ -407,7 +438,7 @@ function ReportSectionRenderer({ section, vm }: { section: ReportSectionV41; vm:
             return <ReportRelationsSection section={section} />;
 
         case 'conformidade_rastreabilidade_auditoria':
-            return <ReportComplianceSection section={section} vm={vm} />;
+            return <ReportComplianceSection section={section} vm={vm} effectiveVisibility={effectiveVisibility} />;
 
         default:
             return <ReportEditorialSection section={section} />;
@@ -423,12 +454,111 @@ function SectionHeader({ section }: { section: ReportSectionV41 }) {
     );
 }
 
-export default function ReportV41({ resultado }: { resultado: unknown }) {
+function getFilteredSections(
+    vm: ReportVariantViewModelV41,
+    visibility: EffectiveReportVisibility,
+): ReportSectionV41[] {
+    const filtered = applyVisibilityToGeneralView(
+        {
+            versao: vm.output.visao_geral.versao,
+            secoes: vm.sections as unknown as any[],
+        },
+        visibility,
+    );
+
+    return filtered.secoes as unknown as ReportSectionV41[];
+}
+
+export default function ReportV41({
+    resultado,
+    viewerRole,
+    companyId
+}: {
+    resultado: unknown;
+    viewerRole?: string;
+    companyId?: string | null;
+}) {
     const synthetic = useMemo(() => buildSyntheticReportViewModel(resultado), [resultado]);
     const analytical = useMemo(() => buildAnalyticalReportViewModel(resultado), [resultado]);
     const [variant, setVariant] = useState<'sintetico' | 'detalhado'>('sintetico');
+    const [loadingVisibility, setLoadingVisibility] = useState(true);
+
+    const [syntheticVisibility, setSyntheticVisibility] = useState<EffectiveReportVisibility>(() =>
+        resolveReportVisibility({
+            viewType: 'synthetic',
+            globalConfig: {},
+        }),
+    );
+
+    const [analyticalVisibility, setAnalyticalVisibility] = useState<EffectiveReportVisibility>(() =>
+        resolveReportVisibility({
+            viewType: 'analytical',
+            viewerRole: normalizeViewerRole(viewerRole || 'participant'),
+            globalConfig: {},
+            companyOverride: null,
+        }),
+    );
+
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadVisibility() {
+            setLoadingVisibility(true);
+            try {
+                const syntheticGlobal = await getSyntheticReportConfig();
+                const syntheticEffective = resolveReportVisibility({
+                    viewType: 'synthetic',
+                    globalConfig: syntheticGlobal,
+                });
+
+                const role = normalizeViewerRole(viewerRole || 'participant');
+                const analyticalConfigs = await getAnalyticalReportConfig(role, companyId || null);
+                const analyticalEffective = resolveReportVisibility({
+                    viewType: 'analytical',
+                    viewerRole: role,
+                    globalConfig: analyticalConfigs.globalConfig,
+                    companyOverride: analyticalConfigs.companyOverride,
+                });
+
+                if (!cancelled) {
+                    setSyntheticVisibility(syntheticEffective);
+                    setAnalyticalVisibility(analyticalEffective);
+                }
+            } catch (error) {
+                console.warn('[ReportV42] Falha ao carregar configurações de visibilidade. Usando defaults:', error);
+                if (!cancelled) {
+                    const role = normalizeViewerRole(viewerRole || 'participant');
+                    setSyntheticVisibility(
+                        resolveReportVisibility({
+                            viewType: 'synthetic',
+                            globalConfig: {},
+                        }),
+                    );
+                    setAnalyticalVisibility(
+                        resolveReportVisibility({
+                            viewType: 'analytical',
+                            viewerRole: role,
+                            globalConfig: {},
+                            companyOverride: null,
+                        }),
+                    );
+                }
+            } finally {
+                if (!cancelled) {
+                    setLoadingVisibility(false);
+                }
+            }
+        }
+
+        loadVisibility();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [viewerRole, companyId]);
 
     const vm = variant === 'sintetico' ? synthetic : analytical;
+    const effectiveVisibility = variant === 'sintetico' ? syntheticVisibility : analyticalVisibility;
 
     if (!synthetic || !analytical || !vm) {
         return (
@@ -437,6 +567,8 @@ export default function ReportV41({ resultado }: { resultado: unknown }) {
             </div>
         );
     }
+
+    const sections = getFilteredSections(vm, effectiveVisibility);
 
     const fullName = asText(vm.identificacao.nome || vm.identificacao.userName || 'Participante');
     const companyName = asText(vm.identificacao.empresa || vm.identificacao.companyName || 'Empresa');
@@ -470,6 +602,12 @@ export default function ReportV41({ resultado }: { resultado: unknown }) {
 
                 <ReportVariantSwitcher selected={variant} onChange={setVariant} />
 
+                {loadingVisibility ? (
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-[11px] text-slate-500">
+                        Carregando composição de visibilidade...
+                    </div>
+                ) : null}
+
                 {vm.validation.errors.length > 0 || vm.validation.warnings.length > 0 ? (
                     <div className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs text-amber-900">
                         {vm.validation.errors.map((item) => <p key={`err-${item}`}>{item}</p>)}
@@ -479,10 +617,10 @@ export default function ReportV41({ resultado }: { resultado: unknown }) {
             </div>
 
             <div className="space-y-5">
-                {vm.sections.map((section) => (
+                {sections.map((section) => (
                     <section key={`${vm.variantKey}-${section.codigo}-${section.ordem}`} className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4 print:break-inside-avoid">
                         <SectionHeader section={section} />
-                        <ReportSectionRenderer section={section} vm={vm} />
+                        <ReportSectionRenderer section={section} vm={vm} effectiveVisibility={effectiveVisibility} />
                     </section>
                 ))}
             </div>

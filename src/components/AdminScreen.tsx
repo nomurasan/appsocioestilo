@@ -1,17 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Building2, Users, Settings, Trash2, PlusCircle, Edit3, Check, X, 
-  ChevronRight, ArrowLeft, RefreshCw, Shield, AlertTriangle, 
+import {
+  Building2, Users, Settings, Trash2, PlusCircle, Edit3, Check, X,
+  ChevronRight, ArrowLeft, RefreshCw, Shield, AlertTriangle,
   UserPlus, CheckCircle2, Sliders, ShieldAlert, FileText, Search, Grid, Eye
 } from 'lucide-react';
 import { Empresa, Usuario, Resultado, Scores, STYLE_NAMES, ReportParameter, ReportUserType } from '../types';
-import { 
+import {
   listarEmpresas, criarEmpresa, atualizarEmpresa, excluirEmpresa,
   listarUsuarios, buscarUsuario, atualizarUsuario, excluirUsuario,
   listarResultados, buscarResultado, criarResultado, atualizarResultado, excluirResultado,
   listarParametrosRelatorio, salvarParametrosRelatorio
 } from '../lib/supabase';
 import { REPORT_SECTION_TITLES } from '../lib/report-parameters';
+import ReportConfigurationPage from './ReportConfigurationPage';
 
 interface AdminScreenProps {
   currentUserProfile: Usuario;
@@ -20,9 +21,9 @@ interface AdminScreenProps {
   onViewCompanyDashboard?: (companyId: string, companyName: string) => void;
 }
 
-export default function AdminScreen({ 
-  currentUserProfile, 
-  onGoBack, 
+export default function AdminScreen({
+  currentUserProfile,
+  onGoBack,
   onViewUserReport,
   onViewCompanyDashboard
 }: AdminScreenProps) {
@@ -30,7 +31,7 @@ export default function AdminScreen({
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
   const [resultados, setResultados] = useState<Resultado[]>([]);
-  
+
   // Loading & UI States
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -42,14 +43,14 @@ export default function AdminScreen({
   const [reportParams, setReportParams] = useState<ReportParameter[]>([]);
   const [loadingReportParams, setLoadingReportParams] = useState(false);
   const [savingReportParams, setSavingReportParams] = useState(false);
-  
+
   // Modals / Action States
   const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
   const [newCompanyName, setNewCompanyName] = useState('');
-  
+
   const [editingCompany, setEditingCompany] = useState<Empresa | null>(null);
   const [editCompanyName, setEditCompanyName] = useState('');
-  
+
   const [editingUser, setEditingUser] = useState<Usuario | null>(null);
   const [editUserNome, setEditUserNome] = useState('');
   const [editUserEmpresaId, setEditUserEmpresaId] = useState('');
@@ -81,7 +82,7 @@ export default function AdminScreen({
 
       // 2. Fetch Users with RPC
       const usuariosList = await listarUsuarios();
-      
+
       // Auto-upgrade nomura email if present on list
       const nomuraUser = usuariosList.find(u => u.email === 'nomura.eduardo@gmail.com');
       if (nomuraUser && nomuraUser.role !== 'admin') {
@@ -92,7 +93,7 @@ export default function AdminScreen({
           console.error("Erro auto-promovendo nomura para admin via RPC:", roleErr);
         }
       }
-      
+
       usuariosList.sort((a, b) => a.nome.localeCompare(b.nome));
       setUsuarios(usuariosList);
 
@@ -165,7 +166,7 @@ export default function AdminScreen({
   };
 
   // --- BUSINESS LOGIC: COMPANIES ---
-  
+
   const handleAddCompany = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanNome = newCompanyName.trim();
@@ -318,7 +319,7 @@ export default function AdminScreen({
 
       // 2. Adjust or Create scores if desired
       const existingResult = getLatestResultForUser(editingUser);
-      
+
       if (hasSocioestiloResult) {
         // Validate scores
         const { Assertivo, Participativo, Integrador, Analitico } = editUserScores;
@@ -409,10 +410,10 @@ export default function AdminScreen({
       if (type === 'empresa') {
         // Find company users
         const companyUsers = usuarios.filter(u => u.empresa_id === id);
-        
+
         // Find company or user results
         const companyResults = resultados.filter(r => r.empresa_id === id || companyUsers.some(u => resultBelongsToUser(r, u)));
-        
+
         // 1. Delete all results for this company's users
         for (const r of companyResults) {
           const resultId = (r as any).id || (r as any).id_resultado;
@@ -420,7 +421,7 @@ export default function AdminScreen({
             await excluirResultado(resultId);
           }
         }
-        
+
         // 2. Delete all users belonging to this company
         for (const u of companyUsers) {
           await excluirUsuario(u.uid);
@@ -428,7 +429,7 @@ export default function AdminScreen({
 
         // 3. Delete company itself
         await excluirEmpresa(id);
-        
+
         triggerSuccess(`Empresa "${nome}" e todos os seus colaboradores/resultados foram excluídos com sucesso (modo cascata).`);
         if (selectedCompanyId === id) {
           setSelectedCompanyId(null);
@@ -456,10 +457,10 @@ export default function AdminScreen({
     } catch (err) {
       console.error(err);
       setError(
-        type === 'empresa' 
-          ? "Erro ao apagar empresa." 
-          : type === 'resultado' 
-            ? "Erro ao tentar excluir este resultado do banco de dados." 
+        type === 'empresa'
+          ? "Erro ao apagar empresa."
+          : type === 'resultado'
+            ? "Erro ao tentar excluir este resultado do banco de dados."
             : "Erro ao tentar remover o colaborador."
       );
       setLoading(false);
@@ -470,7 +471,7 @@ export default function AdminScreen({
     const isCurrentlyAdmin = user.role === 'admin' || user.email === 'nomura.eduardo@gmail.com';
     const newRole = isCurrentlyAdmin ? 'user' : 'admin';
     const roleLabel = newRole === 'admin' ? 'Administrador' : 'Colaborador';
-    
+
     try {
       await atualizarUsuario(
         user.uid,
@@ -522,8 +523,8 @@ export default function AdminScreen({
 
   // Filters
   const filteredUsers = usuarios.filter((user) => {
-    const matchesSearch = user.nome.toLowerCase().includes(searchUserQuery.toLowerCase()) || 
-                          user.email.toLowerCase().includes(searchUserQuery.toLowerCase());
+    const matchesSearch = user.nome.toLowerCase().includes(searchUserQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchUserQuery.toLowerCase());
     const matchesCompany = selectedCompanyId ? user.empresa_id === selectedCompanyId : true;
     return matchesSearch && matchesCompany;
   });
@@ -533,7 +534,7 @@ export default function AdminScreen({
 
   return (
     <div className="w-full max-w-7xl mx-auto px-4 md:px-8 space-y-8 animate-fade-in pb-12" id="admin-panel-portal">
-      
+
       {/* Header bar */}
       <div className="flex flex-col md:flex-row md:items-center md:justify-between border-b border-gray-100 pb-6 gap-4">
         <div>
@@ -574,11 +575,10 @@ export default function AdminScreen({
 
           <button
             onClick={() => setShowReportParams(prev => !prev)}
-            className={`flex items-center space-x-2 border font-extrabold text-xs py-3.5 px-5 rounded-xl transition-all active:scale-98 cursor-pointer ${
-              showReportParams
+            className={`flex items-center space-x-2 border font-extrabold text-xs py-3.5 px-5 rounded-xl transition-all active:scale-98 cursor-pointer ${showReportParams
                 ? 'bg-[#112363] text-white border-[#112363]'
                 : 'bg-white text-[#112363] border-gray-200 hover:border-[#112363]'
-            }`}
+              }`}
             id="admin-btn-report-params"
           >
             <Sliders className="w-4.5 h-4.5" />
@@ -629,94 +629,10 @@ export default function AdminScreen({
       ) : (
         <div className="space-y-8">
           {showReportParams && (
-            <div className="bg-white border border-gray-100 rounded-3xl p-5 md:p-6 shadow-xs space-y-5 animate-fade-in" id="report-parametrization-panel">
-              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-                <div>
-                  <h4 className="text-sm font-black text-[#112363] uppercase tracking-wider">Parametrização do Relatório</h4>
-                  <p className="text-xs text-gray-500 mt-1">
-                    Controle quais seções e indicadores aparecem no relatório final, sem alterar cálculos internos.
-                  </p>
-                </div>
-
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <div className="flex gap-1 bg-gray-100 p-1 rounded-xl">
-                    {(['participante', 'consultor', 'admin'] as ReportUserType[]).map(type => (
-                      <button
-                        key={type}
-                        onClick={() => setReportParamUserType(type)}
-                        className={`px-4 py-2 rounded-lg text-xs font-black uppercase border transition-all ${
-                          reportParamUserType === type
-                            ? type === 'admin'
-                              ? 'bg-[#D80E2A] text-white shadow-md border-[#D80E2A]'
-                              : type === 'consultor'
-                                ? 'bg-amber-500 text-white shadow-md border-amber-500'
-                                : 'bg-[#071A5F] text-white shadow-md border-[#071A5F]'
-                            : 'bg-white text-[#071A5F] border-gray-200 hover:bg-gray-50 hover:border-gray-300'
-                        }`}
-                      >
-                        {type === 'participante' ? 'Participante' : type === 'consultor' ? 'Consultor' : 'Admin'}
-                      </button>
-                    ))}
-                  </div>
-
-                  <button
-                    onClick={handleSaveReportParams}
-                    disabled={savingReportParams}
-                    className="bg-[#D80E2A] hover:bg-[#D80E2A]/90 disabled:opacity-60 text-white text-xs font-black px-5 py-2.5 rounded-xl transition-all"
-                  >
-                    {savingReportParams ? 'Salvando...' : 'Salvar Alterações'}
-                  </button>
-                </div>
-              </div>
-
-              {loadingReportParams ? (
-                <div className="p-8 text-center text-xs font-bold text-gray-400">Carregando parâmetros...</div>
-              ) : (
-                <div className="space-y-4">
-                  {Object.entries(REPORT_SECTION_TITLES).map(([secao, title]) => {
-                    const items = reportParams.filter(item => item.secao === secao);
-                    if (items.length === 0) return null;
-                    const sectionEnabled = items.every(item => item.ativo);
-
-                    return (
-                      <div key={secao} className="border border-gray-150 rounded-2xl overflow-hidden">
-                        <div className="bg-gray-50 px-4 py-3 flex items-center justify-between gap-3">
-                          <div>
-                            <strong className="text-xs font-black text-[#112363] uppercase tracking-wider">{title}</strong>
-                            <p className="text-[10px] text-gray-400">{items.filter(item => item.ativo).length} de {items.length} campos ativos</p>
-                          </div>
-                          <button
-                            onClick={() => toggleReportParam(secao)}
-                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${sectionEnabled ? 'bg-[#112363]' : 'bg-gray-300'}`}
-                            aria-label={`Alternar seção ${title}`}
-                          >
-                            <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${sectionEnabled ? 'translate-x-5' : 'translate-x-1'}`} />
-                          </button>
-                        </div>
-
-                        <div className="divide-y divide-gray-100">
-                          {items.map(item => (
-                            <div key={`${item.secao}-${item.campo}`} className="px-4 py-3 flex items-center justify-between gap-4">
-                              <div>
-                                <strong className="text-xs font-bold text-gray-800">{item.titulo}</strong>
-                                <p className="text-[11px] text-gray-500 mt-0.5">{item.descricao}</p>
-                              </div>
-                              <button
-                                onClick={() => toggleReportParam(item.secao, item.campo)}
-                                className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${item.ativo ? 'bg-[#D80E2A]' : 'bg-gray-300'}`}
-                                aria-label={`Alternar campo ${item.titulo}`}
-                              >
-                                <span className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${item.ativo ? 'translate-x-5' : 'translate-x-1'}`} />
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <ReportConfigurationPage
+              empresas={empresas}
+              previewReportOutput={resultados.find((item: any) => item?.report_output?.visao_geral)?.report_output}
+            />
           )}
 
           <div className="space-y-4 animate-fade-in" id="section-empresas">
@@ -765,7 +681,7 @@ export default function AdminScreen({
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6" id="dashboard-company-grid">
                 {/* Special Dashed Plus Card to register new company */}
-                <div 
+                <div
                   onClick={() => setShowAddCompanyModal(true)}
                   className="rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50/25 hover:bg-gray-50/85 p-5 flex flex-col items-center justify-center text-center space-y-3 cursor-pointer hover:border-[#112363] hover:shadow-sm transition-all duration-200 min-h-[170px]"
                   id="card-add-new-company"
@@ -782,16 +698,16 @@ export default function AdminScreen({
                 {empresas.map((emp) => {
                   const isSelected = selectedCompanyId === emp.id;
                   const companyUserCount = usuarios.filter(u => u.empresa_id === emp.id).length;
-                  
+
                   // Only count results with valid scores (at least one > 0)
                   const companyResultCount = resultados.filter(e => {
                     if (e.empresa_id !== emp.id) return false;
                     if (!e.scores || typeof e.scores !== 'object') {
                       if (isSelected && process.env.NODE_ENV === 'development') {
-                        console.warn('[AdminScreen] Result filtered: invalid scores', { 
-                          id: e.id, 
-                          scores: e.scores, 
-                          scoresType: typeof e.scores 
+                        console.warn('[AdminScreen] Result filtered: invalid scores', {
+                          id: e.id,
+                          scores: e.scores,
+                          scoresType: typeof e.scores
                         });
                       }
                       return false;
@@ -799,8 +715,8 @@ export default function AdminScreen({
                     const scoreValues = Object.values(e.scores) as number[];
                     const hasValidScores = scoreValues.length > 0 && scoreValues.some(s => typeof s === 'number' && s > 0);
                     if (!hasValidScores && isSelected && process.env.NODE_ENV === 'development') {
-                      console.warn('[AdminScreen] Result filtered: no valid scores > 0', { 
-                        id: e.id, 
+                      console.warn('[AdminScreen] Result filtered: no valid scores > 0', {
+                        id: e.id,
                         scores: e.scores,
                         scoreValues,
                         empresa_id: e.empresa_id
@@ -810,36 +726,33 @@ export default function AdminScreen({
                   }).length;
 
                   return (
-                    <div 
+                    <div
                       key={emp.id}
-                      className={`rounded-2xl border-2 p-5 space-y-4 relative overflow-hidden transition-all duration-200 flex flex-col justify-between ${
-                        isSelected 
-                          ? 'bg-[#112363] text-white border-[#112363] shadow-lg shadow-blue-900/10' 
+                      className={`rounded-2xl border-2 p-5 space-y-4 relative overflow-hidden transition-all duration-200 flex flex-col justify-between ${isSelected
+                          ? 'bg-[#112363] text-white border-[#112363] shadow-lg shadow-blue-900/10'
                           : 'bg-white text-gray-800 border-gray-150 hover:border-gray-300 shadow-sm'
-                      }`}
+                        }`}
                     >
                       {/* Top action header for the card */}
                       <div className="flex items-center justify-between">
                         <div className={`p-2.5 rounded-lg shrink-0 ${isSelected ? 'bg-white/10 text-white' : 'bg-orange-50 text-orange-600'}`}>
                           <Building2 className="w-5 h-5" />
                         </div>
-                        
+
                         <div className="flex items-center space-x-2">
                           <button
                             onClick={() => handleStartEditCompany(emp)}
-                            className={`p-1.5 rounded-md transition-colors ${
-                              isSelected ? 'text-white/70 hover:text-white hover:bg-white/15' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                            }`}
+                            className={`p-1.5 rounded-md transition-colors ${isSelected ? 'text-white/70 hover:text-white hover:bg-white/15' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
+                              }`}
                             title="Editar Nome da Empresa"
                           >
                             <Settings className="w-4 h-4" />
                           </button>
-                          
+
                           <button
                             onClick={() => handleDeleteCompany(emp.id, emp.nome)}
-                            className={`p-1.5 rounded-md transition-colors ${
-                              isSelected ? 'text-white/70 hover:text-red-300 hover:bg-white/15' : 'text-gray-400 hover:text-[#D80E2A] hover:bg-red-50'
-                            }`}
+                            className={`p-1.5 rounded-md transition-colors ${isSelected ? 'text-white/70 hover:text-red-300 hover:bg-white/15' : 'text-gray-400 hover:text-[#D80E2A] hover:bg-red-50'
+                              }`}
                             title="Remover Empresa"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -852,9 +765,8 @@ export default function AdminScreen({
                         <h5 className={`font-black tracking-tight line-clamp-1 ${isSelected ? 'text-white text-sm' : 'text-[#112363] text-sm'}`}>
                           {emp.nome}
                         </h5>
-                        <code className={`block font-mono text-[9px] px-1.5 py-0.5 rounded uppercase ${
-                          isSelected ? 'bg-white/10 text-gray-200' : 'bg-gray-100 text-gray-500'
-                        } py-0.5 max-w-fit`}>
+                        <code className={`block font-mono text-[9px] px-1.5 py-0.5 rounded uppercase ${isSelected ? 'bg-white/10 text-gray-200' : 'bg-gray-100 text-gray-500'
+                          } py-0.5 max-w-fit`}>
                           {emp.id}
                         </code>
                       </div>
@@ -878,11 +790,10 @@ export default function AdminScreen({
                           onClick={() => {
                             setSelectedCompanyId(isSelected ? null : emp.id);
                           }}
-                          className={`w-full flex items-center justify-center space-x-1.5 py-2 px-4 rounded-xl text-xxs font-black transition-all ${
-                            isSelected 
+                          className={`w-full flex items-center justify-center space-x-1.5 py-2 px-4 rounded-xl text-xxs font-black transition-all ${isSelected
                               ? 'bg-white text-[#112363] hover:bg-gray-50/90'
                               : 'bg-gray-50 hover:bg-gray-100 text-[#112363] border border-gray-150'
-                          } cursor-pointer active:scale-98`}
+                            } cursor-pointer active:scale-98`}
                         >
                           <span>{isSelected ? 'OCULTAR COLABORADORES' : 'VER COLABORADORES'}</span>
                           <ChevronRight className="w-3.5 h-3.5" />
@@ -895,11 +806,10 @@ export default function AdminScreen({
                               e.stopPropagation();
                               onViewCompanyDashboard(emp.id, emp.nome);
                             }}
-                            className={`w-full flex items-center justify-center space-x-1.5 py-2 px-4 rounded-xl text-xxs font-extrabold transition-all ${
-                              isSelected
+                            className={`w-full flex items-center justify-center space-x-1.5 py-2 px-4 rounded-xl text-xxs font-extrabold transition-all ${isSelected
                                 ? 'bg-white/10 text-white hover:bg-white/15'
                                 : 'bg-[#112363]/5 hover:bg-[#112363]/10 text-[#112363] border border-[#112363]/8'
-                            } cursor-pointer active:scale-98`}
+                              } cursor-pointer active:scale-98`}
                           >
                             <FileText className="w-3.5 h-3.5" />
                             <span>VISUALIZAR DASHBOARD DA EMPRESA</span>
@@ -915,224 +825,221 @@ export default function AdminScreen({
 
           {selectedCompanyId && (
             <div className="bg-white rounded-3xl border border-gray-100 shadow-sm p-6 md:p-8 space-y-6 animate-fade-in" id="section-usuarios">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-              <div className="flex items-center space-x-2.5">
-                <div className="p-2 bg-[#D80E2A]/5 text-[#D80E2A] rounded-lg">
-                  <Users className="w-5 h-5" />
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                <div className="flex items-center space-x-2.5">
+                  <div className="p-2 bg-[#D80E2A]/5 text-[#D80E2A] rounded-lg">
+                    <Users className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-base font-black text-[#112363] uppercase tracking-wider">
+                      Colaboradores de: <span className="text-[#D80E2A]">{selectedCompNome}</span> ({filteredUsers.length})
+                    </h4>
+                    <p className="text-xxs text-gray-500 font-semibold">
+                      Consulte os usuários vinculados para visualizar relatórios ou fazer adequações de socioestilo.
+                    </p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-base font-black text-[#112363] uppercase tracking-wider">
-                    Colaboradores de: <span className="text-[#D80E2A]">{selectedCompNome}</span> ({filteredUsers.length})
-                  </h4>
-                  <p className="text-xxs text-gray-500 font-semibold">
-                    Consulte os usuários vinculados para visualizar relatórios ou fazer adequações de socioestilo.
-                  </p>
-                </div>
-              </div>
 
-              <div className="flex items-center space-x-3 select-none">
-                <button
-                  type="button"
-                  onClick={() => setSelectedCompanyId(null)}
-                  className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl border border-gray-200 hover:border-red-200 text-[#D80E2A] hover:bg-red-50/50 text-xxs font-black cursor-pointer transition-all uppercase tracking-wider"
-                >
-                  <X className="w-4 h-4" />
-                  <span>FECHAR LISTA</span>
-                </button>
-              </div>
-
-              {/* Dynamic search bar */}
-              <div className="relative max-w-sm w-full">
-                <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
-                  <Search className="w-4 h-4" />
-                </span>
-                <input
-                  type="text"
-                  placeholder="Pesquisar por nome ou e-mail..."
-                  value={searchUserQuery}
-                  onChange={(e) => setSearchUserQuery(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-xs text-gray-800 focus:outline-[#112363] placeholder-gray-400 focus:ring-1 focus:ring-[#112363]/25 transition-all"
-                  id="admin-search-user"
-                />
-                {searchUserQuery && (
+                <div className="flex items-center space-x-3 select-none">
                   <button
-                    onClick={() => setSearchUserQuery('')}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    type="button"
+                    onClick={() => setSelectedCompanyId(null)}
+                    className="flex items-center space-x-1.5 px-4 py-2.5 rounded-xl border border-gray-200 hover:border-red-200 text-[#D80E2A] hover:bg-red-50/50 text-xxs font-black cursor-pointer transition-all uppercase tracking-wider"
                   >
                     <X className="w-4 h-4" />
+                    <span>FECHAR LISTA</span>
                   </button>
-                )}
+                </div>
+
+                {/* Dynamic search bar */}
+                <div className="relative max-w-sm w-full">
+                  <span className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+                    <Search className="w-4 h-4" />
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Pesquisar por nome ou e-mail..."
+                    value={searchUserQuery}
+                    onChange={(e) => setSearchUserQuery(e.target.value)}
+                    className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-10 pr-4 text-xs text-gray-800 focus:outline-[#112363] placeholder-gray-400 focus:ring-1 focus:ring-[#112363]/25 transition-all"
+                    id="admin-search-user"
+                  />
+                  {searchUserQuery && (
+                    <button
+                      onClick={() => setSearchUserQuery('')}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* List Table of users */}
-            {filteredUsers.length === 0 ? (
-              <div className="p-12 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
-                <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                <p className="text-xs text-gray-400">Nenhum colaborador encontrado correspondendo à busca ou filtro selecionado.</p>
-              </div>
-            ) : (
-              <div className="overflow-hidden rounded-xl border border-gray-150" id="table-user-list">
-                <table className="w-full table-fixed divide-y divide-gray-150 text-left">
-                  <colgroup>
-                    <col className="w-[32%]" />
-                    <col className="w-[20%]" />
-                    <col className="w-[16%]" />
-                    <col className="w-[12%]" />
-                    <col className="w-[20%]" />
-                  </colgroup>
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th scope="col" className="px-4 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Colaborador / E-mail</th>
-                      <th scope="col" className="px-4 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Empresa / Turma</th>
-                      <th scope="col" className="px-4 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Perfil Dominante</th>
-                      <th scope="col" className="px-4 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Função</th>
-                      <th scope="col" className="px-4 py-4 text-right text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-100">
-                    {filteredUsers.map((user) => {
-                      const userAttempts = resultados
-                        .filter(r => resultBelongsToUser(r, user))
-                        .sort((a, b) => b.data_conclusao.localeCompare(a.data_conclusao));
-                      const userResult = userAttempts[0];
-                      const isUserAdmin = user.role === 'admin' || user.email === 'nomura.eduardo@gmail.com';
-                      
-                      return (
-                        <tr key={user.uid} className="hover:bg-gray-50/50 transition-colors">
-                          {/* Name / Email */}
-                          <td className="px-4 py-4 align-top whitespace-normal">
-                            <div className="max-w-[220px] text-wrap break-words">
-                              <span className="text-xs font-black text-[#112363] block leading-snug">
-                                {user.nome}
-                              </span>
-                              <span className="mt-1 block text-[11px] text-gray-500 font-medium font-mono leading-snug break-all">
-                                {user.email}
-                              </span>
-                            </div>
-                          </td>
+              {/* List Table of users */}
+              {filteredUsers.length === 0 ? (
+                <div className="p-12 text-center bg-gray-50/50 rounded-2xl border border-dashed border-gray-200">
+                  <Users className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                  <p className="text-xs text-gray-400">Nenhum colaborador encontrado correspondendo à busca ou filtro selecionado.</p>
+                </div>
+              ) : (
+                <div className="overflow-hidden rounded-xl border border-gray-150" id="table-user-list">
+                  <table className="w-full table-fixed divide-y divide-gray-150 text-left">
+                    <colgroup>
+                      <col className="w-[32%]" />
+                      <col className="w-[20%]" />
+                      <col className="w-[16%]" />
+                      <col className="w-[12%]" />
+                      <col className="w-[20%]" />
+                    </colgroup>
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th scope="col" className="px-4 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Colaborador / E-mail</th>
+                        <th scope="col" className="px-4 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Empresa / Turma</th>
+                        <th scope="col" className="px-4 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Perfil Dominante</th>
+                        <th scope="col" className="px-4 py-4 text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Função</th>
+                        <th scope="col" className="px-4 py-4 text-right text-[10px] font-extrabold text-[#112363] uppercase tracking-wider whitespace-normal">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-100">
+                      {filteredUsers.map((user) => {
+                        const userAttempts = resultados
+                          .filter(r => resultBelongsToUser(r, user))
+                          .sort((a, b) => b.data_conclusao.localeCompare(a.data_conclusao));
+                        const userResult = userAttempts[0];
+                        const isUserAdmin = user.role === 'admin' || user.email === 'nomura.eduardo@gmail.com';
 
-                          {/* Company / Turma */}
-                          <td className="px-4 py-4 align-top whitespace-normal">
-                            <span className="text-xs font-bold text-gray-800 block break-words">
-                              {user.empresa_nome}
-                            </span>
-                            <span className="text-[9px] text-[#D80E2A] font-semibold bg-red-50 px-1.5 py-0.5 rounded font-mono uppercase">
-                              
-                            </span>
-                          </td>
-
-                          {/* Dominant profile */}
-                          <td className="px-4 py-4 align-top whitespace-normal">
-                            <span className={`inline-flex max-w-full text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full border whitespace-normal break-words text-center leading-tight ${
-                              userResult 
-                                ? 'bg-emerald-50 text-emerald-800 border-emerald-100' 
-                                : 'bg-gray-50 text-gray-500 border-gray-150'
-                            }`}>
-                              {getUserDominantStyle(user)}
-                            </span>
-                          </td>
-
-                          {/* Role Tag */}
-                          <td className="px-4 py-4 align-top whitespace-normal">
-                            <span className={`inline-flex max-w-full text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md whitespace-normal break-words text-center leading-tight ${
-                              isUserAdmin ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
-                            }`}>
-                              {isUserAdmin ? 'Administrador' : 'Colaborador'}
-                            </span>
-                          </td>
-
-                          {/* Quick action buttons & historical selector */}
-                          <td className="px-4 py-4 align-top whitespace-normal text-right text-xs font-medium">
-                            <div className="flex flex-col items-end gap-2">
-                              <div className="flex flex-wrap items-center justify-end gap-1.5">
-                                {userResult && onViewUserReport && (
-                                  <button
-                                    onClick={() => handleViewUserReportInternal(user, userResult)}
-                                    className="inline-flex items-center gap-1 p-2 bg-[#112363]/5 hover:bg-[#112363]/10 text-[#112363] rounded-lg transition-colors cursor-pointer"
-                                    title="Visualizar Relatório de Socioestilo mais recente"
-                                  >
-                                    <Eye className="w-4 h-4" />
-                                    <span className="hidden lg:inline text-[10px] font-extrabold">Ver Último</span>
-                                  </button>
-                                )}
-
-                                <button
-                                  onClick={() => handleToggleUserRole(user)}
-                                  className={`inline-flex items-center p-2 rounded-lg border transition-all cursor-pointer ${
-                                    isUserAdmin 
-                                      ? 'bg-amber-50 hover:bg-amber-100 text-amber-800' 
-                                      : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
-                                  }`}
-                                  title={isUserAdmin ? "Mudar função para Colaborador" : "Mudar função para Administrador"}
-                                  id={`btn-toggle-role-${user.uid}`}
-                                >
-                                  {isUserAdmin ? (
-                                    <Shield className="w-4 h-4 fill-amber-500 text-amber-800" />
-                                  ) : (
-                                    <ShieldAlert className="w-4 h-4 text-slate-400" />
-                                  )}
-                                </button>
-
-                                <button
-                                  onClick={() => handleDeleteUser(user.uid, user.nome)}
-                                  className="inline-flex items-center p-2 bg-red-50 hover:bg-red-100 text-[#D80E2A] rounded-lg transition-colors cursor-pointer"
-                                  title="Remover Colaborador do Banco"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                        return (
+                          <tr key={user.uid} className="hover:bg-gray-50/50 transition-colors">
+                            {/* Name / Email */}
+                            <td className="px-4 py-4 align-top whitespace-normal">
+                              <div className="max-w-[220px] text-wrap break-words">
+                                <span className="text-xs font-black text-[#112363] block leading-snug">
+                                  {user.nome}
+                                </span>
+                                <span className="mt-1 block text-[11px] text-gray-500 font-medium font-mono leading-snug break-all">
+                                  {user.email}
+                                </span>
                               </div>
+                            </td>
 
-                              {/* Historical Attempts Selector */}
-                              {userAttempts.length >= 1 && (
-                                <div className="text-right mt-1" id={`attempts-wrapper-${user.uid}`}>
-                                  <span className="text-[8px] text-gray-400 font-bold block mb-1">
-                                    Histórico de Tentativas ({userAttempts.length}):
-                                  </span>
-                                  <div className="flex flex-wrap gap-1.5 justify-end max-w-full">
-                                    {userAttempts.map((attempt, index) => {
-                                      const attemptDate = new Date(attempt.data_conclusao).toLocaleDateString('pt-BR', {
-                                        day: '2-digit',
-                                        month: '2-digit'
-                                      });
-                                      return (
-                                        <div 
-                                          key={(attempt as any).id || (attempt as any).id_resultado || index} 
-                                          className="inline-flex items-center bg-gray-50 border border-gray-150 rounded shadow-2xs overflow-hidden"
-                                        >
-                                          <button
-                                            onClick={() => handleViewUserReportInternal(user, attempt)}
-                                            className="text-[8.5px] font-extrabold text-gray-700 px-2 py-0.5 hover:bg-[#112363] hover:text-white transition-all cursor-pointer font-mono flex items-center space-x-1 animate-fade-in"
-                                            title={`Ver relatório finalizado em ${new Date(attempt.data_conclusao).toLocaleString('pt-BR')}`}
-                                            id={`btn-attempt-${user.uid}-${index}`}
-                                          >
-                                            <span>
-                                              {index === 0 ? `T.Recente (${attemptDate})` : `T.${userAttempts.length - index} (${attemptDate})`}
-                                            </span>
-                                          </button>
-                                          <button
-                                            onClick={() => handleDeleteAttempt(attempt, user.nome)}
-                                            className="p-1.5 text-[#D80E2A] hover:bg-red-50 hover:text-red-700 transition-colors border-l border-gray-150 cursor-pointer flex items-center justify-center"
-                                            title="Excluir este resultado específico"
-                                          >
-                                            <Trash2 className="w-2.5 h-2.5" />
-                                          </button>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
+                            {/* Company / Turma */}
+                            <td className="px-4 py-4 align-top whitespace-normal">
+                              <span className="text-xs font-bold text-gray-800 block break-words">
+                                {user.empresa_nome}
+                              </span>
+                              <span className="text-[9px] text-[#D80E2A] font-semibold bg-red-50 px-1.5 py-0.5 rounded font-mono uppercase">
+
+                              </span>
+                            </td>
+
+                            {/* Dominant profile */}
+                            <td className="px-4 py-4 align-top whitespace-normal">
+                              <span className={`inline-flex max-w-full text-[10px] font-extrabold uppercase px-2.5 py-1 rounded-full border whitespace-normal break-words text-center leading-tight ${userResult
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-100'
+                                  : 'bg-gray-50 text-gray-500 border-gray-150'
+                                }`}>
+                                {getUserDominantStyle(user)}
+                              </span>
+                            </td>
+
+                            {/* Role Tag */}
+                            <td className="px-4 py-4 align-top whitespace-normal">
+                              <span className={`inline-flex max-w-full text-[10px] font-black uppercase px-2.5 py-0.5 rounded-md whitespace-normal break-words text-center leading-tight ${isUserAdmin ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'
+                                }`}>
+                                {isUserAdmin ? 'Administrador' : 'Colaborador'}
+                              </span>
+                            </td>
+
+                            {/* Quick action buttons & historical selector */}
+                            <td className="px-4 py-4 align-top whitespace-normal text-right text-xs font-medium">
+                              <div className="flex flex-col items-end gap-2">
+                                <div className="flex flex-wrap items-center justify-end gap-1.5">
+                                  {userResult && onViewUserReport && (
+                                    <button
+                                      onClick={() => handleViewUserReportInternal(user, userResult)}
+                                      className="inline-flex items-center gap-1 p-2 bg-[#112363]/5 hover:bg-[#112363]/10 text-[#112363] rounded-lg transition-colors cursor-pointer"
+                                      title="Visualizar Relatório de Socioestilo mais recente"
+                                    >
+                                      <Eye className="w-4 h-4" />
+                                      <span className="hidden lg:inline text-[10px] font-extrabold">Ver Último</span>
+                                    </button>
+                                  )}
+
+                                  <button
+                                    onClick={() => handleToggleUserRole(user)}
+                                    className={`inline-flex items-center p-2 rounded-lg border transition-all cursor-pointer ${isUserAdmin
+                                        ? 'bg-amber-50 hover:bg-amber-100 text-amber-800'
+                                        : 'bg-slate-50 hover:bg-slate-100 text-slate-600'
+                                      }`}
+                                    title={isUserAdmin ? "Mudar função para Colaborador" : "Mudar função para Administrador"}
+                                    id={`btn-toggle-role-${user.uid}`}
+                                  >
+                                    {isUserAdmin ? (
+                                      <Shield className="w-4 h-4 fill-amber-500 text-amber-800" />
+                                    ) : (
+                                      <ShieldAlert className="w-4 h-4 text-slate-400" />
+                                    )}
+                                  </button>
+
+                                  <button
+                                    onClick={() => handleDeleteUser(user.uid, user.nome)}
+                                    className="inline-flex items-center p-2 bg-red-50 hover:bg-red-100 text-[#D80E2A] rounded-lg transition-colors cursor-pointer"
+                                    title="Remover Colaborador do Banco"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
                                 </div>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
+
+                                {/* Historical Attempts Selector */}
+                                {userAttempts.length >= 1 && (
+                                  <div className="text-right mt-1" id={`attempts-wrapper-${user.uid}`}>
+                                    <span className="text-[8px] text-gray-400 font-bold block mb-1">
+                                      Histórico de Tentativas ({userAttempts.length}):
+                                    </span>
+                                    <div className="flex flex-wrap gap-1.5 justify-end max-w-full">
+                                      {userAttempts.map((attempt, index) => {
+                                        const attemptDate = new Date(attempt.data_conclusao).toLocaleDateString('pt-BR', {
+                                          day: '2-digit',
+                                          month: '2-digit'
+                                        });
+                                        return (
+                                          <div
+                                            key={(attempt as any).id || (attempt as any).id_resultado || index}
+                                            className="inline-flex items-center bg-gray-50 border border-gray-150 rounded shadow-2xs overflow-hidden"
+                                          >
+                                            <button
+                                              onClick={() => handleViewUserReportInternal(user, attempt)}
+                                              className="text-[8.5px] font-extrabold text-gray-700 px-2 py-0.5 hover:bg-[#112363] hover:text-white transition-all cursor-pointer font-mono flex items-center space-x-1 animate-fade-in"
+                                              title={`Ver relatório finalizado em ${new Date(attempt.data_conclusao).toLocaleString('pt-BR')}`}
+                                              id={`btn-attempt-${user.uid}-${index}`}
+                                            >
+                                              <span>
+                                                {index === 0 ? `T.Recente (${attemptDate})` : `T.${userAttempts.length - index} (${attemptDate})`}
+                                              </span>
+                                            </button>
+                                            <button
+                                              onClick={() => handleDeleteAttempt(attempt, user.nome)}
+                                              className="p-1.5 text-[#D80E2A] hover:bg-red-50 hover:text-red-700 transition-colors border-l border-gray-150 cursor-pointer flex items-center justify-center"
+                                              title="Excluir este resultado específico"
+                                            >
+                                              <Trash2 className="w-2.5 h-2.5" />
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
           )}
         </div>
       )}

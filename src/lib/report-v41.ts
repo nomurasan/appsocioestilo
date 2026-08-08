@@ -68,7 +68,7 @@ export interface AuditUnitV41 {
 }
 
 export interface ReportOutputV41 {
-  contractVersion: "V41";
+  contractVersion: "V41" | "V42";
   contract_version: string;
   workflow_version: string;
   report_version: string;
@@ -85,8 +85,12 @@ export interface ReportOutputV41 {
     scores: Record<string, number>;
     ranking: RankingItemV41[];
   };
-  relatorio_sintetico: ReportVariantV41;
-  relatorio_detalhado: ReportVariantV41;
+  visao_geral: {
+    versao: string;
+    secoes: ReportSectionV41[];
+  };
+  relatorio_sintetico?: ReportVariantV41;
+  relatorio_detalhado?: ReportVariantV41;
   memoria_calculo: Record<string, unknown>;
   auditoria: {
     unidades_utilizadas: AuditUnitV41[];
@@ -301,16 +305,50 @@ function normalizeVariant(
   };
 }
 
+function normalizeGeneralView(value: unknown): {
+  versao: string;
+  secoes: ReportSectionV41[];
+} {
+  const raw = asRecord(value);
+  return {
+    versao: asString(raw.versao) || "1.0",
+    secoes: normalizeSections(raw.secoes),
+  };
+}
+
 export function isReportOutputV41(
   output: unknown,
   resultado?: unknown,
 ): boolean {
   const out = asRecord(output);
   const res = asRecord(resultado);
+  const hasGeneralView =
+    isRecord(out.visao_geral) &&
+    Array.isArray(asRecord(out.visao_geral).secoes);
+
   return (
     out.contractVersion === "V41" ||
+    out.contractVersion === "V42" ||
     out.contract_version === "socioestilo-report/v41" ||
-    res.contract_version === "socioestilo-report/v41"
+    out.contract_version === "socioestilo-report/v42" ||
+    res.contract_version === "socioestilo-report/v41" ||
+    res.contract_version === "socioestilo-report/v42" ||
+    hasGeneralView
+  );
+}
+
+export function isReportOutputV42(
+  output: unknown,
+  resultado?: unknown,
+): boolean {
+  const out = asRecord(output);
+  const res = asRecord(resultado);
+  return (
+    out.contractVersion === "V42" ||
+    out.contract_version === "socioestilo-report/v42" ||
+    res.contract_version === "socioestilo-report/v42" ||
+    (isRecord(out.visao_geral) &&
+      Array.isArray(asRecord(out.visao_geral).secoes))
   );
 }
 
@@ -340,10 +378,16 @@ export function validateReportOutputV41(
   if (!isRecord(output.identificacao)) errors.push("identificacao ausente.");
   if (!isRecord(output.resultado_calculado))
     errors.push("resultado_calculado ausente.");
-  if (!isRecord(output.relatorio_sintetico))
-    errors.push("relatorio_sintetico ausente.");
-  if (!isRecord(output.relatorio_detalhado))
-    errors.push("relatorio_detalhado ausente.");
+  if (!isRecord(output.visao_geral)) {
+    if (
+      !isRecord(output.relatorio_sintetico) &&
+      !isRecord(output.relatorio_detalhado)
+    ) {
+      errors.push("visao_geral ausente.");
+    } else {
+      warnings.push("visao_geral ausente; usando fallback legado V41.");
+    }
+  }
   if (!isRecord(output.memoria_calculo))
     warnings.push("memoria_calculo ausente.");
   if (!isRecord(output.auditoria)) warnings.push("auditoria ausente.");
@@ -380,10 +424,26 @@ export function parseReportOutputV41(
 
   const resultadoCalculado = asRecord(output.resultado_calculado);
 
+  const normalizedGeneralView = normalizeGeneralView(output.visao_geral);
+  const detailedLegacySections = asArray(
+    asRecord(output.relatorio_detalhado).secoes,
+  );
+  const syntheticLegacySections = asArray(
+    asRecord(output.relatorio_sintetico).secoes,
+  );
+  const fallbackLegacySections = normalizeSections(
+    detailedLegacySections.length > 0
+      ? detailedLegacySections
+      : syntheticLegacySections,
+  );
+
   return {
-    contractVersion: "V41",
+    contractVersion: isReportOutputV42(output, root) ? "V42" : "V41",
     contract_version:
-      asString(output.contract_version) || "socioestilo-report/v41",
+      asString(output.contract_version) ||
+      (isReportOutputV42(output, root)
+        ? "socioestilo-report/v42"
+        : "socioestilo-report/v41"),
     workflow_version: asString(output.workflow_version),
     report_version: asString(output.report_version),
     identificacao: asRecord(output.identificacao),
@@ -399,14 +459,29 @@ export function parseReportOutputV41(
       scores: normalizeScores(resultadoCalculado.scores),
       ranking: normalizeRanking(resultadoCalculado.ranking),
     },
-    relatorio_sintetico: normalizeVariant(
-      output.relatorio_sintetico,
-      "sintetico",
-    ),
-    relatorio_detalhado: normalizeVariant(
-      output.relatorio_detalhado,
-      "detalhado",
-    ),
+    visao_geral:
+      normalizedGeneralView.secoes.length > 0
+        ? normalizedGeneralView
+        : {
+            versao: "legacy-fallback",
+            secoes: fallbackLegacySections,
+          },
+    ...(isRecord(output.relatorio_sintetico)
+      ? {
+          relatorio_sintetico: normalizeVariant(
+            output.relatorio_sintetico,
+            "sintetico",
+          ),
+        }
+      : {}),
+    ...(isRecord(output.relatorio_detalhado)
+      ? {
+          relatorio_detalhado: normalizeVariant(
+            output.relatorio_detalhado,
+            "detalhado",
+          ),
+        }
+      : {}),
     memoria_calculo: asRecord(output.memoria_calculo),
     auditoria: {
       unidades_utilizadas: normalizeAuditUnits(
@@ -430,10 +505,7 @@ function buildVariantViewModel(
   const output = parseReportOutputV41(resultado);
   if (!output) return null;
   const validation = validateReportOutputV41(resultado);
-  const selected =
-    variant === "sintetico"
-      ? output.relatorio_sintetico
-      : output.relatorio_detalhado;
+  const selectedSections = output.visao_geral.secoes;
 
   return {
     variantLabel:
@@ -441,7 +513,7 @@ function buildVariantViewModel(
     variantKey: variant,
     identificacao: output.identificacao,
     resultadoCalculado: output.resultado_calculado,
-    sections: selected.secoes,
+    sections: selectedSections,
     memoriaCalculo: output.memoria_calculo,
     auditoria: output.auditoria,
     output,
