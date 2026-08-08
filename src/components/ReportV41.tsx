@@ -525,7 +525,7 @@ export default function ReportV41({
                     setAnalyticalVisibility(analyticalEffective);
                 }
             } catch (error) {
-                console.warn('[ReportV42] Falha ao carregar configurações de visibilidade. Usando defaults:', error);
+                console.warn('[Report] Falha ao carregar configurações de visibilidade. Usando defaults:', error);
                 if (!cancelled) {
                     const role = normalizeViewerRole(viewerRole || 'participant');
                     setSyntheticVisibility(
@@ -563,7 +563,7 @@ export default function ReportV41({
     if (!synthetic || !analytical || !vm) {
         return (
             <div className="lg:col-span-3 rounded-2xl border border-red-200 bg-red-50 p-6 text-sm text-red-900" role="alert">
-                Não foi possível carregar o contrato V41 deste relatório.
+                Não foi possível carregar o contrato canônico deste relatório.
             </div>
         );
     }
@@ -573,16 +573,17 @@ export default function ReportV41({
     const fullName = asText(vm.identificacao.nome || vm.identificacao.userName || 'Participante');
     const companyName = asText(vm.identificacao.empresa || vm.identificacao.companyName || 'Empresa');
     const generatedAt = asText(vm.identificacao.generated_at || vm.identificacao.generatedAt || vm.identificacao.data_conclusao);
+    const contractLabel = asText(vm.output.contractVersion || vm.output.contract_version || 'V43');
 
     return (
         <div className="lg:col-span-3 min-w-0 max-w-full space-y-6 md:space-y-8" id="participant-report-v41">
             <div className="bg-white rounded-3xl border border-gray-150 shadow-xs p-5 md:p-8 space-y-4">
                 <div className="flex justify-between items-start gap-4 border-b border-gray-100 pb-3">
                     <div>
-                        <h2 className="text-lg font-black text-[#112363] uppercase tracking-wider">Relatório V41</h2>
+                        <h2 className="text-lg font-black text-[#112363] uppercase tracking-wider">Relatório Sócio Estilo</h2>
                         <p className="text-xs text-slate-500 mt-1">Fonte oficial: resultados.report_output</p>
                     </div>
-                    <span className="text-[10px] font-bold text-gray-400 uppercase">{vm.output.workflow_version || 'n8n-v41'}</span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase">Contrato {contractLabel}</span>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">

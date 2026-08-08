@@ -150,7 +150,7 @@ async function saveConfiguration(
   }
 
   throw new Error(
-    "Nenhuma tabela de configuração de relatório V42 foi encontrada.",
+    "Nenhuma tabela de configuração de relatório foi encontrada.",
   );
 }
 

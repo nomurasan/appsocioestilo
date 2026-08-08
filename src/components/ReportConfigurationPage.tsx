@@ -199,7 +199,7 @@ export default function ReportConfigurationPage({
             }
         } catch (err) {
             console.error(err);
-            setError("Não foi possível carregar a configuração V42 de visibilidade.");
+            setError("Não foi possível carregar a configuração de visibilidade.");
         } finally {
             setLoading(false);
         }
@@ -297,7 +297,7 @@ export default function ReportConfigurationPage({
             await loadConfigs();
         } catch (err) {
             console.error(err);
-            setError("Erro ao salvar configuração V42.");
+            setError("Erro ao salvar configuração.");
         } finally {
             setSaving(false);
         }
@@ -360,7 +360,7 @@ export default function ReportConfigurationPage({
         <div className="bg-white border border-gray-100 rounded-3xl p-5 md:p-6 shadow-xs space-y-5 animate-fade-in" id="report-parametrization-v42-panel">
             <div className="flex flex-col gap-4">
                 <div>
-                    <h4 className="text-sm font-black text-[#112363] uppercase tracking-wider">Parametrização do Relatório V42</h4>
+                    <h4 className="text-sm font-black text-[#112363] uppercase tracking-wider">Parametrização do Relatório</h4>
                     <p className="text-xs text-gray-500 mt-1">
                         A fonte editorial é única em visao_geral. Sintético e Analítico são composições de visibilidade.
                     </p>
@@ -370,8 +370,8 @@ export default function ReportConfigurationPage({
                     <button
                         onClick={() => handleSafeContextChange(() => setViewType("synthetic"))}
                         className={`px-4 py-2 rounded-lg text-xs font-black uppercase border transition-all ${viewType === "synthetic"
-                                ? "bg-[#112363] text-white border-[#112363]"
-                                : "bg-white text-[#071A5F] border-gray-200"
+                            ? "bg-[#112363] text-white border-[#112363]"
+                            : "bg-white text-[#071A5F] border-gray-200"
                             }`}
                     >
                         Visão Sintética
@@ -379,8 +379,8 @@ export default function ReportConfigurationPage({
                     <button
                         onClick={() => handleSafeContextChange(() => setViewType("analytical"))}
                         className={`px-4 py-2 rounded-lg text-xs font-black uppercase border transition-all ${viewType === "analytical"
-                                ? "bg-[#112363] text-white border-[#112363]"
-                                : "bg-white text-[#071A5F] border-gray-200"
+                            ? "bg-[#112363] text-white border-[#112363]"
+                            : "bg-white text-[#071A5F] border-gray-200"
                             }`}
                     >
                         Visão Analítica
@@ -395,8 +395,8 @@ export default function ReportConfigurationPage({
                                     key={role}
                                     onClick={() => handleSafeContextChange(() => setAnalyticalRole(role))}
                                     className={`px-4 py-2 rounded-lg text-xs font-black uppercase border transition-all ${analyticalRole === role
-                                            ? "bg-[#D80E2A] text-white border-[#D80E2A]"
-                                            : "bg-white text-[#071A5F] border-gray-200"
+                                        ? "bg-[#D80E2A] text-white border-[#D80E2A]"
+                                        : "bg-white text-[#071A5F] border-gray-200"
                                         }`}
                                 >
                                     {asLabelRole(role)}
@@ -409,8 +409,8 @@ export default function ReportConfigurationPage({
                                 <button
                                     onClick={() => handleSafeContextChange(() => setScope("global"))}
                                     className={`px-4 py-2 rounded-lg text-xs font-black uppercase border transition-all ${scope === "global"
-                                            ? "bg-[#112363] text-white border-[#112363]"
-                                            : "bg-white text-[#071A5F] border-gray-200"
+                                        ? "bg-[#112363] text-white border-[#112363]"
+                                        : "bg-white text-[#071A5F] border-gray-200"
                                         }`}
                                 >
                                     Padrão Global
@@ -418,8 +418,8 @@ export default function ReportConfigurationPage({
                                 <button
                                     onClick={() => handleSafeContextChange(() => setScope("company"))}
                                     className={`px-4 py-2 rounded-lg text-xs font-black uppercase border transition-all ${scope === "company"
-                                            ? "bg-[#112363] text-white border-[#112363]"
-                                            : "bg-white text-[#071A5F] border-gray-200"
+                                        ? "bg-[#112363] text-white border-[#112363]"
+                                        : "bg-white text-[#071A5F] border-gray-200"
                                         }`}
                                 >
                                     Empresa Específica

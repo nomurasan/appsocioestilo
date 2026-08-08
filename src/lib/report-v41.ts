@@ -68,7 +68,7 @@ export interface AuditUnitV41 {
 }
 
 export interface ReportOutputV41 {
-  contractVersion: "V41" | "V42";
+  contractVersion: "V41" | "V42" | "V43";
   contract_version: string;
   workflow_version: string;
   report_version: string;
@@ -322,19 +322,59 @@ export function isReportOutputV41(
 ): boolean {
   const out = asRecord(output);
   const res = asRecord(resultado);
+  const rootOut = isRecord(res.report_output)
+    ? asRecord(res.report_output)
+    : {};
   const hasGeneralView =
     isRecord(out.visao_geral) &&
     Array.isArray(asRecord(out.visao_geral).secoes);
+  const hasLegacyV41Views =
+    isRecord(out.relatorio_sintetico) || isRecord(out.relatorio_detalhado);
 
   return (
     out.contractVersion === "V41" ||
     out.contractVersion === "V42" ||
+    out.contractVersion === "V43" ||
     out.contract_version === "socioestilo-report/v41" ||
     out.contract_version === "socioestilo-report/v42" ||
+    out.contract_version === "socioestilo-report/v43" ||
+    rootOut.contractVersion === "V41" ||
+    rootOut.contractVersion === "V42" ||
+    rootOut.contractVersion === "V43" ||
+    rootOut.contract_version === "socioestilo-report/v41" ||
+    rootOut.contract_version === "socioestilo-report/v42" ||
+    rootOut.contract_version === "socioestilo-report/v43" ||
     res.contract_version === "socioestilo-report/v41" ||
     res.contract_version === "socioestilo-report/v42" ||
-    hasGeneralView
+    res.contract_version === "socioestilo-report/v43" ||
+    ((hasGeneralView || hasLegacyV41Views) &&
+      isRecord(out.identificacao) &&
+      isRecord(out.resultado_calculado))
   );
+}
+
+export function isReportOutputV43(
+  output: unknown,
+  resultado?: unknown,
+): boolean {
+  const out = asRecord(output);
+  const res = asRecord(resultado);
+  const rootOut = isRecord(res.report_output)
+    ? asRecord(res.report_output)
+    : {};
+  const hasGeneralView =
+    isRecord(out.visao_geral) &&
+    Array.isArray(asRecord(out.visao_geral).secoes);
+
+  const explicitSignal =
+    out.contractVersion === "V43" ||
+    out.contract_version === "socioestilo-report/v43" ||
+    rootOut.contractVersion === "V43" ||
+    rootOut.contract_version === "socioestilo-report/v43" ||
+    res.contractVersion === "V43" ||
+    res.contract_version === "socioestilo-report/v43";
+
+  return explicitSignal && hasGeneralView;
 }
 
 export function isReportOutputV42(
@@ -343,13 +383,26 @@ export function isReportOutputV42(
 ): boolean {
   const out = asRecord(output);
   const res = asRecord(resultado);
+  const rootOut = isRecord(res.report_output)
+    ? asRecord(res.report_output)
+    : {};
   return (
     out.contractVersion === "V42" ||
     out.contract_version === "socioestilo-report/v42" ||
-    res.contract_version === "socioestilo-report/v42" ||
-    (isRecord(out.visao_geral) &&
-      Array.isArray(asRecord(out.visao_geral).secoes))
+    rootOut.contractVersion === "V42" ||
+    rootOut.contract_version === "socioestilo-report/v42" ||
+    res.contractVersion === "V42" ||
+    res.contract_version === "socioestilo-report/v42"
   );
+}
+
+export function detectCanonicalContractVersion(
+  output: unknown,
+  resultado?: unknown,
+): "V43" | "V42" | "V41" {
+  if (isReportOutputV43(output, resultado)) return "V43";
+  if (isReportOutputV42(output, resultado)) return "V42";
+  return "V41";
 }
 
 function resolveRawReportOutput(resultado: unknown): ObjectRecord {
@@ -371,7 +424,7 @@ export function validateReportOutputV41(
   const errors: string[] = [];
 
   if (!isReportOutputV41(output, root)) {
-    errors.push("Contrato V41 não identificado.");
+    errors.push("Contrato canônico de relatório não identificado.");
     return { valid: false, warnings, errors };
   }
 
@@ -438,12 +491,14 @@ export function parseReportOutputV41(
   );
 
   return {
-    contractVersion: isReportOutputV42(output, root) ? "V42" : "V41",
+    contractVersion: detectCanonicalContractVersion(output, root),
     contract_version:
       asString(output.contract_version) ||
-      (isReportOutputV42(output, root)
-        ? "socioestilo-report/v42"
-        : "socioestilo-report/v41"),
+      (detectCanonicalContractVersion(output, root) === "V43"
+        ? "socioestilo-report/v43"
+        : detectCanonicalContractVersion(output, root) === "V42"
+          ? "socioestilo-report/v42"
+          : "socioestilo-report/v41"),
     workflow_version: asString(output.workflow_version),
     report_version: asString(output.report_version),
     identificacao: asRecord(output.identificacao),

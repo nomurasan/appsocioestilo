@@ -37,7 +37,7 @@ import { buildReportV36ViewModel } from '../lib/report-v36-view-model';
 import { buildReportV38ViewModel } from '../lib/report-v38';
 import ReportV38Presentation from './ReportV38Presentation';
 import ReportV41 from './ReportV41';
-import { isReportOutputV41, isReportOutputV42 } from '../lib/report-v41';
+import { isReportOutputV41, isReportOutputV42, isReportOutputV43 } from '../lib/report-v41';
 
 type ChunkAuditItem = {
   ordem?: number;
@@ -1683,6 +1683,7 @@ export default function DashboardScreen({
   const reportV38 = buildReportV38ViewModel(activeResult || normalizedPayload || {});
   const hasV38Snapshot = reportV38.valid && Object.keys(reportV38.reportOutput || {}).length > 0;
   const activeOutput = asObject(activeResult?.report_output || activeResult?.relatorio_pronto_para_app || {});
+  const hasV43Snapshot = isReportOutputV43(activeOutput, activeResult || {}) || isReportOutputV43(normalizedPayload?.report_output, normalizedPayload || {});
   const hasV42Snapshot = isReportOutputV42(activeOutput, activeResult || {}) || isReportOutputV42(normalizedPayload?.report_output, normalizedPayload || {});
   const hasV41Snapshot = isReportOutputV41(activeOutput, activeResult || {}) || isReportOutputV41(normalizedPayload?.report_output, normalizedPayload || {});
 
@@ -2244,7 +2245,7 @@ export default function DashboardScreen({
 
             {/* Document wrapper */}
             {(() => {
-              if (hasV42Snapshot || hasV41Snapshot) {
+              if (hasV43Snapshot || hasV42Snapshot || hasV41Snapshot) {
                 return (
                   <ReportErrorBoundary>
                     <ReportV41
