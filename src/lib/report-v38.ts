@@ -553,7 +553,10 @@ function normalizeProfileSections(
       return dinamica.lado_luz;
     if (fieldId === "lado_sombra" && isRecord(dinamica.lado_sombra))
       return dinamica.lado_sombra;
-    if (fieldId === "estilo_a_desenvolver" && isRecord(dinamica.estilo_a_desenvolver))
+    if (
+      fieldId === "estilo_a_desenvolver" &&
+      isRecord(dinamica.estilo_a_desenvolver)
+    )
       return dinamica.estilo_a_desenvolver;
     return undefined;
   };
@@ -689,10 +692,7 @@ function normalizeRecommendations(
       {},
   );
   const pdiSource = asRecord(
-    source.plano_desenvolvimento_individual ??
-      source.pdi ??
-      dataAny.pdi ??
-      {},
+    source.plano_desenvolvimento_individual ?? source.pdi ?? dataAny.pdi ?? {},
   );
   const firstStepsSource = asRecord(
     source.primeiros_passos ?? pdiSource.primeiros_passos ?? {},
@@ -744,10 +744,7 @@ function normalizeIdentification(
   const dataAny = reportData as Record<string, any>;
   const outputAny = reportOutput as Record<string, any>;
   const ident = asRecord(
-    outputAny.identificacao ||
-      dataAny.identificacao ||
-      rootAny.metadata ||
-      {},
+    outputAny.identificacao || dataAny.identificacao || rootAny.metadata || {},
   );
   const completedAt = toText(
     ident.data_conclusao ||
@@ -933,7 +930,8 @@ export function buildReportV38ViewModel(
         "sintese_parecer_executivo",
         "1.2 Parecer Executivo da Banca",
         asRecord(outputAny.campos_relatorio).parecer_executivo ??
-          asRecord(asRecord(outputAny.campos_relatorio).sintese).parecer_executivo ??
+          asRecord(asRecord(outputAny.campos_relatorio).sintese)
+            .parecer_executivo ??
           asRecord(dataAny.narrativa).parecer_executivo ??
           dataAny.parecer_executivo ??
           "",
