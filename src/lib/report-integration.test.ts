@@ -1,109 +1,246 @@
-import assert from 'node:assert/strict';
-import test from 'node:test';
+import assert from "node:assert/strict";
+import test from "node:test";
 import {
   getAnalysisPersistenceState,
   getFullReportData,
   getReportOutputFromAnalysis,
   getV30ScoresFromAnalysis,
   hasRichSocioEstiloReport,
-  unwrapAnalysisResponse
-} from './report-integration';
-import { resolveV30Report } from './report-v30';
+  unwrapAnalysisResponse,
+} from "./report-integration";
+import { resolveV30Report } from "./report-v30";
 
-const ids = ['perfil_predominante', 'perfil_secundario', 'lado_luz', 'lado_sombra', 'estilo_a_desenvolver', 'relacoes_entre_estilos', 'recomendacoes'] as const;
+const ids = [
+  "perfil_predominante",
+  "perfil_secundario",
+  "lado_luz",
+  "lado_sombra",
+  "estilo_a_desenvolver",
+  "relacoes_entre_estilos",
+  "recomendacoes",
+] as const;
 const reportOutput = {
-  identificacao: { nome: 'Pessoa' },
-  resultado_calculado: { scores: { assertivo: 1, participativo: 2, integrador: 3, analitico: 4 } },
-  campos_relatorio: Object.fromEntries(ids.map((id, ordem) => [id, {
-    id,
-    titulo: id,
-    status: 'generated',
-    enabled: true,
-    ordem: ordem + 1,
-    conteudo: { texto: `conteúdo ${id}` },
-    evidencias: [],
-    ucs_utilizadas: [],
-    fallback: { used: false }
-  }]))
+  identificacao: { nome: "Pessoa" },
+  resultado_calculado: {
+    scores: { assertivo: 1, participativo: 2, integrador: 3, analitico: 4 },
+  },
+  campos_relatorio: Object.fromEntries(
+    ids.map((id, ordem) => [
+      id,
+      {
+        id,
+        titulo: id,
+        status: "generated",
+        enabled: true,
+        ordem: ordem + 1,
+        conteudo: { texto: `conteúdo ${id}` },
+        evidencias: [],
+        ucs_utilizadas: [],
+        fallback: { used: false },
+      },
+    ]),
+  ),
 };
 
 const validResponse = {
-  contract_version: 'V30',
-  resultado_id: 'resultado-remoto-1',
-  relatorio_uuid: '123e4567-e89b-12d3-a456-426614174000',
+  contract_version: "V30",
+  resultado_id: 6,
+  relatorio_uuid: "123e4567-e89b-12d3-a456-426614174000",
   persisted: true,
-  report_output: reportOutput
+  report_output: reportOutput,
 };
 
-test('preserva report_output e IDs através de envelope data', () => {
+test("preserva report_output e IDs através de envelope data", () => {
   const response = { data: validResponse };
   assert.equal(unwrapAnalysisResponse(response), validResponse);
   assert.equal(getReportOutputFromAnalysis(response), reportOutput);
-  assert.equal(getAnalysisPersistenceState(response).resultadoId, 'resultado-remoto-1');
-  assert.equal(getAnalysisPersistenceState(response).relatorioUuid, '123e4567-e89b-12d3-a456-426614174000');
+  assert.equal(getAnalysisPersistenceState(response).resultadoId, "6");
+  assert.equal(getAnalysisPersistenceState(response).resultadoIdNormalized, 6);
+  assert.equal(
+    getAnalysisPersistenceState(response).relatorioUuid,
+    "123e4567-e89b-12d3-a456-426614174000",
+  );
 });
 
-test('reconhece persistência remota válida e nunca inventa IDs', () => {
+test("reconhece persistência remota válida e nunca inventa IDs", () => {
   const state = getAnalysisPersistenceState(validResponse);
   assert.equal(state.persisted, true);
   assert.equal(state.invalidPersistedResponse, false);
-  assert.equal(getAnalysisPersistenceState({ persisted: true }).persisted, false);
-  assert.equal(getAnalysisPersistenceState({ persisted: true }).invalidPersistedResponse, true);
+  assert.equal(
+    getAnalysisPersistenceState({ persisted: true }).persisted,
+    false,
+  );
+  assert.equal(
+    getAnalysisPersistenceState({ persisted: true }).invalidPersistedResponse,
+    true,
+  );
 });
 
-test('reaproveita scores V30 válidos sem recalcular e rejeita V30 inválido', () => {
+test("CASO A: persisted=true com resultado_id string numérica e UUID válido", () => {
+  const state = getAnalysisPersistenceState({
+    persisted: true,
+    resultado_id: "6",
+    relatorio_uuid: "123e4567-e89b-12d3-a456-426614174000",
+  });
+  assert.equal(state.persisted, true);
+  assert.equal(state.resultadoIdNormalized, 6);
+});
+
+test("CASO B: persisted=true com resultado_id number e UUID válido", () => {
+  const state = getAnalysisPersistenceState({
+    persisted: true,
+    resultado_id: 6,
+    relatorio_uuid: "123e4567-e89b-12d3-a456-426614174000",
+  });
+  assert.equal(state.persisted, true);
+  assert.equal(state.resultadoIdNormalized, 6);
+});
+
+test("CASO C: persisted=true com id_resultado string numérica e UUID válido", () => {
+  const state = getAnalysisPersistenceState({
+    persisted: true,
+    id_resultado: "6",
+    relatorio_uuid: "123e4567-e89b-12d3-a456-426614174000",
+  });
+  assert.equal(state.persisted, true);
+  assert.equal(state.resultadoIdNormalized, 6);
+});
+
+test("CASO D: persisted=true sem resultado_id e com UUID válido", () => {
+  const state = getAnalysisPersistenceState({
+    persisted: true,
+    resultado_id: null,
+    relatorio_uuid: "123e4567-e89b-12d3-a456-426614174000",
+  });
+  assert.equal(state.persisted, true);
+});
+
+test("CASO E: persisted=false com resultado_id válido", () => {
+  const state = getAnalysisPersistenceState({
+    persisted: false,
+    resultado_id: "6",
+  });
+  assert.equal(state.persisted, false);
+});
+
+test("CASO F: persisted=true sem resultado_id e sem UUID", () => {
+  const state = getAnalysisPersistenceState({
+    persisted: true,
+    resultado_id: null,
+    relatorio_uuid: null,
+  });
+  assert.equal(state.persisted, false);
+  assert.equal(state.invalidPersistedResponse, true);
+});
+
+test("reaproveita scores V30 válidos sem recalcular e rejeita V30 inválido", () => {
   assert.deepEqual(getV30ScoresFromAnalysis(validResponse), {
     Assertivo: 1,
     Participativo: 2,
     Integrador: 3,
-    Analitico: 4
+    Analitico: 4,
   });
   assert.equal(getV30ScoresFromAnalysis({ report_output: {} }), null);
 });
 
-test('bloqueia fallback legado quando V30 estÃ¡ declarado e invÃ¡lido', () => {
-  const state = getAnalysisPersistenceState({ contract_version: 'socioestilo-report/v30', persisted: false });
+test("bloqueia fallback legado quando V30 estÃ¡ declarado e invÃ¡lido", () => {
+  const state = getAnalysisPersistenceState({
+    contract_version: "socioestilo-report/v30",
+    persisted: false,
+  });
   assert.equal(state.invalidV30Response, true);
 });
 
-test('aceita id_resultado como alias para impedir gravaÃ§Ã£o duplicada', () => {
-  const state = getAnalysisPersistenceState({ persisted: true, id_resultado: 'resultado-alias' });
+test("não marca erro V30 para contrato V40 com report_output presente", () => {
+  const state = getAnalysisPersistenceState({
+    contract_version: "socioestilo-report/v40",
+    persisted: true,
+    resultado_id: "6",
+    relatorio_uuid: "123e4567-e89b-12d3-a456-426614174000",
+    report_output: {
+      identificacao: { relatorio_uuid: "123e4567-e89b-12d3-a456-426614174000" },
+    },
+  });
   assert.equal(state.persisted, true);
-  assert.equal(state.resultadoId, 'resultado-alias');
+  assert.equal(state.invalidV30Response, false);
 });
 
-test('separa report_data completo de report_output pÃºblico', () => {
+test("aceita id_resultado como alias para impedir gravaÃ§Ã£o duplicada", () => {
+  const state = getAnalysisPersistenceState({
+    persisted: true,
+    id_resultado: "6",
+  });
+  assert.equal(state.persisted, true);
+  assert.equal(state.resultadoId, "6");
+});
+
+test("separa report_data completo de report_output pÃºblico", () => {
   const reportData = {
-    resultado: {}, narrativa: {}, dinamica_dos_estilos: {}, memoria_calculo: {}, auditoria: {},
-    potencializacao_talentos: { talento_identificado: 'escuta' },
-    pdi: { objetivos_prioritarios: ['objetivo'] }
+    resultado: {},
+    narrativa: {},
+    dinamica_dos_estilos: {},
+    memoria_calculo: {},
+    auditoria: {},
+    potencializacao_talentos: { talento_identificado: "escuta" },
+    pdi: { objetivos_prioritarios: ["objetivo"] },
   };
-  const response = { contractVersion: 'V30', report_output: reportOutput, report_data: reportData, resultado_id: 'resultado-rico', relatorio_uuid: '123e4567-e89b-12d3-a456-426614174000' };
+  const response = {
+    contractVersion: "V30",
+    report_output: reportOutput,
+    report_data: reportData,
+    resultado_id: "resultado-rico",
+    relatorio_uuid: "123e4567-e89b-12d3-a456-426614174000",
+  };
   assert.equal(getFullReportData(response), reportData);
   assert.equal(hasRichSocioEstiloReport(reportData), true);
   assert.equal(hasRichSocioEstiloReport(reportOutput), false);
 });
 
-test('resolve report_data salvo em relatorio sem confundir com a camada V30', () => {
-  const reportData = { resultado: {}, narrativa: {}, dinamica_dos_estilos: {}, memoria_calculo: {}, auditoria: {} };
+test("resolve report_data salvo em relatorio sem confundir com a camada V30", () => {
+  const reportData = {
+    resultado: {},
+    narrativa: {},
+    dinamica_dos_estilos: {},
+    memoria_calculo: {},
+    auditoria: {},
+  };
   const response = { report_output: reportOutput, relatorio: reportData };
   assert.equal(getFullReportData(response), reportData);
 });
 
-test('ativa apresentaÃ§Ã£o rica e preserva perfil estruturado, PDI, memÃ³ria e auditoria', () => {
+test("ativa apresentaÃ§Ã£o rica e preserva perfil estruturado, PDI, memÃ³ria e auditoria", () => {
   const reportData = {
-    resultado: { perfil_dominante: { estilo: 'Assertivo', resumo: 'Resumo', descricao: 'DescriÃ§Ã£o', forcas_naturais: ['Foco', 'Agilidade'] } },
-    narrativa: {}, dinamica_dos_estilos: {}, memoria_calculo: { total_pontos: 10 },
-    auditoria: { workflow_version: 'n8n-v35' }, pdi: { objetivos: ['Objetivo'] },
-    potencializacao_talentos: { estrategias: ['EstratÃ©gia'] }
+    resultado: {
+      perfil_dominante: {
+        estilo: "Assertivo",
+        resumo: "Resumo",
+        descricao: "DescriÃ§Ã£o",
+        forcas_naturais: ["Foco", "Agilidade"],
+      },
+    },
+    narrativa: {},
+    dinamica_dos_estilos: {},
+    memoria_calculo: { total_pontos: 10 },
+    auditoria: { workflow_version: "n8n-v35" },
+    pdi: { objetivos: ["Objetivo"] },
+    potencializacao_talentos: { estrategias: ["EstratÃ©gia"] },
   };
-  const response = { contractVersion: 'V30', report_output: reportOutput, report_data: reportData, resultado_id: 'resultado-rico', relatorio_uuid: '123e4567-e89b-12d3-a456-426614174000' };
+  const response = {
+    contractVersion: "V30",
+    report_output: reportOutput,
+    report_data: reportData,
+    resultado_id: "resultado-rico",
+    relatorio_uuid: "123e4567-e89b-12d3-a456-426614174000",
+  };
   const resolution = resolveV30Report(response);
   const fullReport = getFullReportData(response);
   assert.equal(resolution.declared, true);
   assert.equal(resolution.validation.valid, true);
   assert.equal(hasRichSocioEstiloReport(fullReport), true);
-  assert.equal((fullReport?.resultado as any).perfil_dominante.estilo, 'Assertivo');
+  assert.equal(
+    (fullReport?.resultado as any).perfil_dominante.estilo,
+    "Assertivo",
+  );
   assert.deepEqual(fullReport?.pdi, reportData.pdi);
   assert.deepEqual(fullReport?.memoria_calculo, reportData.memoria_calculo);
   assert.deepEqual(fullReport?.auditoria, reportData.auditoria);
