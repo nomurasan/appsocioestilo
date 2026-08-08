@@ -12,12 +12,13 @@ import {
     type ViewerRole,
 } from "../lib/report-visibility-v42";
 import {
-    getAnalyticalReportConfig,
-    getSyntheticReportConfig,
+    getAnalyticalGlobalConfig,
+    getCompanyAnalyticalOverride,
+    getSyntheticGlobalConfig,
     resetCompanyAnalyticalOverride,
     saveCompanyAnalyticalOverride,
-    saveGlobalAnalyticalConfig,
-    saveGlobalSyntheticConfig,
+    saveAnalyticalGlobalConfig,
+    saveSyntheticGlobalConfig,
 } from "../lib/report-configurations";
 
 type AnalyticalRole = ViewerRole;
@@ -52,6 +53,17 @@ function normalizeText(value: unknown): string {
         .replace(/[\u0300-\u036f]/g, "")
         .toLowerCase()
         .trim();
+}
+
+function toErrorMessage(error: unknown, fallback: string): string {
+    if (!error) return fallback;
+    if (typeof error === "string") return error;
+    if (error instanceof Error && error.message) return error.message;
+    const maybe = error as Record<string, unknown>;
+    const message = String(maybe?.message || "");
+    const details = String(maybe?.details || "");
+    const hint = String(maybe?.hint || "");
+    return [message, details, hint].filter(Boolean).join(" | ") || fallback;
 }
 
 function isEmptyConfig(config?: ReportVisibilityConfig | null): boolean {
@@ -168,16 +180,19 @@ export default function ReportConfigurationPage({
 
         try {
             if (viewType === "synthetic") {
-                const config = await getSyntheticReportConfig();
+                const config = await getSyntheticGlobalConfig();
                 const nextConfig = cloneConfig(config || {});
                 setGlobalConfig(nextConfig);
                 setCompanyOverride(null);
                 setEditConfig(nextConfig);
                 setSavedSnapshot(JSON.stringify(nextConfig));
             } else {
-                const result = await getAnalyticalReportConfig(analyticalRole, scope === "company" ? companyId : null);
-                const baseGlobal = cloneConfig(result.globalConfig || {});
-                const override = result.companyOverride ? cloneConfig(result.companyOverride) : null;
+                const baseGlobal = cloneConfig(await getAnalyticalGlobalConfig(analyticalRole));
+                const overrideRaw =
+                    scope === "company" && companyId
+                        ? await getCompanyAnalyticalOverride(companyId, analyticalRole)
+                        : null;
+                const override = overrideRaw ? cloneConfig(overrideRaw) : null;
 
                 const effective = resolveReportVisibility({
                     viewType: "analytical",
@@ -199,7 +214,7 @@ export default function ReportConfigurationPage({
             }
         } catch (err) {
             console.error(err);
-            setError("Não foi possível carregar a configuração de visibilidade.");
+            setError(toErrorMessage(err, "Não foi possível carregar a configuração de visibilidade."));
         } finally {
             setLoading(false);
         }
@@ -277,9 +292,9 @@ export default function ReportConfigurationPage({
 
         try {
             if (viewType === "synthetic") {
-                await saveGlobalSyntheticConfig(editConfig);
+                await saveSyntheticGlobalConfig(editConfig);
             } else if (scope === "global") {
-                await saveGlobalAnalyticalConfig(analyticalRole, editConfig);
+                await saveAnalyticalGlobalConfig(analyticalRole, editConfig);
             } else {
                 if (!companyId) {
                     throw new Error("Selecione uma empresa para salvar override.");
@@ -297,7 +312,7 @@ export default function ReportConfigurationPage({
             await loadConfigs();
         } catch (err) {
             console.error(err);
-            setError("Erro ao salvar configuração.");
+            setError(toErrorMessage(err, "Erro ao salvar configuração."));
         } finally {
             setSaving(false);
         }

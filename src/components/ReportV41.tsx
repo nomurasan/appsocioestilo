@@ -16,8 +16,9 @@ import {
     type EffectiveReportVisibility
 } from '../lib/report-visibility-v42';
 import {
-    getAnalyticalReportConfig,
-    getSyntheticReportConfig
+    getAnalyticalGlobalConfig,
+    getCompanyAnalyticalOverride,
+    getSyntheticGlobalConfig
 } from '../lib/report-configurations';
 
 const isDev = Boolean((import.meta as { env?: { DEV?: boolean } }).env?.DEV);
@@ -505,19 +506,22 @@ export default function ReportV41({
         async function loadVisibility() {
             setLoadingVisibility(true);
             try {
-                const syntheticGlobal = await getSyntheticReportConfig();
+                const syntheticGlobal = await getSyntheticGlobalConfig();
                 const syntheticEffective = resolveReportVisibility({
                     viewType: 'synthetic',
                     globalConfig: syntheticGlobal,
                 });
 
                 const role = normalizeViewerRole(viewerRole || 'participant');
-                const analyticalConfigs = await getAnalyticalReportConfig(role, companyId || null);
+                const analyticalGlobal = await getAnalyticalGlobalConfig(role);
+                const analyticalCompanyOverride = companyId
+                    ? await getCompanyAnalyticalOverride(companyId, role)
+                    : null;
                 const analyticalEffective = resolveReportVisibility({
                     viewType: 'analytical',
                     viewerRole: role,
-                    globalConfig: analyticalConfigs.globalConfig,
-                    companyOverride: analyticalConfigs.companyOverride,
+                    globalConfig: analyticalGlobal,
+                    companyOverride: analyticalCompanyOverride,
                 });
 
                 if (!cancelled) {
