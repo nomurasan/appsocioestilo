@@ -1,4 +1,5 @@
 import { supabase, parseBigIntId } from "./supabase";
+import { auth as firebaseAuth } from "./firebase";
 import {
   getDefaultVisibilityConfig,
   ReportVisibilityConfig,
@@ -111,6 +112,23 @@ function devLogConfigurationOperation(
   });
 }
 
+async function devLogFirebaseRlsClaimsBeforeSave(): Promise<void> {
+  if (!isDev) return;
+
+  const uid = firebaseAuth.currentUser?.uid || null;
+  const tokenResult = firebaseAuth.currentUser
+    ? await firebaseAuth.currentUser.getIdTokenResult()
+    : null;
+  const claims = tokenResult?.claims || null;
+
+  console.info("[REPORT-CONFIG][AUTH-CHECK] firebase_uid", uid);
+  console.info("[REPORT-CONFIG][AUTH-CHECK] firebase_claims", claims);
+  console.info("[REPORT-CONFIG][AUTH-CHECK] role_is_authenticated", {
+    role: (claims as Record<string, unknown> | null)?.role ?? null,
+    ok: (claims as Record<string, unknown> | null)?.role === "authenticated",
+  });
+}
+
 async function selectConfigurations(where: {
   scope?: ConfigurationScope;
   empresaId?: number | null;
@@ -171,6 +189,8 @@ async function getConfigurationRow(
 async function saveConfiguration(
   row: Omit<ReportConfigurationRow, "id" | "created_at" | "updated_at">,
 ): Promise<void> {
+  await devLogFirebaseRlsClaimsBeforeSave();
+
   const key: ConfigurationKey = {
     scope: row.scope,
     empresaId: row.empresa_id,

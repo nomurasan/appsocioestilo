@@ -48,7 +48,22 @@ if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) {
   );
 }
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  accessToken: async () => {
+    const user = firebaseAuth.currentUser;
+    if (!user) return null;
+
+    try {
+      return await user.getIdToken(false);
+    } catch (error) {
+      console.warn(
+        "[SUPABASE-AUTH] Falha ao obter Firebase ID token para Supabase:",
+        error,
+      );
+      return null;
+    }
+  },
+});
 
 /** Rascunhos dependem de uma sessão Supabase válida para satisfazer a RLS. */
 export async function getSupabaseAuthUserId(): Promise<string | null> {
