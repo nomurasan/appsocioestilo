@@ -138,7 +138,10 @@ function asNumber(value: unknown): number {
 }
 
 function normalizePapel(value: unknown, index = 0): string {
-  const raw = asString(value).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  const raw = asString(value)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase();
   if (raw.includes("domin")) return "Dominante";
   if (raw.includes("secund") || raw.includes("auxiliar")) return "Secundário";
   if (raw.includes("terci")) return "Terciário";
@@ -152,10 +155,17 @@ function normalizeSubitem(value: unknown, index = 0): ReportSubitemV41 {
   return {
     id_unidade: asString(raw.id_unidade || raw.id || raw.codigo) || null,
     ordem: asNumber(raw.ordem ?? index + 1) || index + 1,
-    titulo: asString(raw.titulo || raw.subitem_relatorio || raw.campo_relatorio_principal || `Subitem ${index + 1}`),
-    conteudo: asString(raw.conteudo || raw.conteudo_relatorio || raw.texto || raw.text),
+    titulo: asString(
+      raw.titulo ||
+        raw.subitem_relatorio ||
+        raw.campo_relatorio_principal ||
+        `Subitem ${index + 1}`,
+    ),
+    conteudo: asString(
+      raw.conteudo || raw.conteudo_relatorio || raw.texto || raw.text,
+    ),
     perfil_principal: asString(raw.perfil_principal) || null,
-    perfil_relacionado: asString(raw.perfil_relacionado) || null
+    perfil_relacionado: asString(raw.perfil_relacionado) || null,
   };
 }
 
@@ -174,7 +184,9 @@ function normalizeRelation(value: unknown, index = 0): ReportRelationV41 {
     perfil_relacionado: asString(raw.perfil_relacionado || raw.outro_perfil),
     status: asString(raw.status) || "generated",
     subitens: normalizeSubitens(raw.subitens),
-    unidades_utilizadas: asArray(raw.unidades_utilizadas).map((item) => asString(item)).filter(Boolean)
+    unidades_utilizadas: asArray(raw.unidades_utilizadas)
+      .map((item) => asString(item))
+      .filter(Boolean),
   };
 }
 
@@ -194,7 +206,7 @@ function normalizeSection(value: unknown, index = 0): ReportSectionV41 {
     status: asString(raw.status) || undefined,
     ...(subitens.length > 0 ? { subitens } : {}),
     ...(relacoes.length > 0 ? { relacoes } : {}),
-    dados: asRecord(raw.dados)
+    dados: asRecord(raw.dados),
   };
 }
 
@@ -204,14 +216,21 @@ function normalizeSections(value: unknown): ReportSectionV41[] {
     .sort((a, b) => a.ordem - b.ordem)
     .map((section) => ({
       ...section,
-      ...(section.subitens ? { subitens: [...section.subitens].sort((a, b) => a.ordem - b.ordem) } : {}),
+      ...(section.subitens
+        ? { subitens: [...section.subitens].sort((a, b) => a.ordem - b.ordem) }
+        : {}),
       ...(section.relacoes
         ? {
             relacoes: [...section.relacoes]
               .sort((a, b) => a.ordem - b.ordem)
-              .map((relation) => ({ ...relation, subitens: [...relation.subitens].sort((a, b) => a.ordem - b.ordem) }))
+              .map((relation) => ({
+                ...relation,
+                subitens: [...relation.subitens].sort(
+                  (a, b) => a.ordem - b.ordem,
+                ),
+              })),
           }
-        : {})
+        : {}),
     }));
 }
 
@@ -227,7 +246,7 @@ function normalizeRanking(value: unknown): RankingItemV41[] {
         score: asNumber(raw.score || raw.pontuacao || raw.points),
         ...(raw.percentual !== undefined || raw.percentage !== undefined
           ? { percentual: asNumber(raw.percentual ?? raw.percentage) }
-          : {})
+          : {}),
       } satisfies RankingItemV41;
     })
     .sort((a, b) => a.ordem - b.ordem);
@@ -241,7 +260,7 @@ function normalizeScores(value: unknown): Record<string, number> {
     Assertivo: asNumber(raw.Assertivo ?? raw.assertivo),
     Participativo: asNumber(raw.Participativo ?? raw.participativo),
     Integrador: asNumber(raw.Integrador ?? raw.integrador),
-    Analítico: asNumber(raw["Analítico"] ?? raw.Analitico ?? raw.analitico)
+    Analítico: asNumber(raw["Analítico"] ?? raw.Analitico ?? raw.analitico),
   };
 }
 
@@ -249,45 +268,65 @@ function normalizeAuditUnits(value: unknown): AuditUnitV41[] {
   return asArray(value).map((item, index) => {
     const raw = asRecord(item);
     return {
-      id_unidade: asString(raw.id_unidade || raw.id || raw.codigo) || `UC-${index + 1}`,
-      descricao: asString(raw.descricao || raw.titulo || raw.subitem_relatorio || raw.conteudo) || `Unidade ${index + 1}`,
+      id_unidade:
+        asString(raw.id_unidade || raw.id || raw.codigo) || `UC-${index + 1}`,
+      descricao:
+        asString(
+          raw.descricao || raw.titulo || raw.subitem_relatorio || raw.conteudo,
+        ) || `Unidade ${index + 1}`,
       conteudo: asString(raw.conteudo) || undefined,
-      campo_relatorio_principal: asString(raw.campo_relatorio_principal) || undefined,
-      ordem_subitem: raw.ordem_subitem !== undefined ? asNumber(raw.ordem_subitem) : undefined,
+      campo_relatorio_principal:
+        asString(raw.campo_relatorio_principal) || undefined,
+      ordem_subitem:
+        raw.ordem_subitem !== undefined
+          ? asNumber(raw.ordem_subitem)
+          : undefined,
       subitem_relatorio: asString(raw.subitem_relatorio) || undefined,
       perfil_principal: asString(raw.perfil_principal) || null,
-      perfil_relacionado: asString(raw.perfil_relacionado) || null
+      perfil_relacionado: asString(raw.perfil_relacionado) || null,
     };
   });
 }
 
-function normalizeVariant(value: unknown, tipo: "sintetico" | "detalhado"): ReportVariantV41 {
+function normalizeVariant(
+  value: unknown,
+  tipo: "sintetico" | "detalhado",
+): ReportVariantV41 {
   const raw = asRecord(value);
   return {
     versao: asString(raw.versao) || "1.0",
     tipo,
     estrategia: asString(raw.estrategia) || "",
-    secoes: normalizeSections(raw.secoes)
+    secoes: normalizeSections(raw.secoes),
   };
 }
 
-export function isReportOutputV41(output: unknown, resultado?: unknown): boolean {
+export function isReportOutputV41(
+  output: unknown,
+  resultado?: unknown,
+): boolean {
   const out = asRecord(output);
   const res = asRecord(resultado);
-  return out.contractVersion === "V41"
-    || out.contract_version === "socioestilo-report/v41"
-    || res.contract_version === "socioestilo-report/v41";
+  return (
+    out.contractVersion === "V41" ||
+    out.contract_version === "socioestilo-report/v41" ||
+    res.contract_version === "socioestilo-report/v41"
+  );
 }
 
 function resolveRawReportOutput(resultado: unknown): ObjectRecord {
   const root = asRecord(resultado);
   if (isRecord(root.report_output)) return root.report_output;
-  if (isRecord(root.relatorio_pronto_para_app)) return root.relatorio_pronto_para_app;
-  if (isRecord(asRecord(root.report_data).report_output)) return asRecord(root.report_data).report_output as ObjectRecord;
+  if (isRecord(root.relatorio_pronto_para_app))
+    return root.relatorio_pronto_para_app;
+  if (isRecord(asRecord(root.report_data).report_output))
+    return asRecord(root.report_data).report_output as ObjectRecord;
   return {};
 }
 
-export function validateReportOutputV41(resultado: unknown): ReportV41Validation {
+export function validateReportOutputV41(
+  resultado: unknown,
+): ReportV41Validation {
   const root = asRecord(resultado);
   const output = resolveRawReportOutput(root);
   const warnings: string[] = [];
@@ -299,13 +338,19 @@ export function validateReportOutputV41(resultado: unknown): ReportV41Validation
   }
 
   if (!isRecord(output.identificacao)) errors.push("identificacao ausente.");
-  if (!isRecord(output.resultado_calculado)) errors.push("resultado_calculado ausente.");
-  if (!isRecord(output.relatorio_sintetico)) errors.push("relatorio_sintetico ausente.");
-  if (!isRecord(output.relatorio_detalhado)) errors.push("relatorio_detalhado ausente.");
-  if (!isRecord(output.memoria_calculo)) warnings.push("memoria_calculo ausente.");
+  if (!isRecord(output.resultado_calculado))
+    errors.push("resultado_calculado ausente.");
+  if (!isRecord(output.relatorio_sintetico))
+    errors.push("relatorio_sintetico ausente.");
+  if (!isRecord(output.relatorio_detalhado))
+    errors.push("relatorio_detalhado ausente.");
+  if (!isRecord(output.memoria_calculo))
+    warnings.push("memoria_calculo ausente.");
   if (!isRecord(output.auditoria)) warnings.push("auditoria ausente.");
 
-  const ranking = normalizeRanking(asRecord(output.resultado_calculado).ranking);
+  const ranking = normalizeRanking(
+    asRecord(output.resultado_calculado).ranking,
+  );
   if (ranking.length !== 4) {
     warnings.push("ranking não possui quatro posições.");
   }
@@ -314,17 +359,21 @@ export function validateReportOutputV41(resultado: unknown): ReportV41Validation
   const preferred = ["Dominante", "Secundário", "Terciário", "Adjacente"];
   const hasPreferred = preferred.every((papel) => papeis.includes(papel));
   if (!hasPreferred) {
-    warnings.push("nomenclatura de papéis fora do padrão Dominante/Secundário/Terciário/Adjacente.");
+    warnings.push(
+      "nomenclatura de papéis fora do padrão Dominante/Secundário/Terciário/Adjacente.",
+    );
   }
 
   return {
     valid: errors.length === 0,
     warnings,
-    errors
+    errors,
   };
 }
 
-export function parseReportOutputV41(resultado: unknown): ReportOutputV41 | null {
+export function parseReportOutputV41(
+  resultado: unknown,
+): ReportOutputV41 | null {
   const root = asRecord(resultado);
   const output = resolveRawReportOutput(root);
   if (!isReportOutputV41(output, root)) return null;
@@ -333,7 +382,8 @@ export function parseReportOutputV41(resultado: unknown): ReportOutputV41 | null
 
   return {
     contractVersion: "V41",
-    contract_version: asString(output.contract_version) || "socioestilo-report/v41",
+    contract_version:
+      asString(output.contract_version) || "socioestilo-report/v41",
     workflow_version: asString(output.workflow_version),
     report_version: asString(output.report_version),
     identificacao: asRecord(output.identificacao),
@@ -347,28 +397,47 @@ export function parseReportOutputV41(resultado: unknown): ReportOutputV41 | null
       estilo_a_desenvolver: asString(resultadoCalculado.estilo_a_desenvolver),
       total_pontos: asNumber(resultadoCalculado.total_pontos),
       scores: normalizeScores(resultadoCalculado.scores),
-      ranking: normalizeRanking(resultadoCalculado.ranking)
+      ranking: normalizeRanking(resultadoCalculado.ranking),
     },
-    relatorio_sintetico: normalizeVariant(output.relatorio_sintetico, "sintetico"),
-    relatorio_detalhado: normalizeVariant(output.relatorio_detalhado, "detalhado"),
+    relatorio_sintetico: normalizeVariant(
+      output.relatorio_sintetico,
+      "sintetico",
+    ),
+    relatorio_detalhado: normalizeVariant(
+      output.relatorio_detalhado,
+      "detalhado",
+    ),
     memoria_calculo: asRecord(output.memoria_calculo),
     auditoria: {
-      unidades_utilizadas: normalizeAuditUnits(asRecord(output.auditoria).unidades_utilizadas),
+      unidades_utilizadas: normalizeAuditUnits(
+        asRecord(output.auditoria).unidades_utilizadas,
+      ),
       ...(asRecord(output.auditoria).total_unidades_utilizadas !== undefined
-        ? { total_unidades_utilizadas: asNumber(asRecord(output.auditoria).total_unidades_utilizadas) }
-        : {})
-    }
+        ? {
+            total_unidades_utilizadas: asNumber(
+              asRecord(output.auditoria).total_unidades_utilizadas,
+            ),
+          }
+        : {}),
+    },
   };
 }
 
-function buildVariantViewModel(resultado: unknown, variant: "sintetico" | "detalhado"): ReportVariantViewModelV41 | null {
+function buildVariantViewModel(
+  resultado: unknown,
+  variant: "sintetico" | "detalhado",
+): ReportVariantViewModelV41 | null {
   const output = parseReportOutputV41(resultado);
   if (!output) return null;
   const validation = validateReportOutputV41(resultado);
-  const selected = variant === "sintetico" ? output.relatorio_sintetico : output.relatorio_detalhado;
+  const selected =
+    variant === "sintetico"
+      ? output.relatorio_sintetico
+      : output.relatorio_detalhado;
 
   return {
-    variantLabel: variant === "sintetico" ? "Relatório Sintético" : "Relatório Analítico",
+    variantLabel:
+      variant === "sintetico" ? "Relatório Sintético" : "Relatório Analítico",
     variantKey: variant,
     identificacao: output.identificacao,
     resultadoCalculado: output.resultado_calculado,
@@ -376,14 +445,18 @@ function buildVariantViewModel(resultado: unknown, variant: "sintetico" | "detal
     memoriaCalculo: output.memoria_calculo,
     auditoria: output.auditoria,
     output,
-    validation
+    validation,
   };
 }
 
-export function buildSyntheticReportViewModel(resultado: unknown): ReportVariantViewModelV41 | null {
+export function buildSyntheticReportViewModel(
+  resultado: unknown,
+): ReportVariantViewModelV41 | null {
   return buildVariantViewModel(resultado, "sintetico");
 }
 
-export function buildAnalyticalReportViewModel(resultado: unknown): ReportVariantViewModelV41 | null {
+export function buildAnalyticalReportViewModel(
+  resultado: unknown,
+): ReportVariantViewModelV41 | null {
   return buildVariantViewModel(resultado, "detalhado");
 }

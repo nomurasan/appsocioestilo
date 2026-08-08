@@ -31,12 +31,22 @@ export interface Usuario {
 export interface Resultado {
   id?: string;
   id_resultado?: string;
+  relatorio_uuid?: string;
+  status?: string;
+  contract_version?: string;
+  workflow_version?: string;
+  report_version?: string;
   id_usuario: string;
   nome_usuario: string;
   empresa_id: string;
   empresa_nome: string;
   scores: Scores;
   perfil_dominante?: string;
+  perfil_adjacente?: string;
+  lado_luz?: string;
+  lado_sombra?: string;
+  estilo_a_desenvolver?: string;
+  total_pontos?: number;
   data_conclusao: string;
   ai_insights?: {
     resumo: string;
@@ -59,9 +69,18 @@ export interface Resultado {
   perfil_secundario?: string;
   perfil_terciario?: string;
   perfil_menos_utilizado?: string;
+  ranking_detalhado?: Array<{
+    ordem: number;
+    perfil: string;
+    papel: string;
+    score: number;
+    percentual?: number;
+  }> | null;
   report_output?: any;
   report_data?: any;
   auditoria?: any;
+  created_at?: string;
+  updated_at?: string;
   pontuacoes_comportamentais?: Record<string, number> | null;
   respostas_questionario?: Record<string, string | string[]> | null;
   respostas_detalhadas?: Array<{

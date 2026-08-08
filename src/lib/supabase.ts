@@ -1184,7 +1184,13 @@ function mapDbResultadoToResultado(item: any): any {
   const parsedMetadata = safeParseJSON(item.metadata) || {};
   const parsedReportData = safeParseJSON(item.relatorio) || {};
   const parsedReportOutput =
-    safeParseJSON(item.relatorio_pronto_para_app) || {};
+    safeParseJSON(item.report_output) ||
+    safeParseJSON(item.relatorio_pronto_para_app) ||
+    {};
+  const parsedAuditoria =
+    safeParseJSON(item.auditoria) ||
+    safeParseJSON(item.auditoria_tecnica) ||
+    {};
 
   const reconstructedAnswers: Record<string, string | string[]> = {};
   try {
@@ -1278,6 +1284,17 @@ function mapDbResultadoToResultado(item: any): any {
     resultado_id: resultadoId,
     relatorio_uuid: relatorioUuid,
     contract_version: contractVersion,
+    workflow_version:
+      item.workflow_version ||
+      parsedMetadata.workflow_version ||
+      parsedReportOutput.workflow_version ||
+      "",
+    report_version:
+      item.report_version ||
+      parsedMetadata.report_version ||
+      parsedReportOutput.report_version ||
+      "",
+    status: item.status || "",
     id_usuario: item.id_usuario || item.user_id || item.uid || "",
     nome_usuario:
       item.user_name ||
@@ -1312,10 +1329,31 @@ function mapDbResultadoToResultado(item: any): any {
     metadata: parsedMetadata,
     generated_at: item.generated_at || "",
     ranking: safeParseJSON(item.ranking),
+    ranking_detalhado:
+      safeParseJSON(item.ranking) ||
+      parsedReportOutput?.resultado_calculado?.ranking ||
+      null,
     perfil_secundario: item.perfil_secundario || "",
     perfil_terciario: item.perfil_terciario || "",
+    perfil_adjacente: item.perfil_adjacente || "",
     perfil_menos_utilizado:
       item.perfil_menos_utili || item.perfil_menos_utilizado || "",
+    lado_luz:
+      item.lado_luz || parsedReportOutput?.resultado_calculado?.lado_luz || "",
+    lado_sombra:
+      item.lado_sombra ||
+      parsedReportOutput?.resultado_calculado?.lado_sombra ||
+      "",
+    estilo_a_desenvolver:
+      item.estilo_a_desenvolver ||
+      parsedReportOutput?.resultado_calculado?.estilo_a_desenvolver ||
+      "",
+    total_pontos:
+      item.total_pontos ||
+      parsedReportOutput?.resultado_calculado?.total_pontos ||
+      0,
+    created_at: item.created_at || "",
+    updated_at: item.updated_at || "",
     pontuacoes_comportamentais: safeParseJSON(item.pontuacoes_comportamentais),
     respostas_questionario: safeParseJSON(item.respostas_questionario),
     respostas_detalhadas: safeParseJSON(item.respostas_detalhadas),
@@ -1324,6 +1362,7 @@ function mapDbResultadoToResultado(item: any): any {
     relatorio: parsedReportData,
     fontes_consultadas: safeParseJSON(item.fontes_consultadas),
     relatorio_pronto_para_app: parsedReportOutput,
+    auditoria: parsedAuditoria,
     auditoria_tecnica: safeParseJSON(item.auditoria_tecnica),
     memoria_calculo: safeParseJSON(item.memoria_calculo),
     fundamentacao_rag: safeParseJSON(item.fundamentacao_rag),
