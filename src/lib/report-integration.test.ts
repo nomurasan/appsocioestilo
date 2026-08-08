@@ -44,7 +44,7 @@ const reportOutput = {
 
 const validResponse = {
   contract_version: "V30",
-  resultado_id: 6,
+  resultado_id: "6",
   relatorio_uuid: "123e4567-e89b-12d3-a456-426614174000",
   persisted: true,
   report_output: reportOutput,
